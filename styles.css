@@ -610,3 +610,39 @@ body {
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
+
+/* ===================================================
+   ADAPTACIÓN PARA CELULARES Y TABLETS (Pantallas < 768px)
+   =================================================== */
+@media (max-width: 768px) {
+
+    /* 1. Ajustar el contenedor principal */
+    .main-container {
+        padding: 10px;
+        width: 100%;
+    }
+
+    /* 2. Cambiar la barra de navegación de horizontal a vertical */
+    .navbar {
+        flex-direction: column;
+        padding: 10px;
+        gap: 10px;
+    }
+
+    /* 3. Asegurar que las imágenes y elementos no se salgan de pantalla */
+    img {
+        max-width: 100%;
+        height: auto;
+    }
+
+    /* 4. Ajustar fuentes grandes */
+    h1 {
+        font-size: 1.5rem;
+    }
+
+    /* 5. Si tienes columnas lado a lado (ej. Feed y Barra Lateral), apilarlas */
+    .grid-container, .social-layout {
+        flex-direction: column !important;
+        grid-template-columns: 1fr !important;
+    }
+}
