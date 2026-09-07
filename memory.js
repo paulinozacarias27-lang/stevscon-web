@@ -25,10 +25,12 @@ try {
             firebase.initializeApp(firebaseConfig);
         }
         db = firebase.database();
-        console.log("☁️ Conectado a Firebase Database");
+        console.log("%c☁️ Stevscon v4 - Conectado a Firebase Database", "color: #a855f7; font-weight: bold; font-size: 14px;");
+    } else {
+        console.error("❌ Firebase SDK no cargó. Revisa tu conexión o bloqueadores.");
     }
 } catch (e) {
-    console.warn("⚠️ Firebase no disponible, usando respaldo local.", e);
+    console.error("⚠️ Error al conectar Firebase:", e);
 }
 
 // --- UTILIDADES DE NORMALIZACIÓN ---
@@ -279,7 +281,7 @@ const cacheLocalPreviaAccounts = leerCacheLocal(CACHE_ACCOUNTS);
 const cacheLocalPreviaPosts = leerCacheLocal(CACHE_POSTS);
 const cacheLocalPreviaMds = leerCacheLocal(CACHE_MDS);
 
-// Empuja a Firebase los items que solo existen en localStorage y no en la nube
+// Empuja a Firebase los items de localStorage, ACTUALIZANDO si ya existen
 function migrarLocalesAFirebase(locals, ruta, obtenerClave) {
     if (!db || !Array.isArray(locals) || locals.length === 0) return;
     locals.forEach(item => {
@@ -287,9 +289,13 @@ function migrarLocalesAFirebase(locals, ruta, obtenerClave) {
         const clave = obtenerClave(item);
         if (!clave) return;
         db.ref(ruta + '/' + clave).once('value').then(snap => {
-            if (!snap.val()) {
+            const existente = snap.val();
+            if (!existente) {
                 db.ref(ruta + '/' + clave).set(item)
                     .catch(err => console.warn('No se pudo migrar ' + ruta + '/' + clave, err));
+            } else {
+                db.ref(ruta + '/' + clave).update(item)
+                    .catch(err => console.warn('No se pudo actualizar ' + ruta + '/' + clave, err));
             }
         }).catch(() => {});
     });
