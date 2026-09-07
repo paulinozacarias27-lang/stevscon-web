@@ -24,10 +24,10 @@ try {
     console.warn("⚠️ Firebase no disponible, usando respaldo local.", e);
 }
 
-// Carga inicial local
+// Carga inicial local unificada
 let postsData = JSON.parse(localStorage.getItem('stevscon_posts')) || [];
 let mdData = JSON.parse(localStorage.getItem('stevscon_mds')) || [];
-let globalAccountsData = JSON.parse(localStorage.getItem('stevscon_accounts')) || [];
+let globalAccountsData = JSON.parse(localStorage.getItem('stevscon_usuarios')) || JSON.parse(localStorage.getItem('stevscon_accounts')) || [];
 
 // --- FUNCIONES DE GUARDADO GLOBAL ---
 function guardarPosts() {
@@ -42,11 +42,13 @@ function guardarMDs() {
 
 function guardarCuentasGlobales(cuentas) {
     globalAccountsData = cuentas;
+    if (typeof dbUsuarios !== 'undefined') dbUsuarios = cuentas;
     localStorage.setItem('stevscon_accounts', JSON.stringify(cuentas));
+    localStorage.setItem('stevscon_usuarios', JSON.stringify(cuentas));
     if (db) db.ref('accounts').set(cuentas);
 }
 
-// --- ESCUCHADORES EN TIEMPO REAL CON MIGRACIÓN AUTO ---
+// --- ESCUCHADORES EN TIEMPO REAL MULTIDISPOSITIVO ---
 if (db) {
     // Sincronizar Posts
     db.ref('posts').on('value', (snapshot) => {
@@ -55,58 +57,41 @@ if (db) {
             postsData = Array.isArray(data) ? data : Object.values(data);
             localStorage.setItem('stevscon_posts', JSON.stringify(postsData));
             if (typeof renderFeed === 'function') renderFeed();
+            if (typeof renderizarFeed === 'function') renderizarFeed();
         } else if (postsData.length > 0) {
-            // Migrar datos locales existentes a Firebase si la nube está vacía
             db.ref('posts').set(postsData);
         }
     });
 
-    // Sincronizar Cuentas
+    // Sincronizar Cuentas y Perfiles Crossplay
     db.ref('accounts').on('value', (snapshot) => {
         const data = snapshot.val();
         if (data) {
             globalAccountsData = Array.isArray(data) ? data : Object.values(data);
+            if (typeof dbUsuarios !== 'undefined') dbUsuarios = globalAccountsData;
             localStorage.setItem('stevscon_accounts', JSON.stringify(globalAccountsData));
+            localStorage.setItem('stevscon_usuarios', JSON.stringify(globalAccountsData));
+            
+            // Actualizar sesión activa si cambió el perfil en la nube desde otro dispositivo
+            if (typeof sesionActual !== 'undefined' && sesionActual) {
+                const updated = globalAccountsData.find(u => u.handle === sesionActual.handle);
+                if (updated) {
+                    sesionActual = updated;
+                    localStorage.setItem('stevscon_sesion', JSON.stringify(sesionActual));
+                }
+            }
         } else if (globalAccountsData.length > 0) {
-            // Migrar cuentas locales a Firebase
             db.ref('accounts').set(globalAccountsData);
         }
     });
 
-    // Sincronizar Mensajes
+    // Sincronizar Mensajes Directos (MDs)
     db.ref('mds').on('value', (snapshot) => {
         const data = snapshot.val();
         if (data) {
             mdData = Array.isArray(data) ? data : Object.values(data);
             localStorage.setItem('stevscon_mds', JSON.stringify(mdData));
-            if (typeof renderMensajes === 'function' && typeof currentChatUser !== 'undefined' && currentChatUser) {
-                renderMensajes();
-            }
+            if (typeof renderMensajes === 'function') renderMensajes();
         }
     });
-}
-
-// --- UTILIDADES DE INSIGNIAS Y VERIFICACIÓN ---
-const BADGES_DATABASE = {
-    admin: {
-        id: 'admin',
-        nombre: 'Admin',
-        descripcion: 'Stevscon.com Admin',
-        icono: 'fa-solid fa-shield-halved',
-        color: 'var(--purple-accent)'
-    }
-};
-
-function obtenerEstadoVerificado(usuario) {
-    if (!usuario) return false;
-    return Boolean(usuario.verified || usuario.rol === 'owner' || usuario.rol === 'admin');
-}
-
-function obtenerInsigniasUsuario(usuario) {
-    if (!usuario) return [];
-    let insignias = Array.isArray(usuario.badges) ? [...usuario.badges] : [];
-    if ((usuario.rol === 'admin' || usuario.rol === 'owner') && !insignias.includes('admin')) {
-        insignias.push('admin');
-    }
-    return insignias;
 }

@@ -205,7 +205,7 @@ function toggleEditProfile() {
     }
 }
 
-// Guardar los datos actualizados
+// Guardar los datos actualizados con sincronización en la nube
 function guardarPerfil() {
     if (typeof sesionActual === 'undefined' || !sesionActual) return;
 
@@ -238,13 +238,24 @@ function guardarPerfil() {
     sesionActual.edad = age;
     sesionActual.genero = gender;
 
-    let dbUsuarios = JSON.parse(localStorage.getItem('stevscon_usuarios')) || [];
+    let dbUsuarios = typeof globalAccountsData !== 'undefined' && globalAccountsData.length > 0 
+        ? globalAccountsData 
+        : (JSON.parse(localStorage.getItem('stevscon_usuarios')) || []);
+
     const index = dbUsuarios.findIndex(u => u.handle === sesionActual.handle);
     
     if (index !== -1) {
         dbUsuarios[index] = sesionActual;
-        localStorage.setItem('stevscon_usuarios', JSON.stringify(dbUsuarios));
-        localStorage.setItem('stevscon_sesion', JSON.stringify(sesionActual));
+    } else {
+        dbUsuarios.push(sesionActual);
+    }
+
+    localStorage.setItem('stevscon_usuarios', JSON.stringify(dbUsuarios));
+    localStorage.setItem('stevscon_sesion', JSON.stringify(sesionActual));
+
+    // Sincronización Inmediata con Firebase
+    if (typeof guardarCuentasGlobales === 'function') {
+        guardarCuentasGlobales(dbUsuarios);
     }
 
     if (typeof cargarCategoria === 'function') {
