@@ -233,8 +233,15 @@ async function procesarRegistro() {
 
     const resultado = registrarCuenta(nombre, handle, gmail, pass);
     if (resultado.exito) {
+        // Auto-login: la sesión se establece en registrarCuenta
+        if (resultado.usuario) {
+            if (typeof establecerSesion === 'function') {
+                establecerSesion(resultado.usuario);
+            }
+        }
+        if (typeof actualizarHeaderAuth === 'function') actualizarHeaderAuth();
+        if (typeof cargarCategoria === 'function') cargarCategoria('social');
         alert(resultado.msj);
-        cargarCategoria('login');
     } else {
         errorBox.innerText = resultado.msj;
         errorBox.style.display = 'block';

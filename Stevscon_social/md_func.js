@@ -81,6 +81,10 @@ function renderContactList() {
     
     contactList.innerHTML = '';
     
+    // Separar usuarios: los que YA tienen chat conmigo van primero
+    const contactosConChat = [];
+    const contactosSinChat = [];
+    
     dbUsuarios.forEach(user => {
         const targetHandleClean = getCleanHandle(user.handle);
         if (targetHandleClean === miHandle) return; 
@@ -88,10 +92,19 @@ function renderContactList() {
         const chatId = getChatId(miHandle, targetHandleClean);
         const chat = dbMensajes.find(c => c.idChat === chatId);
         
+        if (chat && chat.messages && chat.messages.length > 0) {
+            contactosConChat.push({ user, chat, targetHandleClean });
+        } else {
+            contactosSinChat.push({ user, targetHandleClean });
+        }
+    });
+    
+    // Renderizar contactos con chat existente primero
+    contactosConChat.forEach(({ user, chat, targetHandleClean }) => {
         let lastMsgText = "<i>Haz clic para chatear</i>";
         let unreadCount = 0; 
         
-        if (chat && chat.messages && chat.messages.length > 0) {
+        if (chat.messages.length > 0) {
             const lastMsg = chat.messages[chat.messages.length - 1];
             const isMe = (getCleanHandle(lastMsg.sender) === miHandle);
             const prefix = isMe ? "Yo: " : `${user.nombre}: `;
@@ -122,6 +135,31 @@ function renderContactList() {
             </div>
         `;
     });
+    
+    // Sección para iniciar nuevos chats
+    if (contactosSinChat.length > 0) {
+        contactList.innerHTML += `
+            <div style="padding: 10px 15px; margin-top: 10px; border-top: 1px solid var(--border-color, rgba(255,255,255,0.1)); font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">
+                <i class="fa-solid fa-user-plus"></i> Usuarios disponibles
+            </div>
+        `;
+        
+        contactosSinChat.forEach(({ user, targetHandleClean }) => {
+            const avatarHTML = user.avatar ? `<img src="${user.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">` : user.nombre.charAt(0).toUpperCase();
+            contactList.innerHTML += `
+                <div class="md-contact-item" style="opacity: 0.7;" onclick="abrirChat('${targetHandleClean}')">
+                    <div class="avatar" style="width: 45px; height: 45px; min-width: 45px;">${avatarHTML}</div>
+                    <div style="overflow: hidden; flex-grow: 1;">
+                        <strong style="color: var(--text-main); display: block;">${user.nombre}</strong>
+                        <span style="color: var(--text-muted); font-size: 0.85rem; display: block;">@${targetHandleClean}</span>
+                    </div>
+                    <div style="display: flex; align-items: center;">
+                        <i class="fa-solid fa-comment" style="color: var(--text-muted); font-size: 0.9rem;"></i>
+                    </div>
+                </div>
+            `;
+        });
+    }
 }
 
 function abrirChat(targetHandle) {

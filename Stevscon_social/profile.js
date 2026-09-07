@@ -221,13 +221,13 @@ function guardarPerfil() {
     const ageInput = document.getElementById('edit-age');
     const genderInput = document.getElementById('edit-gender');
 
-    const nombre = nombreInput ? nombreInput.value.trim() : '';
-    const avatar = avatarInput ? avatarInput.value.trim() : '';
-    const banner = bannerInput ? bannerInput.value.trim() : '';
-    const desc = descInput ? descInput.value.trim().substring(0, 200) : '';
-    const bday = bdayInput ? bdayInput.value : '';
-    const age = ageInput ? ageInput.value : '';
-    const gender = genderInput ? genderInput.value.trim() : '';
+    const nombre = nombreInput ? nombreInput.value.trim() : (sesionActual.nombre || '');
+    const avatar = avatarInput ? avatarInput.value.trim() : (sesionActual.avatar || '');
+    const banner = bannerInput ? bannerInput.value.trim() : (sesionActual.banner || '');
+    const desc = descInput ? descInput.value.trim().substring(0, 200) : (sesionActual.descripcion || '');
+    const bday = bdayInput ? bdayInput.value : (sesionActual.cumpleanos || '');
+    const age = ageInput ? ageInput.value : (sesionActual.edad || '');
+    const gender = genderInput ? genderInput.value.trim() : (sesionActual.genero || '');
 
     if (!nombre) {
         alert("¡El nombre no puede estar vacío!");

@@ -65,11 +65,16 @@ function registrarCuenta(nombre, handle, gmail, password) {
     }
     refrescarUsuarios();
 
+    // Establecer sesión inmediatamente (auto-login tras registro)
+    if (typeof establecerSesion === 'function') {
+        establecerSesion(nuevoUsuario);
+    }
+
     if (typeof enviarCorreoBienvenidaBot === 'function') {
         enviarCorreoBienvenidaBot(nuevoUsuario.nombre, nuevoUsuario.gmail, nuevoUsuario.handle);
     }
 
-    return { exito: true, msj: "Cuenta de Stevscon creada con éxito." };
+    return { exito: true, msj: "Cuenta de Stevscon creada con éxito.", usuario: nuevoUsuario };
 }
 
 // Registrar o completar la vinculación de cuenta mediante Google

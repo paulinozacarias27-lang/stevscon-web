@@ -117,7 +117,7 @@ function crearPost() {
 
 function editarPost(postId) {
     togglePostMenu(postId);
-    const post = postsData.find(p => p.id === postId);
+    const post = postsData.find(p => String(p.id) === String(postId));
     if (!post) return;
 
     cerrarModalEditarPost();
@@ -169,7 +169,7 @@ function guardarEdicionPost(postId) {
         return;
     }
 
-    const post = postsData.find(p => p.id === postId);
+    const post = postsData.find(p => String(p.id) === String(postId));
     if (post) {
         post.content = nuevoTexto;
         persistirPost(post);
@@ -464,7 +464,7 @@ function agregarComentario(postId) {
     const texto = input ? input.value.trim() : "";
     if (texto === "") return;
 
-    const post = postsData.find(p => p.id === postId);
+    const post = postsData.find(p => String(p.id) === String(postId));
     if (!post) return;
 
     if (!post.comments) post.comments = [];
@@ -472,7 +472,7 @@ function agregarComentario(postId) {
     const parentCommentId = respuestasEnCurso[postId];
 
     if (parentCommentId !== undefined && parentCommentId !== null) {
-        const parentComment = post.comments.find((c, idx) => (c.id ? c.id === parentCommentId : idx === parentCommentId));
+        const parentComment = post.comments.find((c, idx) => String(c.id || idx) === String(parentCommentId));
         if (parentComment) {
             if (!parentComment.replies) parentComment.replies = [];
             parentComment.replies.push({
@@ -584,7 +584,7 @@ function toggleReplyLike(postId, commentId, replyId) {
 
 function borrarComentario(postId, commentId) {
     toggleCommentMenu(postId, commentId);
-    const post = postsData.find(p => p.id === postId);
+    const post = postsData.find(p => String(p.id) === String(postId));
     if (!post || !post.comments) return;
 
     if (confirm("¿Estás seguro de que deseas eliminar este comentario?")) {
@@ -599,10 +599,10 @@ function borrarComentario(postId, commentId) {
 
 function borrarRespuesta(postId, commentId, replyId) {
     toggleReplyMenu(postId, commentId, replyId);
-    const post = postsData.find(p => p.id === postId);
+    const post = postsData.find(p => String(p.id) === String(postId));
     if (!post || !post.comments) return;
 
-    const comment = post.comments.find((c, idx) => (c.id ? c.id === commentId : idx === commentId));
+    const comment = post.comments.find((c, idx) => (String(c.id || idx) === String(commentId)));
     if (!comment || !comment.replies) return;
 
     if (confirm("¿Estás seguro de que deseas eliminar esta respuesta?")) {
@@ -620,10 +620,10 @@ function borrarRespuesta(postId, commentId, replyId) {
 
 function editarComentario(postId, commentId) {
     toggleCommentMenu(postId, commentId);
-    const post = postsData.find(p => p.id === postId);
+    const post = postsData.find(p => String(p.id) === String(postId));
     if (!post || !post.comments) return;
 
-    const comment = post.comments.find((c, idx) => c.id === commentId || idx === commentId);
+    const comment = post.comments.find((c, idx) => String(c.id || idx) === String(commentId));
     if (!comment) return;
 
     cerrarModalEditarComentario();
@@ -674,10 +674,10 @@ function guardarEdicionComentario(postId, commentId) {
         return;
     }
 
-    const post = postsData.find(p => p.id === postId);
+    const post = postsData.find(p => String(p.id) === String(postId));
     if (!post || !post.comments) return;
 
-    const comment = post.comments.find((c, idx) => c.id === commentId || idx === commentId);
+    const comment = post.comments.find((c, idx) => String(c.id || idx) === String(commentId));
     if (comment) {
         comment.text = nuevoTexto;
         persistirPost(post);
@@ -697,10 +697,10 @@ function cerrarModalEditarComentario(event) {
 
 function editarRespuesta(postId, commentId, replyId) {
     toggleReplyMenu(postId, commentId, replyId);
-    const post = postsData.find(p => p.id === postId);
+    const post = postsData.find(p => String(p.id) === String(postId));
     if (!post || !post.comments) return;
 
-    const comment = post.comments.find((c, idx) => (c.id ? c.id === commentId : idx === commentId));
+    const comment = post.comments.find((c, idx) => (String(c.id || idx) === String(commentId)));
     if (!comment || !comment.replies) return;
 
     const reply = comment.replies.find((r, idx) => (r.id ? r.id === replyId : idx === replyId));
@@ -754,10 +754,10 @@ function guardarEdicionRespuesta(postId, commentId, replyId) {
         return;
     }
 
-    const post = postsData.find(p => p.id === postId);
+    const post = postsData.find(p => String(p.id) === String(postId));
     if (!post || !post.comments) return;
 
-    const comment = post.comments.find((c, idx) => (c.id ? c.id === commentId : idx === commentId));
+    const comment = post.comments.find((c, idx) => (String(c.id || idx) === String(commentId)));
     if (!comment || !comment.replies) return;
 
     const reply = comment.replies.find((r, idx) => (r.id ? r.id === replyId : idx === replyId));
