@@ -1,8 +1,16 @@
 let currentChatUser = null;
 let imagenMDTemporal = "";
 
+// Los mensajes viven en Firebase (memory.js); aquí solo se leen
 function obtenerMDsFrescos() {
+    if (typeof obtenerMDsGlobales === 'function') return obtenerMDsGlobales();
     return JSON.parse(localStorage.getItem('stevscon_mds')) || [];
+}
+
+// Lista global de usuarios registrados (todos los dispositivos)
+function obtenerUsuariosMD() {
+    if (typeof obtenerUsuariosGlobales === 'function') return obtenerUsuariosGlobales();
+    return JSON.parse(localStorage.getItem('stevscon_usuarios')) || [];
 }
 
 function initMDLogic() {
@@ -65,7 +73,7 @@ function renderContactList() {
     if (!sesion) return;
     const miHandle = getCleanHandle(sesion.handle);
 
-    const dbUsuarios = JSON.parse(localStorage.getItem('stevscon_usuarios')) || [];
+    const dbUsuarios = obtenerUsuariosMD();
     const dbMensajes = obtenerMDsFrescos();
     
     const contactList = document.getElementById('md-contact-list');
@@ -118,7 +126,7 @@ function renderContactList() {
 
 function abrirChat(targetHandle) {
     const cleanTarget = getCleanHandle(targetHandle);
-    const dbUsuarios = JSON.parse(localStorage.getItem('stevscon_usuarios')) || [];
+    const dbUsuarios = obtenerUsuariosMD();
     const targetUser = dbUsuarios.find(u => getCleanHandle(u.handle) === cleanTarget);
     if (!targetUser) return;
 
@@ -168,15 +176,24 @@ function enviarMensaje(targetHandle) {
         mds.push(chat);
     }
 
+    if (!Array.isArray(chat.messages)) chat.messages = [];
+
     chat.messages.push({
+        id: Date.now(),
         sender: miHandle,
         text: text,
         image: imagenMDTemporal || "",
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        fecha: Date.now(),
         read: false
     });
 
-    localStorage.setItem('stevscon_mds', JSON.stringify(mds));
+    // Guardado global: el mensaje llega a cualquier dispositivo del destinatario
+    if (typeof guardarChatMD === 'function') {
+        guardarChatMD(chat);
+    } else {
+        localStorage.setItem('stevscon_mds', JSON.stringify(mds));
+    }
     input.value = '';
     cancelarImagenMD();
     
@@ -237,7 +254,11 @@ function marcarChatComoLeido(targetHandle) {
         });
     }
     if (cambio) {
-        localStorage.setItem('stevscon_mds', JSON.stringify(mds));
+        if (typeof guardarChatMD === 'function') {
+            guardarChatMD(chat);
+        } else {
+            localStorage.setItem('stevscon_mds', JSON.stringify(mds));
+        }
     }
 }
 
@@ -247,17 +268,17 @@ function actualizarNotificacionesGlobales() {
     if (!sesion || !sesion.handle) return;
     const miHandle = getCleanHandle(sesion.handle);
     
+    // Si hay un chat abierto, se marca leído (el repintado lo hace la sincronización de Firebase)
     const chatArea = document.getElementById('md-chat-area');
     if (chatArea && currentChatUser) {
         marcarChatComoLeido(currentChatUser);
-        renderMensajes();
-        renderContactList();
     }
 
     let totalUnread = 0;
     const bdMensajesFresca = obtenerMDsFrescos();
 
     bdMensajesFresca.forEach(chat => {
+        if (!chat || !chat.idChat) return;
         const partes = chat.idChat.split('_');
         if (partes.includes(miHandle)) {
             if (Array.isArray(chat.messages)) {
@@ -289,6 +310,6 @@ function actualizarNotificacionesGlobales() {
     }
 }
 
-// Escuchadores automáticos en tiempo real
+// Los datos llegan en tiempo real desde Firebase; este repaso es solo de respaldo
 window.addEventListener('storage', actualizarNotificacionesGlobales);
-setInterval(actualizarNotificacionesGlobales, 1000);
+setInterval(actualizarNotificacionesGlobales, 3000);

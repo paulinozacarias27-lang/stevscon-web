@@ -11,7 +11,11 @@ function getProfileView() {
         return '';
     }
 
-    const user = sesionActual;
+    // Preferir siempre la versión del perfil que está en la nube
+    const userGlobal = typeof buscarUsuarioGlobal === 'function' ? buscarUsuarioGlobal(sesionActual.handle) : null;
+    const user = userGlobal || sesionActual;
+    if (userGlobal) sesionActual = userGlobal;
+
     const rawDesc = user.descripcion || "Sin descripción. ¡Añade una para que la comunidad te conozca!";
     const formattedDesc = typeof formatearTexto === 'function' ? formatearTexto(rawDesc) : rawDesc;
 
@@ -238,25 +242,18 @@ function guardarPerfil() {
     sesionActual.edad = age;
     sesionActual.genero = gender;
 
-    let dbUsuarios = typeof globalAccountsData !== 'undefined' && globalAccountsData.length > 0 
-        ? globalAccountsData 
-        : (JSON.parse(localStorage.getItem('stevscon_usuarios')) || []);
+    // Guardado directo en la nube: el perfil se ve igual en todos los dispositivos
+    if (typeof guardarUsuarioGlobal === 'function') {
+        guardarUsuarioGlobal(sesionActual);
+    }
 
-    const index = dbUsuarios.findIndex(u => u.handle === sesionActual.handle);
-    
-    if (index !== -1) {
-        dbUsuarios[index] = sesionActual;
+    if (typeof guardarSesionLocal === 'function') {
+        guardarSesionLocal(sesionActual);
     } else {
-        dbUsuarios.push(sesionActual);
+        localStorage.setItem('stevscon_sesion', JSON.stringify(sesionActual));
     }
 
-    localStorage.setItem('stevscon_usuarios', JSON.stringify(dbUsuarios));
-    localStorage.setItem('stevscon_sesion', JSON.stringify(sesionActual));
-
-    // Sincronización Inmediata con Firebase
-    if (typeof guardarCuentasGlobales === 'function') {
-        guardarCuentasGlobales(dbUsuarios);
-    }
+    if (typeof sincronizarCuentaActual === 'function') sincronizarCuentaActual();
 
     if (typeof cargarCategoria === 'function') {
         cargarCategoria('profile');

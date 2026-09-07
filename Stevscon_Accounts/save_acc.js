@@ -4,8 +4,15 @@ const KEY_SAVED_ACCOUNTS = 'stevscon_saved_accounts';
 const KEY_USERS_DB = 'stevscon_usuarios';
 const KEY_ACTIVE_SESSION = 'stevscon_sesion';
 
+// Las cuentas guardadas son la lista de acceso rápido DE ESTE dispositivo,
+// pero sus datos (nombre, avatar, rol) se toman siempre de la nube.
 function obtenerCuentasGuardadas() {
-    return JSON.parse(localStorage.getItem(KEY_SAVED_ACCOUNTS)) || [];
+    const guardadas = JSON.parse(localStorage.getItem(KEY_SAVED_ACCOUNTS)) || [];
+
+    return guardadas.map(acc => {
+        const global = typeof buscarUsuarioGlobal === 'function' ? buscarUsuarioGlobal(acc.handle) : null;
+        return global ? { ...acc, ...global } : acc;
+    });
 }
 
 function sincronizarCuentaActual() {
@@ -41,20 +48,17 @@ function eliminarCuentaCompletamente(handle) {
         return;
     }
 
-    let dbUsuarios = JSON.parse(localStorage.getItem(KEY_USERS_DB)) || [];
-    dbUsuarios = dbUsuarios.filter(u => u.handle !== handle);
-    localStorage.setItem(KEY_USERS_DB, JSON.stringify(dbUsuarios));
-
-    if (typeof guardarCuentasGlobales === 'function') {
-        guardarCuentasGlobales(dbUsuarios);
+    // Borrado global: desaparece de todos los dispositivos
+    if (typeof eliminarUsuarioGlobal === 'function') {
+        eliminarUsuarioGlobal(handle);
     }
 
     olvidarCuenta(handle);
 }
 
 function cambiarAEstaCuenta(handle) {
-    const guardadas = obtenerCuentasGuardadas();
-    const usuarioObjetivo = guardadas.find(u => u.handle === handle);
+    const global = typeof buscarUsuarioGlobal === 'function' ? buscarUsuarioGlobal(handle) : null;
+    const usuarioObjetivo = global || obtenerCuentasGuardadas().find(u => u.handle === handle);
 
     if (usuarioObjetivo) {
         localStorage.setItem(KEY_ACTIVE_SESSION, JSON.stringify(usuarioObjetivo));

@@ -160,7 +160,7 @@ function cerrarModalGoogle() {
 }
 
 // Simulador interactivo / Conector de Google OAuth 2.0
-function simularGoogleAuth() {
+async function simularGoogleAuth() {
     const emailPrompt = prompt("Paso de autenticación de Google:\nIngresa tu correo de Google para conectarte:", "usuario@gmail.com");
     if (!emailPrompt) return;
 
@@ -171,6 +171,11 @@ function simularGoogleAuth() {
         sub: "google_" + Date.now(),
         email_verified: true
     };
+
+    // Esperar la base de datos global antes de decidir si la cuenta existe
+    if (typeof esperarSincronizacionGlobal === 'function') {
+        await esperarSincronizacionGlobal();
+    }
 
     const res = autenticarConGooglePayload(googlePayloadFake);
 
@@ -209,7 +214,11 @@ function procesarCompletadoGoogle() {
     }
 }
 
-function procesarRegistro() {
+async function procesarRegistro() {
+    if (typeof esperarSincronizacionGlobal === 'function') {
+        await esperarSincronizacionGlobal();
+    }
+
     const nombre = document.getElementById('reg-nombre').value;
     const handle = document.getElementById('reg-handle').value;
     const gmail = document.getElementById('reg-gmail').value;
@@ -232,10 +241,18 @@ function procesarRegistro() {
     }
 }
 
-function procesarLogin() {
+async function procesarLogin() {
     const identificador = document.getElementById('log-identificador').value;
     const pass = document.getElementById('log-password').value;
     const errorBox = document.getElementById('log-error');
+
+    // En un dispositivo nuevo (celular/iPad) hay que esperar los datos de la nube
+    if (typeof esperarSincronizacionGlobal === 'function') {
+        errorBox.innerText = "Conectando con el servidor...";
+        errorBox.style.display = 'block';
+        await esperarSincronizacionGlobal();
+        errorBox.style.display = 'none';
+    }
 
     if (iniciarSesionDB(identificador, pass)) {
         if (typeof actualizarHeaderAuth === 'function') actualizarHeaderAuth();

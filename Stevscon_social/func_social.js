@@ -2,6 +2,15 @@
 const respuestasEnCurso = {};
 let imagenPostTemporal = "";
 
+// Guarda una publicación concreta en la nube (sin pisar las demás)
+function persistirPost(post) {
+    if (post && typeof guardarPost === 'function') {
+        guardarPost(post);
+    } else if (typeof guardarPosts === 'function') {
+        guardarPosts();
+    }
+}
+
 function initSocialLogic() {
     renderizarFeed();
     if (typeof actualizarNotificacionesGlobales === 'function') {
@@ -91,10 +100,7 @@ function crearPost() {
     };
 
     postsData.push(nuevoPost);
-    
-    if (typeof guardarPosts === 'function') {
-        guardarPosts();
-    }
+    persistirPost(nuevoPost);
 
     if (input) input.value = ''; 
     imagenPostTemporal = "";
@@ -166,7 +172,7 @@ function guardarEdicionPost(postId) {
     const post = postsData.find(p => p.id === postId);
     if (post) {
         post.content = nuevoTexto;
-        if (typeof guardarPosts === 'function') guardarPosts();
+        persistirPost(post);
         cerrarModalEditarPost();
         renderizarFeed();
     }
@@ -182,8 +188,11 @@ function borrarPost(postId) {
     togglePostMenu(postId);
     const confirmar = confirm("¿Estás seguro de que deseas eliminar esta publicación?");
     if (confirmar) {
-        postsData = postsData.filter(p => p.id !== postId);
-        if (typeof guardarPosts === 'function') guardarPosts();
+        if (typeof eliminarPostGlobal === 'function') {
+            eliminarPostGlobal(postId);
+        } else {
+            postsData = postsData.filter(p => p.id !== postId);
+        }
         renderizarFeed(); 
     }
 }
@@ -210,7 +219,7 @@ function toggleLike(postId) {
         post.likedBy.push(userHandle);
     }
 
-    if (typeof guardarPosts === 'function') guardarPosts();
+    persistirPost(post);
     renderizarFeed();
 }
 
@@ -239,14 +248,12 @@ function irAlChatDesdeSocial(handle) {
 
 // Visualizador de perfiles sincronizado con la base de datos local y Firebase
 function abrirPerfilRapido(nombreAutor, avatarURL, rol, handleAutor) {
-    let dbUsuarios = [];
-    if (typeof globalAccountsData !== 'undefined' && Array.isArray(globalAccountsData) && globalAccountsData.length > 0) {
-        dbUsuarios = globalAccountsData;
-    } else {
-        dbUsuarios = JSON.parse(localStorage.getItem('stevscon_usuarios')) || [];
-    }
+    // Base de datos global (Firebase) como única fuente de perfiles
+    const dbUsuarios = typeof obtenerUsuariosGlobales === 'function' ? obtenerUsuariosGlobales() : [];
 
-    const sesionLocal = JSON.parse(localStorage.getItem('stevscon_sesion')) || (typeof sesionActual !== 'undefined' ? sesionActual : null);
+    const sesionLocal = (typeof sesionActual !== 'undefined' && sesionActual)
+        ? sesionActual
+        : (typeof obtenerSesionGuardada === 'function' ? obtenerSesionGuardada() : null);
 
     const cleanAutor = nombreAutor ? nombreAutor.replace('@', '').trim().toLowerCase() : '';
     const cleanHandle = handleAutor ? handleAutor.replace('@', '').trim().toLowerCase() : cleanAutor;
@@ -458,7 +465,7 @@ function agregarComentario(postId) {
         });
     }
 
-    if (typeof guardarPosts === 'function') guardarPosts();
+    persistirPost(post);
     renderizarFeed();
     
     const commentsArea = document.getElementById(`comments-area-${postId}`);
@@ -494,7 +501,7 @@ function toggleCommentLike(postId, commentId) {
         comment.likedBy.push(userHandle);
     }
 
-    if (typeof guardarPosts === 'function') guardarPosts();
+    persistirPost(post);
     renderizarFeed();
 
     const commentsArea = document.getElementById(`comments-area-${postId}`);
@@ -527,7 +534,7 @@ function toggleReplyLike(postId, commentId, replyId) {
         reply.likedBy.push(userHandle);
     }
 
-    if (typeof guardarPosts === 'function') guardarPosts();
+    persistirPost(post);
     renderizarFeed();
 
     const commentsArea = document.getElementById(`comments-area-${postId}`);
@@ -544,7 +551,7 @@ function borrarComentario(postId, commentId) {
 
     if (confirm("¿Estás seguro de que deseas eliminar este comentario?")) {
         post.comments = post.comments.filter((c, idx) => (c.id ? c.id !== commentId : idx !== commentId));
-        if (typeof guardarPosts === 'function') guardarPosts();
+        persistirPost(post);
         renderizarFeed();
         
         const commentsArea = document.getElementById(`comments-area-${postId}`);
@@ -562,7 +569,7 @@ function borrarRespuesta(postId, commentId, replyId) {
 
     if (confirm("¿Estás seguro de que deseas eliminar esta respuesta?")) {
         comment.replies = comment.replies.filter((r, idx) => (r.id ? r.id !== replyId : idx !== replyId));
-        if (typeof guardarPosts === 'function') guardarPosts();
+        persistirPost(post);
         renderizarFeed();
 
         const commentsArea = document.getElementById(`comments-area-${postId}`);
@@ -635,7 +642,7 @@ function guardarEdicionComentario(postId, commentId) {
     const comment = post.comments.find((c, idx) => c.id === commentId || idx === commentId);
     if (comment) {
         comment.text = nuevoTexto;
-        if (typeof guardarPosts === 'function') guardarPosts();
+        persistirPost(post);
         cerrarModalEditarComentario();
         renderizarFeed();
 
@@ -718,7 +725,7 @@ function guardarEdicionRespuesta(postId, commentId, replyId) {
     const reply = comment.replies.find((r, idx) => (r.id ? r.id === replyId : idx === replyId));
     if (reply) {
         reply.text = nuevoTexto;
-        if (typeof guardarPosts === 'function') guardarPosts();
+        persistirPost(post);
         cerrarModalEditarRespuesta();
         renderizarFeed();
 

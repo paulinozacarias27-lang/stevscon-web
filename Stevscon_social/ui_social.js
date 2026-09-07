@@ -58,7 +58,23 @@ function getSocialLayoutHTML() {
     `;
 }
 
-function getPostHTML(post) {
+// Devuelve el autor con los datos actuales de la nube (nombre, avatar, rol, verificado)
+function datosAutorActualizados(entidad) {
+    if (!entidad) return entidad;
+    const global = typeof buscarUsuarioGlobal === 'function' ? buscarUsuarioGlobal(entidad.handle) : null;
+    if (!global) return entidad;
+
+    return {
+        ...entidad,
+        author: global.nombre || entidad.author,
+        avatar: global.avatar || entidad.avatar,
+        rol: global.rol || entidad.rol,
+        verified: global.verified !== undefined ? global.verified : entidad.verified
+    };
+}
+
+function getPostHTML(postOriginal) {
+    const post = datosAutorActualizados(postOriginal);
     const avatarImgHTML = post.avatar && post.avatar !== "" 
         ? `<img src="${post.avatar}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`
         : post.author.charAt(0).toUpperCase();
@@ -76,7 +92,8 @@ function getPostHTML(post) {
     const usuarioPost = { verified: post.verified, rol: post.rol };
     const verifiedBadgePost = typeof getVerifiedBadgeHTML === 'function' ? getVerifiedBadgeHTML(usuarioPost) : '';
 
-    const comentariosHTML = (post.comments || []).map((c, index) => {
+    const comentariosHTML = (post.comments || []).map((cOriginal, index) => {
+        const c = datosAutorActualizados(cOriginal);
         const commentAvatar = c.avatar && c.avatar !== "" 
             ? `<img src="${c.avatar}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">` 
             : c.author.charAt(0).toUpperCase();
@@ -93,7 +110,8 @@ function getPostHTML(post) {
 
         const cVerifiedBadge = typeof getVerifiedBadgeHTML === 'function' ? getVerifiedBadgeHTML(c) : '';
 
-        const respuestasHTML = respuestas.map((r, rIndex) => {
+        const respuestasHTML = respuestas.map((rOriginal, rIndex) => {
+            const r = datosAutorActualizados(rOriginal);
             const rAvatar = r.avatar && r.avatar !== "" 
                 ? `<img src="${r.avatar}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">` 
                 : r.author.charAt(0).toUpperCase();

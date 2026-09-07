@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd 'c:\\Users\\Admin\\Desktop\\Stevscon.com'; (Get-Content memory.js -Raw) -replace \"    if \\(typeof dbUsuarios !== 'undefin…)",
+      "Bash($c *)",
+      "Bash(Set-Content *)",
+      "Bash(ForEach-Object *)"
+    ]
+  }
+}

@@ -1,10 +1,26 @@
 // accounts.js - Motor de Base de Datos y Lógica de Autenticación Sincronizado
 
-let dbUsuarios = typeof globalAccountsData !== 'undefined' && globalAccountsData.length > 0 
-    ? globalAccountsData 
-    : (JSON.parse(localStorage.getItem('stevscon_usuarios')) || []);
+// dbUsuarios es solo un alias de los datos globales de Firebase (memory.js)
+var dbUsuarios = typeof obtenerUsuariosGlobales === 'function' ? obtenerUsuariosGlobales() : [];
 
-let sesionActual = JSON.parse(localStorage.getItem('stevscon_sesion')) || null;
+var sesionActual = typeof obtenerSesionGuardada === 'function' ? obtenerSesionGuardada() : null;
+
+// Devuelve siempre la lista de cuentas más reciente de la nube
+function refrescarUsuarios() {
+    dbUsuarios = typeof obtenerUsuariosGlobales === 'function' ? obtenerUsuariosGlobales() : dbUsuarios;
+    return dbUsuarios;
+}
+
+// Fija la sesión activa a partir del perfil global
+function establecerSesion(usuario) {
+    sesionActual = usuario;
+    if (typeof guardarSesionLocal === 'function') {
+        guardarSesionLocal(usuario);
+    } else {
+        localStorage.setItem('stevscon_sesion', JSON.stringify(usuario));
+    }
+    if (typeof sincronizarCuentaActual === 'function') sincronizarCuentaActual();
+}
 
 // Expresión regular para validar la contraseña
 const regexPassword = /^(?=.*[0-9])(?=.*[!@#$%^&*_\-+=]).{9,}$/;
@@ -14,6 +30,8 @@ function registrarCuenta(nombre, handle, gmail, password) {
     if (!handle.startsWith('@')) handle = '@' + handle;
     handle = handle.toLowerCase().trim();
     gmail = gmail.toLowerCase().trim();
+
+    refrescarUsuarios();
 
     const existeHandle = dbUsuarios.find(u => u.handle === handle);
     if (existeHandle) return { exito: false, msj: "El nombre de usuario (@handle) ya está ocupado." };
@@ -41,14 +59,12 @@ function registrarCuenta(nombre, handle, gmail, password) {
         rol: typeof obtenerRolUsuario === 'function' ? obtenerRolUsuario(handle) : 'user'
     };
 
-    dbUsuarios.push(nuevoUsuario);
-    localStorage.setItem('stevscon_usuarios', JSON.stringify(dbUsuarios));
-    
-    // Sincronización en la nube mediante Firebase
-    if (typeof guardarCuentasGlobales === 'function') {
-        guardarCuentasGlobales(dbUsuarios);
+    // Guardado global: la cuenta queda disponible en cualquier dispositivo
+    if (typeof guardarUsuarioGlobal === 'function') {
+        guardarUsuarioGlobal(nuevoUsuario);
     }
-    
+    refrescarUsuarios();
+
     if (typeof enviarCorreoBienvenidaBot === 'function') {
         enviarCorreoBienvenidaBot(nuevoUsuario.nombre, nuevoUsuario.gmail, nuevoUsuario.handle);
     }
@@ -61,6 +77,8 @@ function registrarCuentaGoogle(googlePayload, handle, password, nombrePersonaliz
     if (!handle.startsWith('@')) handle = '@' + handle;
     handle = handle.toLowerCase().trim();
     const gmail = googlePayload.email.toLowerCase().trim();
+
+    refrescarUsuarios();
 
     const existeHandle = dbUsuarios.find(u => u.handle === handle);
     if (existeHandle) return { exito: false, msj: "El @handle seleccionado ya está en uso." };
@@ -89,16 +107,12 @@ function registrarCuentaGoogle(googlePayload, handle, password, nombrePersonaliz
         rol: typeof obtenerRolUsuario === 'function' ? obtenerRolUsuario(handle) : 'user'
     };
 
-    dbUsuarios.push(nuevoUsuario);
-    localStorage.setItem('stevscon_usuarios', JSON.stringify(dbUsuarios));
-
-    if (typeof guardarCuentasGlobales === 'function') {
-        guardarCuentasGlobales(dbUsuarios);
+    if (typeof guardarUsuarioGlobal === 'function') {
+        guardarUsuarioGlobal(nuevoUsuario);
     }
+    refrescarUsuarios();
 
-    sesionActual = nuevoUsuario;
-    localStorage.setItem('stevscon_sesion', JSON.stringify(sesionActual));
-    if (typeof sincronizarCuentaActual === 'function') sincronizarCuentaActual();
+    establecerSesion(nuevoUsuario);
 
     if (typeof enviarCorreoBienvenidaBot === 'function') {
         enviarCorreoBienvenidaBot(nuevoUsuario.nombre, nuevoUsuario.gmail, nuevoUsuario.handle);
@@ -111,20 +125,16 @@ function registrarCuentaGoogle(googlePayload, handle, password, nombrePersonaliz
 function iniciarSesionDB(identificador, password) {
     identificador = identificador.toLowerCase().trim();
 
-    // Actualizar referencia por si llegaron datos de Firebase
-    if (typeof globalAccountsData !== 'undefined' && globalAccountsData.length > 0) {
-        dbUsuarios = globalAccountsData;
-    }
-    
+    // Siempre contra la lista global sincronizada desde Firebase
+    refrescarUsuarios();
+
     const usuario = dbUsuarios.find(u => 
-        (u.handle === identificador || u.gmail === identificador) && 
+        u && ((u.handle || '').toLowerCase() === identificador || (u.gmail || '').toLowerCase() === identificador) && 
         u.password === password
     );
 
     if (usuario) {
-        sesionActual = usuario;
-        localStorage.setItem('stevscon_sesion', JSON.stringify(sesionActual));
-        if (typeof sincronizarCuentaActual === 'function') sincronizarCuentaActual();
+        establecerSesion(usuario);
 
         if (typeof enviarCorreoBienvenidaBot === 'function') {
             enviarCorreoBienvenidaBot(usuario.nombre, usuario.gmail, usuario.handle);
@@ -139,32 +149,24 @@ function iniciarSesionDB(identificador, password) {
 function autenticarConGooglePayload(googlePayload) {
     const gmail = googlePayload.email.toLowerCase().trim();
 
-    // 1. Forzar la relectura de Firebase / almacenamiento local actualizado
-    if (typeof globalAccountsData !== 'undefined' && Array.isArray(globalAccountsData) && globalAccountsData.length > 0) {
-        dbUsuarios = globalAccountsData;
-    } else {
-        const localData = JSON.parse(localStorage.getItem('stevscon_usuarios')) || [];
-        if (localData.length > 0) dbUsuarios = localData;
-    }
+    // 1. Leer siempre la base de datos global de Firebase
+    refrescarUsuarios();
 
     // 2. Buscar si la cuenta ya existe por Gmail
-    let usuarioExistente = dbUsuarios.find(u => u.gmail && u.gmail.toLowerCase().trim() === gmail);
+    let usuarioExistente = dbUsuarios.find(u => u && u.gmail && u.gmail.toLowerCase().trim() === gmail);
 
     if (usuarioExistente) {
         // Actualizar foto de perfil si no tenía una asignada
         if (!usuarioExistente.avatar && googlePayload.picture) {
             usuarioExistente.avatar = googlePayload.picture;
-            if (typeof guardarCuentasGlobales === 'function') {
-                guardarCuentasGlobales(dbUsuarios);
+            if (typeof guardarUsuarioGlobal === 'function') {
+                guardarUsuarioGlobal(usuarioExistente);
             }
         }
 
         // Establecer sesión activa
-        sesionActual = usuarioExistente;
-        localStorage.setItem('stevscon_usuarios', JSON.stringify(dbUsuarios));
-        localStorage.setItem('stevscon_sesion', JSON.stringify(sesionActual));
+        establecerSesion(usuarioExistente);
 
-        if (typeof sincronizarCuentaActual === 'function') sincronizarCuentaActual();
         if (typeof enviarCorreoBienvenidaBot === 'function') {
             enviarCorreoBienvenidaBot(usuarioExistente.nombre, usuarioExistente.gmail, usuarioExistente.handle);
         }
