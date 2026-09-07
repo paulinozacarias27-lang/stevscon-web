@@ -246,21 +246,38 @@ function irAlChatDesdeSocial(handle) {
     iniciarChatCon(handle);
 }
 
-// Visualizador de perfiles sincronizado con la base de datos local y Firebase
-function abrirPerfilRapido(nombreAutor, avatarURL, rol, handleAutor) {
-    // Base de datos global (Firebase) como única fuente de perfiles
-    const dbUsuarios = typeof obtenerUsuariosGlobales === 'function' ? obtenerUsuariosGlobales() : [];
-
-    const sesionLocal = (typeof sesionActual !== 'undefined' && sesionActual)
-        ? sesionActual
-        : (typeof obtenerSesionGuardada === 'function' ? obtenerSesionGuardada() : null);
-
+// Visualizador de perfiles — busca en la nube (Firebase) para que funcione en cualquier dispositivo
+async function abrirPerfilRapido(nombreAutor, avatarURL, rol, handleAutor) {
     const cleanAutor = nombreAutor ? nombreAutor.replace('@', '').trim().toLowerCase() : '';
     const cleanHandle = handleAutor ? handleAutor.replace('@', '').trim().toLowerCase() : cleanAutor;
 
+    // Mostrar modal de carga inmediatamente
+    const modalExistente = document.getElementById('mini-perfil-social');
+    if (modalExistente) modalExistente.remove();
+
+    const loadingHTML = `
+    <div id="mini-perfil-social" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; z-index: 1000;" onclick="cerrarMiniPerfil(event)">
+        <div class="card" style="width: 90%; max-width: 350px; padding: 40px; text-align: center; border-radius: 16px;" onclick="event.stopPropagation()">
+            <i class="fa-solid fa-spinner fa-spin" style="font-size: 2rem; color: var(--purple-accent);"></i>
+            <p style="color: var(--text-muted); margin-top: 15px; font-size: 0.9rem;">Cargando perfil...</p>
+        </div>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', loadingHTML);
+
+    // Función interna de búsqueda
+    function buscarEnLista(lista) {
+        if (!Array.isArray(lista)) return null;
+        return lista.find(u => u && (
+            (u.handle && u.handle.replace('@', '').trim().toLowerCase() === cleanHandle) ||
+            (u.nombre && u.nombre.toLowerCase() === cleanAutor) ||
+            (u.gmail && u.gmail.toLowerCase() === cleanAutor)
+        )) || null;
+    }
+
     let usuario = null;
 
-    // Buscar si es la sesión activa
+    // 1. Buscar en la sesión activa
+    const sesionLocal = (typeof sesionActual !== 'undefined' && sesionActual) ? sesionActual : null;
     if (sesionLocal && (
         (sesionLocal.handle && sesionLocal.handle.replace('@', '').trim().toLowerCase() === cleanHandle) ||
         (sesionLocal.nombre && sesionLocal.nombre.toLowerCase() === cleanAutor)
@@ -268,24 +285,52 @@ function abrirPerfilRapido(nombreAutor, avatarURL, rol, handleAutor) {
         usuario = sesionLocal;
     }
 
-    // Si no es la sesión activa, buscar en la lista global
-    if (!usuario) {
-        usuario = dbUsuarios.find(u => 
-            (u.handle && u.handle.replace('@', '').trim().toLowerCase() === cleanHandle) ||
-            (u.nombre && u.nombre.toLowerCase() === cleanAutor) ||
-            (u.gmail && u.gmail.toLowerCase() === cleanAutor)
-        );
+    // 2. Buscar en la caché global local
+    if (!usuario && typeof obtenerUsuariosGlobales === 'function') {
+        usuario = buscarEnLista(obtenerUsuariosGlobales());
     }
 
-    // Datos por defecto en caso de no encontrarse en la base de datos
+    // 3. Si no está, esperar a que Firebase sincronice (clave en celulares/iPad sin caché)
+    if (!usuario && typeof esperarSincronizacionGlobal === 'function') {
+        await esperarSincronizacionGlobal(4000);
+        if (typeof obtenerUsuariosGlobales === 'function') {
+            usuario = buscarEnLista(obtenerUsuariosGlobales());
+        }
+    }
+
+    // 4. Si todavía no aparece, buscar directamente en Firebase por handle
+    if (!usuario && typeof db !== 'undefined' && db) {
+        try {
+            const clave = typeof claveHandle === 'function' ? claveHandle(handleAutor || nombreAutor) : cleanHandle;
+            const snapshot = await db.ref('accounts/' + clave).once('value');
+            const data = snapshot.val();
+            if (data) {
+                usuario = data;
+            }
+        } catch (e) { /* Firebase podría no estar listo */ }
+    }
+
+    // 5. Último recurso: descargar todas las cuentas de Firebase y buscar
+    if (!usuario && typeof db !== 'undefined' && db) {
+        try {
+            const snapshot = await db.ref('accounts').once('value');
+            const data = snapshot.val();
+            if (data) {
+                const lista = typeof normalizarLista === 'function' ? normalizarLista(data) : Object.values(data);
+                usuario = buscarEnLista(lista);
+            }
+        } catch (e) { /* sin conexión */ }
+    }
+
+    // 6. Si nada funciona, usar los datos que se pasaron por parámetro
     if (!usuario) {
-        usuario = { 
-            nombre: nombreAutor || "Usuario", 
-            handle: handleAutor || nombreAutor || "@usuario", 
-            avatar: avatarURL || "", 
-            banner: "", 
-            descripcion: "¡Hola! Estoy usando Stevscon.", 
-            rol: rol || "user" 
+        usuario = {
+            nombre: nombreAutor || "Usuario",
+            handle: handleAutor || nombreAutor || "@usuario",
+            avatar: avatarURL || "",
+            banner: "",
+            descripcion: "¡Hola! Estoy usando Stevscon.",
+            rol: rol || "user"
         };
     }
 
@@ -304,8 +349,9 @@ function abrirPerfilRapido(nombreAutor, avatarURL, rol, handleAutor) {
     const userDescRaw = usuario.descripcion ? usuario.descripcion : "¡Hola! Estoy usando Stevscon.";
     const userDesc = typeof formatearTexto === 'function' ? formatearTexto(userDescRaw) : userDescRaw;
 
-    const modalExistente = document.getElementById('mini-perfil-social');
-    if (modalExistente) modalExistente.remove();
+    // Eliminar el modal de carga y mostrar el real
+    const modalCarga = document.getElementById('mini-perfil-social');
+    if (modalCarga) modalCarga.remove();
 
     const verifiedBadge = typeof getVerifiedBadgeHTML === 'function' ? getVerifiedBadgeHTML(usuario) : '';
     const badgesHTML = typeof renderBadgesHTML === 'function' ? renderBadgesHTML(usuario) : '';
