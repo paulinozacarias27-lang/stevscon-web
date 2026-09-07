@@ -646,3 +646,119 @@ body {
         grid-template-columns: 1fr !important;
     }
 }
+
+/* --- ESTILOS DE PERFIL MULTIDISPOSITIVO (RESPONSIVE) --- */
+
+/* Contenedor general del perfil */
+.profile-container, .perfil-wrapper {
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+/* Banner del perfil */
+.profile-banner, .banner-user {
+    width: 100%;
+    height: 180px;
+    background-color: #2f3336;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    position: relative;
+}
+
+.profile-banner img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* Encabezado del perfil y foto de avatar */
+.profile-header-info {
+    position: relative;
+    padding: 0 16px 16px 16px;
+    display: flex;
+    flex-direction: column;
+}
+
+.avatar-container {
+    width: 110px;
+    height: 110px;
+    border-radius: 50%;
+    border: 4px solid #000;
+    margin-top: -55px;
+    background-color: #15181c;
+    overflow: hidden;
+    position: relative;
+    flex-shrink: 0;
+}
+
+.avatar-container img, .user-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    display: block;
+}
+
+/* Manejo de fallback para perfiles sin imagen */
+.avatar-default {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #1d9bf0;
+    color: #ffffff;
+    font-size: 36px;
+    font-weight: bold;
+    width: 100%;
+    height: 100%;
+}
+
+/* Detalles del usuario (Nombre, Handle, Bio) */
+.user-details {
+    margin-top: 12px;
+    color: #e7e9ea;
+}
+
+.user-details .user-name {
+    font-size: 1.25rem;
+    font-weight: 800;
+    margin: 0;
+}
+
+.user-details .user-handle {
+    font-size: 0.9rem;
+    color: #71767b;
+    margin-bottom: 8px;
+}
+
+.user-details .user-bio {
+    font-size: 0.95rem;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+/* --- ADAPTACIÓN A IPAD Y MÓVILES --- */
+@media screen and (max-width: 768px) {
+    .profile-banner, .banner-user {
+        height: 130px;
+    }
+
+    .avatar-container {
+        width: 85px;
+        height: 85px;
+        margin-top: -42px;
+        border-width: 3px;
+    }
+
+    .avatar-default {
+        font-size: 28px;
+    }
+
+    .user-details .user-name {
+        font-size: 1.1rem;
+    }
+}
