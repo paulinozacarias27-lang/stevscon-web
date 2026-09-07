@@ -61,12 +61,22 @@ function getSocialLayoutHTML() {
 // Devuelve el autor con los datos actuales de la nube (nombre, avatar, rol, verificado)
 function datosAutorActualizados(entidad) {
     if (!entidad) return entidad;
-    const global = typeof buscarUsuarioGlobal === 'function' ? buscarUsuarioGlobal(entidad.handle) : null;
+
+    // Buscar por handle; si no hay handle o no se encuentra, buscar por nombre
+    let global = null;
+    if (typeof buscarUsuarioGlobal === 'function' && entidad.handle) {
+        global = buscarUsuarioGlobal(entidad.handle);
+    }
+    if (!global && typeof obtenerUsuariosGlobales === 'function' && entidad.author) {
+        const nombreLower = entidad.author.toLowerCase().trim();
+        global = obtenerUsuariosGlobales().find(u => u && (u.nombre || '').toLowerCase().trim() === nombreLower) || null;
+    }
     if (!global) return entidad;
 
     return {
         ...entidad,
         author: global.nombre || entidad.author,
+        handle: global.handle || entidad.handle,
         avatar: global.avatar || entidad.avatar,
         rol: global.rol || entidad.rol,
         verified: global.verified !== undefined ? global.verified : entidad.verified

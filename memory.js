@@ -272,6 +272,76 @@ function migrarNodoAMapa(ruta, obtenerClave) {
 }
 
 // --- ESCUCHADORES EN TIEMPO REAL MULTIDISPOSITIVO ---
+// Antes de que Firebase reemplace los datos locales, guardamos una copia para
+// poder migrar lo que solo exista en localStorage (cuentas/posts/mds antiguos)
+// y empujarlo a la nube.
+const cacheLocalPreviaAccounts = leerCacheLocal(CACHE_ACCOUNTS);
+const cacheLocalPreviaPosts = leerCacheLocal(CACHE_POSTS);
+const cacheLocalPreviaMds = leerCacheLocal(CACHE_MDS);
+
+// Empuja a Firebase los items que solo existen en localStorage y no en la nube
+function migrarLocalesAFirebase(locals, ruta, obtenerClave) {
+    if (!db || !Array.isArray(locals) || locals.length === 0) return;
+    locals.forEach(item => {
+        if (!item) return;
+        const clave = obtenerClave(item);
+        if (!clave) return;
+        db.ref(ruta + '/' + clave).once('value').then(snap => {
+            if (!snap.val()) {
+                db.ref(ruta + '/' + clave).set(item)
+                    .catch(err => console.warn('No se pudo migrar ' + ruta + '/' + clave, err));
+            }
+        }).catch(() => {});
+    });
+}
+
+// Parcha posts antiguos que no tienen campo handle buscándolo en accounts
+function parcharPostsSinHandle() {
+    if (!db) return;
+    const posts = obtenerPostsGlobales();
+    const cuentas = obtenerUsuariosGlobales();
+
+    posts.forEach(post => {
+        if (!post || post.handle) return; // ya tiene handle
+
+        // Buscar el handle por nombre de autor
+        const autorLower = (post.author || '').toLowerCase().trim();
+        const cuenta = cuentas.find(u => u && (
+            (u.nombre || '').toLowerCase().trim() === autorLower ||
+            claveHandle(u.handle) === autorLower
+        ));
+
+        if (cuenta && cuenta.handle) {
+            post.handle = cuenta.handle;
+            // Guardar el post parchado en Firebase
+            db.ref('posts/' + String(post.id)).update({ handle: cuenta.handle })
+                .catch(err => console.warn('No se pudo parchar post ' + post.id, err));
+        }
+
+        // Parchar comentarios sin handle también
+        if (Array.isArray(post.comments)) {
+            let cambioComentarios = false;
+            post.comments.forEach(c => {
+                if (!c.handle && c.author) {
+                    const cAutorLower = c.author.toLowerCase().trim();
+                    const cCuenta = cuentas.find(u => u && (
+                        (u.nombre || '').toLowerCase().trim() === cAutorLower ||
+                        claveHandle(u.handle) === cAutorLower
+                    ));
+                    if (cCuenta && cCuenta.handle) {
+                        c.handle = cCuenta.handle;
+                        cambioComentarios = true;
+                    }
+                }
+            });
+            if (cambioComentarios) {
+                db.ref('posts/' + String(post.id)).update({ comments: post.comments })
+                    .catch(err => console.warn('No se pudieron parchar comentarios', err));
+            }
+        }
+    });
+}
+
 if (db) {
     migrarNodoAMapa('posts', p => (p.id !== undefined && p.id !== null) ? String(p.id) : null);
     migrarNodoAMapa('accounts', u => claveHandle(u.handle));
@@ -286,12 +356,24 @@ if (db) {
             postsData = [];
             guardarCacheLocal(CACHE_POSTS, postsData);
         }
+
+        // Migrar posts que solo están en localStorage
+        migrarLocalesAFirebase(cacheLocalPreviaPosts, 'posts', p => String(p.id));
+
+        // Parchar posts antiguos sin handle
+        parcharPostsSinHandle();
+
         refrescarVistasGlobales('posts');
     });
 
     db.ref('accounts').on('value', (snapshot) => {
         const data = snapshot.val();
-        globalAccountsData = normalizarLista(data);
+        const cloudAccounts = normalizarLista(data);
+
+        // Antes de reemplazar, migrar cuentas que solo están en localStorage
+        migrarLocalesAFirebase(cacheLocalPreviaAccounts, 'accounts', u => claveHandle(u.handle));
+
+        globalAccountsData = cloudAccounts;
         sincronizarAliasUsuarios();
         guardarCacheLocal(CACHE_ACCOUNTS, globalAccountsData);
         guardarCacheLocal(CACHE_ACCOUNTS_ALT, globalAccountsData);
@@ -309,11 +391,24 @@ if (db) {
         } catch (e) { /* la sesión aún no se ha inicializado */ }
 
         marcarSincronizacionLista();
+
+        // Parchar posts antiguos sin handle ahora que accounts está cargado
+        parcharPostsSinHandle();
+
         refrescarVistasGlobales('accounts');
     });
 
     db.ref('mds').on('value', (snapshot) => {
-        mdData = normalizarLista(snapshot.val());
+        const data = snapshot.val();
+        if (data) {
+            mdData = normalizarLista(data);
+        } else {
+            mdData = [];
+        }
+
+        // Migrar mensajes antiguos que solo están en localStorage
+        migrarLocalesAFirebase(cacheLocalPreviaMds, 'mds', c => c.idChat || null);
+
         guardarCacheLocal(CACHE_MDS, mdData);
         refrescarVistasGlobales('mds');
     });
