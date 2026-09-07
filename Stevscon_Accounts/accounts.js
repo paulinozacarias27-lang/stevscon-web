@@ -135,36 +135,45 @@ function iniciarSesionDB(identificador, password) {
     return false;
 }
 
-// Verificar inicio de sesión con Google
+// Verificar inicio de sesión con Google (Sincronización forzada para móviles/iPad)
 function autenticarConGooglePayload(googlePayload) {
     const gmail = googlePayload.email.toLowerCase().trim();
 
-    if (typeof globalAccountsData !== 'undefined' && globalAccountsData.length > 0) {
+    // 1. Forzar la relectura de Firebase / almacenamiento local actualizado
+    if (typeof globalAccountsData !== 'undefined' && Array.isArray(globalAccountsData) && globalAccountsData.length > 0) {
         dbUsuarios = globalAccountsData;
+    } else {
+        const localData = JSON.parse(localStorage.getItem('stevscon_usuarios')) || [];
+        if (localData.length > 0) dbUsuarios = localData;
     }
 
-    const usuarioExistente = dbUsuarios.find(u => u.gmail === gmail);
+    // 2. Buscar si la cuenta ya existe por Gmail
+    let usuarioExistente = dbUsuarios.find(u => u.gmail && u.gmail.toLowerCase().trim() === gmail);
 
     if (usuarioExistente) {
+        // Actualizar foto de perfil si no tenía una asignada
         if (!usuarioExistente.avatar && googlePayload.picture) {
             usuarioExistente.avatar = googlePayload.picture;
             if (typeof guardarCuentasGlobales === 'function') {
                 guardarCuentasGlobales(dbUsuarios);
             }
         }
+
+        // Establecer sesión activa
         sesionActual = usuarioExistente;
         localStorage.setItem('stevscon_usuarios', JSON.stringify(dbUsuarios));
         localStorage.setItem('stevscon_sesion', JSON.stringify(sesionActual));
-        if (typeof sincronizarCuentaActual === 'function') sincronizarCuentaActual();
 
+        if (typeof sincronizarCuentaActual === 'function') sincronizarCuentaActual();
         if (typeof enviarCorreoBienvenidaBot === 'function') {
             enviarCorreoBienvenidaBot(usuarioExistente.nombre, usuarioExistente.gmail, usuarioExistente.handle);
         }
 
         return { estado: 'LOGGED_IN', usuario: usuarioExistente };
-    } else {
-        return { estado: 'NEEDS_COMPLETION', googleData: googlePayload };
     }
+
+    // Solo si realmente no existe en la base de datos global pide completar registro
+    return { estado: 'NEEDS_COMPLETION', googleData: googlePayload };
 }
 
 function cerrarSesion() {
