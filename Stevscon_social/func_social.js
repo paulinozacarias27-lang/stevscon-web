@@ -203,7 +203,8 @@ function toggleLike(postId) {
         return;
     }
 
-    const post = postsData.find(p => p.id === postId);
+    // Comparación flexible: postId puede venir como número o string desde el onclick
+    const post = postsData.find(p => String(p.id) === String(postId));
     if (!post) return;
 
     if (!Array.isArray(post.likedBy)) {
@@ -251,170 +252,161 @@ async function abrirPerfilRapido(nombreAutor, avatarURL, rol, handleAutor) {
     const cleanAutor = nombreAutor ? nombreAutor.replace('@', '').trim().toLowerCase() : '';
     const cleanHandle = handleAutor ? handleAutor.replace('@', '').trim().toLowerCase() : cleanAutor;
 
-    // Mostrar modal de carga inmediatamente
-    const modalExistente = document.getElementById('mini-perfil-social');
-    if (modalExistente) modalExistente.remove();
+    // Cerrar cualquier modal previo
+    const modalPrevio = document.getElementById('mini-perfil-social');
+    if (modalPrevio) modalPrevio.remove();
 
-    const loadingHTML = `
+    // Mostrar modal de carga
+    document.body.insertAdjacentHTML('beforeend', `
     <div id="mini-perfil-social" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; z-index: 1000;" onclick="cerrarMiniPerfil(event)">
         <div class="card" style="width: 90%; max-width: 350px; padding: 40px; text-align: center; border-radius: 16px;" onclick="event.stopPropagation()">
             <i class="fa-solid fa-spinner fa-spin" style="font-size: 2rem; color: var(--purple-accent);"></i>
             <p style="color: var(--text-muted); margin-top: 15px; font-size: 0.9rem;">Cargando perfil...</p>
         </div>
-    </div>`;
-    document.body.insertAdjacentHTML('beforeend', loadingHTML);
+    </div>`);
 
-    // Función interna de búsqueda
-    function buscarEnLista(lista) {
-        if (!Array.isArray(lista)) return null;
-        return lista.find(u => u && (
-            (u.handle && u.handle.replace('@', '').trim().toLowerCase() === cleanHandle) ||
-            (u.nombre && u.nombre.toLowerCase() === cleanAutor) ||
-            (u.gmail && u.gmail.toLowerCase() === cleanAutor)
-        )) || null;
-    }
+    // Timeout de seguridad: si pasa 5s, quitar el modal de carga si sigue ahí
+    const timeoutSeguridad = setTimeout(() => {
+        const m = document.getElementById('mini-perfil-social');
+        if (m) {
+            const spinner = m.querySelector('.fa-spinner');
+            if (spinner) m.remove();
+        }
+    }, 5000);
 
-    let usuario = null;
+    try {
+        let usuario = null;
 
-    // 1. Buscar en la sesión activa
-    const sesionLocal = (typeof sesionActual !== 'undefined' && sesionActual) ? sesionActual : null;
-    if (sesionLocal && (
-        (sesionLocal.handle && sesionLocal.handle.replace('@', '').trim().toLowerCase() === cleanHandle) ||
-        (sesionLocal.nombre && sesionLocal.nombre.toLowerCase() === cleanAutor)
-    )) {
-        usuario = sesionLocal;
-    }
+        function buscarEnLista(lista) {
+            if (!Array.isArray(lista)) return null;
+            return lista.find(u => u && (
+                (u.handle && u.handle.replace('@', '').trim().toLowerCase() === cleanHandle) ||
+                (u.nombre && u.nombre.toLowerCase() === cleanAutor) ||
+                (u.gmail && u.gmail.toLowerCase() === cleanAutor)
+            )) || null;
+        }
 
-    // 2. Buscar en la caché global local
-    if (!usuario && typeof obtenerUsuariosGlobales === 'function') {
-        usuario = buscarEnLista(obtenerUsuariosGlobales());
-    }
+        // 1. Sesión activa
+        const sesionLocal = (typeof sesionActual !== 'undefined' && sesionActual) ? sesionActual : null;
+        if (sesionLocal && (
+            (sesionLocal.handle && sesionLocal.handle.replace('@', '').trim().toLowerCase() === cleanHandle) ||
+            (sesionLocal.nombre && sesionLocal.nombre.toLowerCase() === cleanAutor)
+        )) {
+            usuario = sesionLocal;
+        }
 
-    // 3. Si no está, esperar a que Firebase sincronice (clave en celulares/iPad sin caché)
-    if (!usuario && typeof esperarSincronizacionGlobal === 'function') {
-        await esperarSincronizacionGlobal(4000);
-        if (typeof obtenerUsuariosGlobales === 'function') {
+        // 2. Caché global local
+        if (!usuario && typeof obtenerUsuariosGlobales === 'function') {
             usuario = buscarEnLista(obtenerUsuariosGlobales());
         }
-    }
 
-    // 4. Si todavía no aparece, buscar directamente en Firebase por handle
-    if (!usuario && typeof db !== 'undefined' && db) {
-        try {
-            const clave = typeof claveHandle === 'function' ? claveHandle(handleAutor || nombreAutor) : cleanHandle;
-            const snapshot = await db.ref('accounts/' + clave).once('value');
-            const data = snapshot.val();
-            if (data) {
-                usuario = data;
+        // 3. Esperar sincronización de Firebase
+        if (!usuario && typeof esperarSincronizacionGlobal === 'function') {
+            await esperarSincronizacionGlobal(4000);
+            if (typeof obtenerUsuariosGlobales === 'function') {
+                usuario = buscarEnLista(obtenerUsuariosGlobales());
             }
-        } catch (e) { /* Firebase podría no estar listo */ }
-    }
+        }
 
-    // 5. Último recurso: descargar todas las cuentas de Firebase y buscar
-    if (!usuario && typeof db !== 'undefined' && db) {
-        try {
-            const snapshot = await db.ref('accounts').once('value');
-            const data = snapshot.val();
-            if (data) {
-                const lista = typeof normalizarLista === 'function' ? normalizarLista(data) : Object.values(data);
-                usuario = buscarEnLista(lista);
-            }
-        } catch (e) { /* sin conexión */ }
-    }
+        // 4. Buscar directamente en Firebase por handle
+        if (!usuario && typeof db !== 'undefined' && db) {
+            try {
+                const clave = typeof claveHandle === 'function' ? claveHandle(handleAutor || nombreAutor) : cleanHandle;
+                const snapshot = await db.ref('accounts/' + clave).once('value');
+                if (snapshot.val()) usuario = snapshot.val();
+            } catch (e) { /* Firebase no listo */ }
+        }
 
-    // 6. Si nada funciona, usar los datos que se pasaron por parámetro
-    if (!usuario) {
-        usuario = {
-            nombre: nombreAutor || "Usuario",
-            handle: handleAutor || nombreAutor || "@usuario",
-            avatar: avatarURL || "",
-            banner: "",
-            descripcion: "¡Hola! Estoy usando Stevscon.",
-            rol: rol || "user"
-        };
-    }
+        // 5. Descargar todas las cuentas de Firebase
+        if (!usuario && typeof db !== 'undefined' && db) {
+            try {
+                const snapshot = await db.ref('accounts').once('value');
+                const data = snapshot.val();
+                if (data) {
+                    const lista = typeof normalizarLista === 'function' ? normalizarLista(data) : Object.values(data);
+                    usuario = buscarEnLista(lista);
+                }
+            } catch (e) { /* sin conexión */ }
+        }
 
-    const targetHandle = usuario.handle ? usuario.handle : (handleAutor || nombreAutor);
-    const displayHandle = targetHandle.startsWith('@') ? targetHandle.slice(1) : targetHandle;
-    
-    const finalAvatar = usuario.avatar || avatarURL || "";
-    const avatarImg = (finalAvatar && finalAvatar !== "undefined" && finalAvatar !== "") 
-        ? `<img src="${finalAvatar}" style="width: 100%; height: 100%; object-fit: cover;">` 
-        : `<div style="display:flex; justify-content:center; align-items:center; height:100%; font-size:2.2rem; font-weight:bold; background:var(--bg-card); color: var(--purple-accent);">${(usuario.nombre || nombreAutor || '?').charAt(0).toUpperCase()}</div>`;
+        // 6. Fallback con los datos del parámetro
+        if (!usuario) {
+            usuario = {
+                nombre: nombreAutor || "Usuario",
+                handle: handleAutor || nombreAutor || "@usuario",
+                avatar: avatarURL || "",
+                banner: "",
+                descripcion: "¡Hola! Estoy usando Stevscon.",
+                rol: rol || "user"
+            };
+        }
 
-    const bannerStyle = usuario.banner 
-        ? `background-image: url('${usuario.banner}'); background-size: cover; background-position: center;` 
-        : `background: linear-gradient(135deg, var(--purple-dark, #2b1842), var(--purple-accent, #8b5cf6));`;
+        // Renderizar el modal real
+        const targetHandle = usuario.handle ? usuario.handle : (handleAutor || nombreAutor);
+        const displayHandle = targetHandle.startsWith('@') ? targetHandle.slice(1) : targetHandle;
 
-    const userDescRaw = usuario.descripcion ? usuario.descripcion : "¡Hola! Estoy usando Stevscon.";
-    const userDesc = typeof formatearTexto === 'function' ? formatearTexto(userDescRaw) : userDescRaw;
+        const finalAvatar = usuario.avatar || avatarURL || "";
+        const avatarImg = (finalAvatar && finalAvatar !== "undefined" && finalAvatar !== "")
+            ? `<img src="${finalAvatar}" style="width: 100%; height: 100%; object-fit: cover;">`
+            : `<div style="display:flex; justify-content:center; align-items:center; height:100%; font-size:2.2rem; font-weight:bold; background:var(--bg-card); color: var(--purple-accent);">${(usuario.nombre || nombreAutor || '?').charAt(0).toUpperCase()}</div>`;
 
-    // Eliminar el modal de carga y mostrar el real
-    const modalCarga = document.getElementById('mini-perfil-social');
-    if (modalCarga) modalCarga.remove();
+        const bannerStyle = usuario.banner
+            ? `background-image: url('${usuario.banner}'); background-size: cover; background-position: center;`
+            : `background: linear-gradient(135deg, var(--purple-dark, #2b1842), var(--purple-accent, #8b5cf6));`;
 
-    const verifiedBadge = typeof getVerifiedBadgeHTML === 'function' ? getVerifiedBadgeHTML(usuario) : '';
-    const badgesHTML = typeof renderBadgesHTML === 'function' ? renderBadgesHTML(usuario) : '';
+        const userDescRaw = usuario.descripcion ? usuario.descripcion : "¡Hola! Estoy usando Stevscon.";
+        const userDesc = typeof formatearTexto === 'function' ? formatearTexto(userDescRaw) : userDescRaw;
 
-    let infoExtraHTML = "";
-    if (usuario.cumpleanos || usuario.genero || usuario.edad) {
-        const items = [];
-        if (usuario.cumpleanos) items.push(`<span><i class="fa-solid fa-cake-candles"></i> ${usuario.cumpleanos}</span>`);
-        if (usuario.edad) items.push(`<span><i class="fa-solid fa-user-clock"></i> ${usuario.edad} años</span>`);
-        if (usuario.genero) items.push(`<span><i class="fa-solid fa-venus-mars"></i> ${usuario.genero}</span>`);
-        
-        infoExtraHTML = `
-            <div style="display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; font-size: 0.78rem; color: var(--text-muted); margin-bottom: 18px; background: rgba(0,0,0,0.25); padding: 8px 12px; border-radius: 8px;">
-                ${items.join(' <span style="opacity:0.3;">•</span> ')}
-            </div>`;
-    }
+        const verifiedBadge = typeof getVerifiedBadgeHTML === 'function' ? getVerifiedBadgeHTML(usuario) : '';
+        const badgesHTML = typeof renderBadgesHTML === 'function' ? renderBadgesHTML(usuario) : '';
 
-    const btnCerrar = typeof getBotonCerrarHomeHTML === 'function' 
-        ? getBotonCerrarHomeHTML() 
-        : `<button onclick="cerrarMiniPerfil()" style="background: rgba(0,0,0,0.5); border: none; color: white; border-radius: 50%; width: 28px; height: 28px; cursor: pointer;">✕</button>`;
+        let infoExtraHTML = "";
+        if (usuario.cumpleanos || usuario.genero || usuario.edad) {
+            const items = [];
+            if (usuario.cumpleanos) items.push(`<span><i class="fa-solid fa-cake-candles"></i> ${usuario.cumpleanos}</span>`);
+            if (usuario.edad) items.push(`<span><i class="fa-solid fa-user-clock"></i> ${usuario.edad} años</span>`);
+            if (usuario.genero) items.push(`<span><i class="fa-solid fa-venus-mars"></i> ${usuario.genero}</span>`);
+            infoExtraHTML = `<div style="display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; font-size: 0.78rem; color: var(--text-muted); margin-bottom: 18px; background: rgba(0,0,0,0.25); padding: 8px 12px; border-radius: 8px;">${items.join(' <span style="opacity:0.3;">•</span> ')}</div>`;
+        }
 
-    const modalHTML = `
-    <div id="mini-perfil-social" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; z-index: 1000;" onclick="cerrarMiniPerfil(event)">
-        
-        <div class="card" style="width: 90%; max-width: 350px; padding: 0; overflow: hidden; position: relative; border-radius: 16px; box-shadow: 0 15px 35px rgba(0,0,0,0.9); cursor: default; border: 1px solid var(--border-color, rgba(255,255,255,0.1));" onclick="event.stopPropagation()">
-            
-            <div style="height: 110px; width: 100%; ${bannerStyle} position: relative;">
-                <div style="position: absolute; top: 10px; right: 10px; z-index: 10;">
-                    ${btnCerrar}
+        const btnCerrar = typeof getBotonCerrarHomeHTML === 'function'
+            ? getBotonCerrarHomeHTML()
+            : `<button onclick="cerrarMiniPerfil()" style="background: rgba(0,0,0,0.5); border: none; color: white; border-radius: 50%; width: 28px; height: 28px; cursor: pointer;">✕</button>`;
+
+        // Quitar el modal de carga antes de insertar el real
+        const modalCarga = document.getElementById('mini-perfil-social');
+        if (modalCarga) modalCarga.remove();
+
+        document.body.insertAdjacentHTML('beforeend', `
+        <div id="mini-perfil-social" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; z-index: 1000;" onclick="cerrarMiniPerfil(event)">
+            <div class="card" style="width: 90%; max-width: 350px; padding: 0; overflow: hidden; position: relative; border-radius: 16px; box-shadow: 0 15px 35px rgba(0,0,0,0.9); cursor: default; border: 1px solid var(--border-color, rgba(255,255,255,0.1));" onclick="event.stopPropagation()">
+                <div style="height: 110px; width: 100%; ${bannerStyle} position: relative;">
+                    <div style="position: absolute; top: 10px; right: 10px; z-index: 10;">${btnCerrar}</div>
+                </div>
+                <div style="padding: 0 20px 25px; text-align: center; position: relative;">
+                    <div style="width: 85px; height: 85px; margin: -42px auto 12px; border-radius: 50%; overflow: hidden; border: 4px solid var(--bg-card, #181528); background: var(--bg-main); box-shadow: 0 4px 12px rgba(0,0,0,0.5);">${avatarImg}</div>
+                    <h3 style="margin: 0 0 4px 0; font-size: 1.3rem; display: flex; justify-content: center; align-items: center; gap: 6px; color: var(--text-main, #ffffff);">${usuario.nombre || nombreAutor} ${verifiedBadge}</h3>
+                    <div style="display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
+                        <span style="color: var(--purple-accent); font-size: 0.9rem; font-weight: 600;">@${displayHandle}</span>
+                        ${badgesHTML}
+                    </div>
+                    <div style="color: var(--text-main); font-size: 0.88rem; margin-bottom: 15px; line-height: 1.4; padding: 10px; background: rgba(0,0,0,0.25); border-radius: 10px; border: 1px solid rgba(255,255,255,0.05); overflow-wrap: anywhere;">"${userDesc}"</div>
+                    ${infoExtraHTML}
+                    <button class="btn btn-primary" style="width: 100%; display: flex; justify-content: center; gap: 8px; align-items: center; padding: 12px; font-size: 0.95rem; border-radius: 10px; font-weight: 600; box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);" onclick="iniciarChatCon('${displayHandle}')">
+                        <i class="fa-solid fa-paper-plane"></i> Enviar Mensaje
+                    </button>
                 </div>
             </div>
-            
-            <div style="padding: 0 20px 25px; text-align: center; position: relative;">
-                
-                <div style="width: 85px; height: 85px; margin: -42px auto 12px; border-radius: 50%; overflow: hidden; border: 4px solid var(--bg-card, #181528); background: var(--bg-main); box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
-                    ${avatarImg}
-                </div>
-                
-                <h3 style="margin: 0 0 4px 0; font-size: 1.3rem; display: flex; justify-content: center; align-items: center; gap: 6px; color: var(--text-main, #ffffff);">
-                    ${usuario.nombre || nombreAutor} ${verifiedBadge}
-                </h3>
-                
-                <div style="display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
-                    <span style="color: var(--purple-accent); font-size: 0.9rem; font-weight: 600;">@${displayHandle}</span>
-                    ${badgesHTML}
-                </div>
-                
-                <div style="color: var(--text-main); font-size: 0.88rem; margin-bottom: 15px; line-height: 1.4; padding: 10px; background: rgba(0,0,0,0.25); border-radius: 10px; border: 1px solid rgba(255,255,255,0.05); overflow-wrap: anywhere;">
-                    "${userDesc}"
-                </div>
-
-                ${infoExtraHTML}
-                
-                <button class="btn btn-primary" style="width: 100%; display: flex; justify-content: center; gap: 8px; align-items: center; padding: 12px; font-size: 0.95rem; border-radius: 10px; font-weight: 600; box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);" onclick="iniciarChatCon('${displayHandle}')">
-                    <i class="fa-solid fa-paper-plane"></i> Enviar Mensaje
-                </button>
-                
-            </div>
-        </div>
-    </div>
-    `;
-    
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
+        </div>`);
+    } finally {
+        // SIEMPRE quitar el modal de carga, incluso si hubo un error
+        clearTimeout(timeoutSeguridad);
+        const modalCarga = document.getElementById('mini-perfil-social');
+        if (modalCarga) {
+            const spinner = modalCarga.querySelector('.fa-spinner');
+            if (spinner) modalCarga.remove();
+        }
+    }
 }
 
 function cerrarMiniPerfil(event) {
@@ -528,10 +520,10 @@ function toggleCommentLike(postId, commentId) {
         return;
     }
 
-    const post = postsData.find(p => p.id === postId);
+    const post = postsData.find(p => String(p.id) === String(postId));
     if (!post || !post.comments) return;
 
-    const comment = post.comments.find((c, idx) => c.id === commentId || idx === commentId);
+    const comment = post.comments.find((c, idx) => String(c.id || idx) === String(commentId));
     if (!comment) return;
 
     if (!Array.isArray(comment.likedBy)) {
@@ -560,13 +552,13 @@ function toggleReplyLike(postId, commentId, replyId) {
         return;
     }
 
-    const post = postsData.find(p => p.id === postId);
+    const post = postsData.find(p => String(p.id) === String(postId));
     if (!post || !post.comments) return;
 
-    const comment = post.comments.find((c, idx) => (c.id ? c.id === commentId : idx === commentId));
+    const comment = post.comments.find((c, idx) => String(c.id || idx) === String(commentId));
     if (!comment || !comment.replies) return;
 
-    const reply = comment.replies.find((r, idx) => (r.id ? r.id === replyId : idx === replyId));
+    const reply = comment.replies.find((r, idx) => String(r.id || idx) === String(replyId));
     if (!reply) return;
 
     if (!Array.isArray(reply.likedBy)) reply.likedBy = [];
