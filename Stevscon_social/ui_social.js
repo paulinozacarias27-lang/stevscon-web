@@ -110,12 +110,12 @@ function getPostHTML(post) {
 
             return `
             <div class="reply-item" style="display: flex; gap: 10px; padding: 6px 0; position: relative;">
-                <div class="avatar" style="width: 26px; height: 26px; min-width: 26px; font-size: 0.7rem; cursor: pointer;" onclick="abrirPerfilRapido('${r.author}', '${r.avatar || ''}', '${r.rol || 'user'}')">
+                <div class="avatar" style="width: 26px; height: 26px; min-width: 26px; font-size: 0.7rem; cursor: pointer;" onclick="abrirPerfilRapido('${r.author}', '${r.avatar || ''}', '${r.rol || 'user'}', '${r.handle || ''}')">
                     ${rAvatar}
                 </div>
                 <div style="flex-grow: 1; min-width: 0;">
                     <div style="display: flex; align-items: center; gap: 8px;">
-                        <strong style="color: var(--purple-accent); font-size: 0.85rem; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" onclick="abrirPerfilRapido('${r.author}', '${r.avatar || ''}', '${r.rol || 'user'}')">
+                        <strong style="color: var(--purple-accent); font-size: 0.85rem; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" onclick="abrirPerfilRapido('${r.author}', '${r.avatar || ''}', '${r.rol || 'user'}', '${r.handle || ''}')">
                             @${r.author} ${rVerifiedBadge}
                         </strong>
                         <span style="font-size: 0.75rem; color: var(--text-muted);">${rFecha || ''}</span>
@@ -155,14 +155,14 @@ function getPostHTML(post) {
 
         return `
         <div class="comment-item-yt" style="display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); position: relative;">
-            <div class="avatar" style="width: 32px; height: 32px; min-width: 32px; font-size: 0.85rem; cursor: pointer;" onclick="abrirPerfilRapido('${c.author}', '${c.avatar || ''}', '${c.rol || 'user'}')">
+            <div class="avatar" style="width: 32px; height: 32px; min-width: 32px; font-size: 0.85rem; cursor: pointer;" onclick="abrirPerfilRapido('${c.author}', '${c.avatar || ''}', '${c.rol || 'user'}', '${c.handle || ''}')">
                 ${commentAvatar}
             </div>
             
             <div style="flex-grow: 1; min-width: 0;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div style="display: flex; align-items: center; gap: 8px;">
-                        <strong style="color: var(--purple-accent); font-size: 0.9rem; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" onclick="abrirPerfilRapido('${c.author}', '${c.avatar || ''}', '${c.rol || 'user'}')">
+                        <strong style="color: var(--purple-accent); font-size: 0.9rem; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" onclick="abrirPerfilRapido('${c.author}', '${c.avatar || ''}', '${c.rol || 'user'}', '${c.handle || ''}')">
                             @${c.author} ${cVerifiedBadge}
                         </strong>
                         <span style="font-size: 0.75rem; color: var(--text-muted);">${cFecha || ''}</span>
@@ -226,10 +226,10 @@ function getPostHTML(post) {
     return `
     <div class="post card" id="post-${post.id}">
         <div class="post-user-info" style="display: flex; align-items: center; position: relative;">
-            <div class="avatar" style="background: linear-gradient(135deg, var(--purple-dark), var(--purple-accent)); color: white; cursor: pointer;" onclick="abrirPerfilRapido('${post.author}', '${post.avatar}', '${post.rol}')">
+            <div class="avatar" style="background: linear-gradient(135deg, var(--purple-dark), var(--purple-accent)); color: white; cursor: pointer;" onclick="abrirPerfilRapido('${post.author}', '${post.avatar}', '${post.rol}', '${post.handle || ''}')">
                 ${avatarImgHTML}
             </div>
-            <div style="cursor: pointer;" onclick="abrirPerfilRapido('${post.author}', '${post.avatar}', '${post.rol}')">
+            <div style="cursor: pointer;" onclick="abrirPerfilRapido('${post.author}', '${post.avatar}', '${post.rol}', '${post.handle || ''}')">
                 <strong style="font-size: 1.1rem; display: inline-flex; align-items: center; gap: 5px;">
                     ${post.author} ${verifiedBadgePost}
                 </strong>

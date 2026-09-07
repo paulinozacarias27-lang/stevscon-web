@@ -35,6 +35,19 @@ function previewImagenPost(event) {
 function renderizarFeed() {
     const feed = document.getElementById('feedContainer');
     if (!feed) return;
+
+    // Deduplicación forzada por ID para evitar publicaciones repetidas por sincronización
+    const postsUnicos = [];
+    const idsVistos = new Set();
+    if (Array.isArray(postsData)) {
+        for (const p of postsData) {
+            if (p && p.id && !idsVistos.has(p.id)) {
+                idsVistos.add(p.id);
+                postsUnicos.push(p);
+            }
+        }
+        postsData = postsUnicos;
+    }
     
     feed.innerHTML = '';
     const postsInvertidos = [...postsData].reverse();
@@ -56,12 +69,17 @@ function crearPost() {
     }
 
     const input = document.getElementById('nuevoPostTexto');
-    const texto = input.value.trim();
+    const texto = input ? input.value.trim() : "";
     if (texto === "" && !imagenPostTemporal) return; 
+
+    // Evitar envío doble rápido
+    const btnPublicar = document.getElementById('btnPublicar');
+    if (btnPublicar) btnPublicar.disabled = true;
 
     const nuevoPost = {
         id: Date.now(), 
         author: sesionActual.nombre,
+        handle: sesionActual.handle || "",
         avatar: sesionActual.avatar || "", 
         rol: sesionActual.rol,
         verified: sesionActual.verified,
@@ -73,9 +91,12 @@ function crearPost() {
     };
 
     postsData.push(nuevoPost);
-    guardarPosts();
+    
+    if (typeof guardarPosts === 'function') {
+        guardarPosts();
+    }
 
-    input.value = ''; 
+    if (input) input.value = ''; 
     imagenPostTemporal = "";
     
     const inputImg = document.getElementById('inputImagenPost');
@@ -83,7 +104,9 @@ function crearPost() {
     const labelImg = document.getElementById('nombreImagenSeleccionada');
     if (labelImg) labelImg.textContent = '';
 
-    renderizarFeed(); 
+    renderizarFeed();
+
+    if (btnPublicar) btnPublicar.disabled = false;
 }
 
 function editarPost(postId) {
@@ -143,7 +166,7 @@ function guardarEdicionPost(postId) {
     const post = postsData.find(p => p.id === postId);
     if (post) {
         post.content = nuevoTexto;
-        guardarPosts();
+        if (typeof guardarPosts === 'function') guardarPosts();
         cerrarModalEditarPost();
         renderizarFeed();
     }
@@ -160,7 +183,7 @@ function borrarPost(postId) {
     const confirmar = confirm("¿Estás seguro de que deseas eliminar esta publicación?");
     if (confirmar) {
         postsData = postsData.filter(p => p.id !== postId);
-        guardarPosts();
+        if (typeof guardarPosts === 'function') guardarPosts();
         renderizarFeed(); 
     }
 }
@@ -187,7 +210,7 @@ function toggleLike(postId) {
         post.likedBy.push(userHandle);
     }
 
-    guardarPosts();
+    if (typeof guardarPosts === 'function') guardarPosts();
     renderizarFeed();
 }
 
@@ -214,26 +237,53 @@ function irAlChatDesdeSocial(handle) {
     iniciarChatCon(handle);
 }
 
-function abrirPerfilRapido(nombreAutor, avatarURL, rol) {
-    let dbUsuarios = (typeof globalAccountsData !== 'undefined' && globalAccountsData.length > 0)
-        ? globalAccountsData 
-        : (JSON.parse(localStorage.getItem('stevscon_usuarios')) || []);
-    
-    const cleanAutor = nombreAutor ? nombreAutor.replace('@', '').trim().toLowerCase() : '';
-    const usuario = dbUsuarios.find(u => 
-        (u.nombre && u.nombre.toLowerCase() === cleanAutor) || 
-        (u.handle && u.handle.replace('@', '').trim().toLowerCase() === cleanAutor)
-    ) || { 
-        nombre: nombreAutor, 
-        handle: nombreAutor, 
-        avatar: avatarURL || "", 
-        banner: "", 
-        descripcion: "¡Hola! Estoy usando Stevscon.", 
-        rol: rol || "user" 
-    };
+// Visualizador de perfiles sincronizado con la base de datos local y Firebase
+function abrirPerfilRapido(nombreAutor, avatarURL, rol, handleAutor) {
+    let dbUsuarios = [];
+    if (typeof globalAccountsData !== 'undefined' && Array.isArray(globalAccountsData) && globalAccountsData.length > 0) {
+        dbUsuarios = globalAccountsData;
+    } else {
+        dbUsuarios = JSON.parse(localStorage.getItem('stevscon_usuarios')) || [];
+    }
 
-    const targetHandle = usuario.handle ? usuario.handle : nombreAutor;
-    const cleanHandle = targetHandle.replace('@', '').trim();
+    const sesionLocal = JSON.parse(localStorage.getItem('stevscon_sesion')) || (typeof sesionActual !== 'undefined' ? sesionActual : null);
+
+    const cleanAutor = nombreAutor ? nombreAutor.replace('@', '').trim().toLowerCase() : '';
+    const cleanHandle = handleAutor ? handleAutor.replace('@', '').trim().toLowerCase() : cleanAutor;
+
+    let usuario = null;
+
+    // Buscar si es la sesión activa
+    if (sesionLocal && (
+        (sesionLocal.handle && sesionLocal.handle.replace('@', '').trim().toLowerCase() === cleanHandle) ||
+        (sesionLocal.nombre && sesionLocal.nombre.toLowerCase() === cleanAutor)
+    )) {
+        usuario = sesionLocal;
+    }
+
+    // Si no es la sesión activa, buscar en la lista global
+    if (!usuario) {
+        usuario = dbUsuarios.find(u => 
+            (u.handle && u.handle.replace('@', '').trim().toLowerCase() === cleanHandle) ||
+            (u.nombre && u.nombre.toLowerCase() === cleanAutor) ||
+            (u.gmail && u.gmail.toLowerCase() === cleanAutor)
+        );
+    }
+
+    // Datos por defecto en caso de no encontrarse en la base de datos
+    if (!usuario) {
+        usuario = { 
+            nombre: nombreAutor || "Usuario", 
+            handle: handleAutor || nombreAutor || "@usuario", 
+            avatar: avatarURL || "", 
+            banner: "", 
+            descripcion: "¡Hola! Estoy usando Stevscon.", 
+            rol: rol || "user" 
+        };
+    }
+
+    const targetHandle = usuario.handle ? usuario.handle : (handleAutor || nombreAutor);
+    const displayHandle = targetHandle.startsWith('@') ? targetHandle.slice(1) : targetHandle;
     
     const finalAvatar = usuario.avatar || avatarURL || "";
     const avatarImg = (finalAvatar && finalAvatar !== "undefined" && finalAvatar !== "") 
@@ -266,6 +316,10 @@ function abrirPerfilRapido(nombreAutor, avatarURL, rol) {
             </div>`;
     }
 
+    const btnCerrar = typeof getBotonCerrarHomeHTML === 'function' 
+        ? getBotonCerrarHomeHTML() 
+        : `<button onclick="cerrarMiniPerfil()" style="background: rgba(0,0,0,0.5); border: none; color: white; border-radius: 50%; width: 28px; height: 28px; cursor: pointer;">✕</button>`;
+
     const modalHTML = `
     <div id="mini-perfil-social" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; z-index: 1000;" onclick="cerrarMiniPerfil(event)">
         
@@ -273,7 +327,7 @@ function abrirPerfilRapido(nombreAutor, avatarURL, rol) {
             
             <div style="height: 110px; width: 100%; ${bannerStyle} position: relative;">
                 <div style="position: absolute; top: 10px; right: 10px; z-index: 10;">
-                    ${getBotonCerrarHomeHTML()}
+                    ${btnCerrar}
                 </div>
             </div>
             
@@ -288,7 +342,7 @@ function abrirPerfilRapido(nombreAutor, avatarURL, rol) {
                 </h3>
                 
                 <div style="display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
-                    <span style="color: var(--purple-accent); font-size: 0.9rem; font-weight: 600;">@${cleanHandle}</span>
+                    <span style="color: var(--purple-accent); font-size: 0.9rem; font-weight: 600;">@${displayHandle}</span>
                     ${badgesHTML}
                 </div>
                 
@@ -298,7 +352,7 @@ function abrirPerfilRapido(nombreAutor, avatarURL, rol) {
 
                 ${infoExtraHTML}
                 
-                <button class="btn btn-primary" style="width: 100%; display: flex; justify-content: center; gap: 8px; align-items: center; padding: 12px; font-size: 0.95rem; border-radius: 10px; font-weight: 600; box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);" onclick="iniciarChatCon('${cleanHandle}')">
+                <button class="btn btn-primary" style="width: 100%; display: flex; justify-content: center; gap: 8px; align-items: center; padding: 12px; font-size: 0.95rem; border-radius: 10px; font-weight: 600; box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);" onclick="iniciarChatCon('${displayHandle}')">
                     <i class="fa-solid fa-paper-plane"></i> Enviar Mensaje
                 </button>
                 
@@ -311,6 +365,7 @@ function abrirPerfilRapido(nombreAutor, avatarURL, rol) {
 }
 
 function cerrarMiniPerfil(event) {
+    if (event && event.target.id !== 'mini-perfil-social') return;
     const modal = document.getElementById('mini-perfil-social');
     if (modal) modal.remove();
 }
@@ -361,7 +416,7 @@ function agregarComentario(postId) {
     }
 
     const input = document.getElementById(`input-comentario-${postId}`);
-    const texto = input.value.trim();
+    const texto = input ? input.value.trim() : "";
     if (texto === "") return;
 
     const post = postsData.find(p => p.id === postId);
@@ -378,6 +433,7 @@ function agregarComentario(postId) {
             parentComment.replies.push({
                 id: Date.now(),
                 author: sesionActual.nombre,
+                handle: sesionActual.handle || "",
                 text: texto,
                 avatar: sesionActual.avatar || "",
                 rol: sesionActual.rol,
@@ -391,6 +447,7 @@ function agregarComentario(postId) {
         post.comments.push({
             id: Date.now(),
             author: sesionActual.nombre,
+            handle: sesionActual.handle || "",
             text: texto,
             avatar: sesionActual.avatar || "",
             rol: sesionActual.rol,
@@ -401,7 +458,7 @@ function agregarComentario(postId) {
         });
     }
 
-    guardarPosts();
+    if (typeof guardarPosts === 'function') guardarPosts();
     renderizarFeed();
     
     const commentsArea = document.getElementById(`comments-area-${postId}`);
@@ -437,7 +494,7 @@ function toggleCommentLike(postId, commentId) {
         comment.likedBy.push(userHandle);
     }
 
-    guardarPosts();
+    if (typeof guardarPosts === 'function') guardarPosts();
     renderizarFeed();
 
     const commentsArea = document.getElementById(`comments-area-${postId}`);
@@ -470,7 +527,7 @@ function toggleReplyLike(postId, commentId, replyId) {
         reply.likedBy.push(userHandle);
     }
 
-    guardarPosts();
+    if (typeof guardarPosts === 'function') guardarPosts();
     renderizarFeed();
 
     const commentsArea = document.getElementById(`comments-area-${postId}`);
@@ -487,7 +544,7 @@ function borrarComentario(postId, commentId) {
 
     if (confirm("¿Estás seguro de que deseas eliminar este comentario?")) {
         post.comments = post.comments.filter((c, idx) => (c.id ? c.id !== commentId : idx !== commentId));
-        guardarPosts();
+        if (typeof guardarPosts === 'function') guardarPosts();
         renderizarFeed();
         
         const commentsArea = document.getElementById(`comments-area-${postId}`);
@@ -505,7 +562,7 @@ function borrarRespuesta(postId, commentId, replyId) {
 
     if (confirm("¿Estás seguro de que deseas eliminar esta respuesta?")) {
         comment.replies = comment.replies.filter((r, idx) => (r.id ? r.id !== replyId : idx !== replyId));
-        guardarPosts();
+        if (typeof guardarPosts === 'function') guardarPosts();
         renderizarFeed();
 
         const commentsArea = document.getElementById(`comments-area-${postId}`);
@@ -578,7 +635,7 @@ function guardarEdicionComentario(postId, commentId) {
     const comment = post.comments.find((c, idx) => c.id === commentId || idx === commentId);
     if (comment) {
         comment.text = nuevoTexto;
-        guardarPosts();
+        if (typeof guardarPosts === 'function') guardarPosts();
         cerrarModalEditarComentario();
         renderizarFeed();
 
@@ -661,7 +718,7 @@ function guardarEdicionRespuesta(postId, commentId, replyId) {
     const reply = comment.replies.find((r, idx) => (r.id ? r.id === replyId : idx === replyId));
     if (reply) {
         reply.text = nuevoTexto;
-        guardarPosts();
+        if (typeof guardarPosts === 'function') guardarPosts();
         cerrarModalEditarRespuesta();
         renderizarFeed();
 
