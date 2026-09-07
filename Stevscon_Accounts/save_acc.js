@@ -1,4 +1,4 @@
-// save_acc.js - Gestor de Multicuentas Local
+// save_acc.js - Gestor de Multicuentas Local y Sincronización Global
 
 const KEY_SAVED_ACCOUNTS = 'stevscon_saved_accounts';
 const KEY_USERS_DB = 'stevscon_usuarios';
@@ -44,6 +44,10 @@ function eliminarCuentaCompletamente(handle) {
     let dbUsuarios = JSON.parse(localStorage.getItem(KEY_USERS_DB)) || [];
     dbUsuarios = dbUsuarios.filter(u => u.handle !== handle);
     localStorage.setItem(KEY_USERS_DB, JSON.stringify(dbUsuarios));
+
+    if (typeof guardarCuentasGlobales === 'function') {
+        guardarCuentasGlobales(dbUsuarios);
+    }
 
     olvidarCuenta(handle);
 }

@@ -215,7 +215,9 @@ function irAlChatDesdeSocial(handle) {
 }
 
 function abrirPerfilRapido(nombreAutor, avatarURL, rol) {
-    let dbUsuarios = JSON.parse(localStorage.getItem('stevscon_usuarios')) || [];
+    let dbUsuarios = (typeof globalAccountsData !== 'undefined' && globalAccountsData.length > 0)
+        ? globalAccountsData 
+        : (JSON.parse(localStorage.getItem('stevscon_usuarios')) || []);
     
     const cleanAutor = nombreAutor ? nombreAutor.replace('@', '').trim().toLowerCase() : '';
     const usuario = dbUsuarios.find(u => 

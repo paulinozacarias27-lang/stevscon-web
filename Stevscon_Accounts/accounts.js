@@ -1,6 +1,9 @@
-// accounts.js - Motor de Base de Datos y Lógica de Autenticación de Stevscon Accounts
+// accounts.js - Motor de Base de Datos y Lógica de Autenticación Sincronizado
 
-let dbUsuarios = JSON.parse(localStorage.getItem('stevscon_usuarios')) || [];
+let dbUsuarios = typeof globalAccountsData !== 'undefined' && globalAccountsData.length > 0 
+    ? globalAccountsData 
+    : (JSON.parse(localStorage.getItem('stevscon_usuarios')) || []);
+
 let sesionActual = JSON.parse(localStorage.getItem('stevscon_sesion')) || null;
 
 // Expresión regular para validar la contraseña
@@ -41,7 +44,11 @@ function registrarCuenta(nombre, handle, gmail, password) {
     dbUsuarios.push(nuevoUsuario);
     localStorage.setItem('stevscon_usuarios', JSON.stringify(dbUsuarios));
     
-    // Disparar correo mediante el Gmail Bot
+    // Sincronización en la nube mediante Firebase
+    if (typeof guardarCuentasGlobales === 'function') {
+        guardarCuentasGlobales(dbUsuarios);
+    }
+    
     if (typeof enviarCorreoBienvenidaBot === 'function') {
         enviarCorreoBienvenidaBot(nuevoUsuario.nombre, nuevoUsuario.gmail, nuevoUsuario.handle);
     }
@@ -85,12 +92,14 @@ function registrarCuentaGoogle(googlePayload, handle, password, nombrePersonaliz
     dbUsuarios.push(nuevoUsuario);
     localStorage.setItem('stevscon_usuarios', JSON.stringify(dbUsuarios));
 
-    // Iniciar sesión automáticamente
+    if (typeof guardarCuentasGlobales === 'function') {
+        guardarCuentasGlobales(dbUsuarios);
+    }
+
     sesionActual = nuevoUsuario;
     localStorage.setItem('stevscon_sesion', JSON.stringify(sesionActual));
     if (typeof sincronizarCuentaActual === 'function') sincronizarCuentaActual();
 
-    // Disparar correo mediante el Gmail Bot
     if (typeof enviarCorreoBienvenidaBot === 'function') {
         enviarCorreoBienvenidaBot(nuevoUsuario.nombre, nuevoUsuario.gmail, nuevoUsuario.handle);
     }
@@ -98,9 +107,14 @@ function registrarCuentaGoogle(googlePayload, handle, password, nombrePersonaliz
     return { exito: true, msj: "¡Bienvenido a Stevscon Accounts! Tu cuenta con Google fue configurada correctamente." };
 }
 
-// Iniciar sesión tradicional (Ahora también activa la notificación del bot)
+// Iniciar sesión tradicional
 function iniciarSesionDB(identificador, password) {
     identificador = identificador.toLowerCase().trim();
+
+    // Actualizar referencia por si llegaron datos de Firebase
+    if (typeof globalAccountsData !== 'undefined' && globalAccountsData.length > 0) {
+        dbUsuarios = globalAccountsData;
+    }
     
     const usuario = dbUsuarios.find(u => 
         (u.handle === identificador || u.gmail === identificador) && 
@@ -112,7 +126,6 @@ function iniciarSesionDB(identificador, password) {
         localStorage.setItem('stevscon_sesion', JSON.stringify(sesionActual));
         if (typeof sincronizarCuentaActual === 'function') sincronizarCuentaActual();
 
-        // Notificar por correo al iniciar sesión / acceder a la cuenta
         if (typeof enviarCorreoBienvenidaBot === 'function') {
             enviarCorreoBienvenidaBot(usuario.nombre, usuario.gmail, usuario.handle);
         }
@@ -122,21 +135,28 @@ function iniciarSesionDB(identificador, password) {
     return false;
 }
 
-// Verificar inicio de sesión con Google (Ahora también activa la notificación del bot)
+// Verificar inicio de sesión con Google
 function autenticarConGooglePayload(googlePayload) {
     const gmail = googlePayload.email.toLowerCase().trim();
+
+    if (typeof globalAccountsData !== 'undefined' && globalAccountsData.length > 0) {
+        dbUsuarios = globalAccountsData;
+    }
+
     const usuarioExistente = dbUsuarios.find(u => u.gmail === gmail);
 
     if (usuarioExistente) {
         if (!usuarioExistente.avatar && googlePayload.picture) {
             usuarioExistente.avatar = googlePayload.picture;
+            if (typeof guardarCuentasGlobales === 'function') {
+                guardarCuentasGlobales(dbUsuarios);
+            }
         }
         sesionActual = usuarioExistente;
         localStorage.setItem('stevscon_usuarios', JSON.stringify(dbUsuarios));
         localStorage.setItem('stevscon_sesion', JSON.stringify(sesionActual));
         if (typeof sincronizarCuentaActual === 'function') sincronizarCuentaActual();
 
-        // Notificar por correo al acceder con Google
         if (typeof enviarCorreoBienvenidaBot === 'function') {
             enviarCorreoBienvenidaBot(usuarioExistente.nombre, usuarioExistente.gmail, usuarioExistente.handle);
         }
@@ -147,7 +167,6 @@ function autenticarConGooglePayload(googlePayload) {
     }
 }
 
-// Cerrar sesión activa
 function cerrarSesion() {
     sesionActual = null;
     localStorage.removeItem('stevscon_sesion');
