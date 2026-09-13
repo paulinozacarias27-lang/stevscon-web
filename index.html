@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stevscon.com</title>
+    
+    <!-- Icono de la Pestaña del Navegador (Favicon) -->
+    <link rel="icon" type="image/png" href="SC-LOGO-20260825013121.png">
+    
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -19,7 +23,7 @@
         </a>
     </header>
 
-    <!-- Contenedor donde se dibuja el formulario o pantalla principal -->
+    <!-- Contenedor Principal -->
     <main class="main-container" id="app-root"></main>
 
     <!-- CDNs Externos -->
@@ -27,14 +31,19 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
-    <!-- Archivos del Sistema de Cuentas -->
-    <script src="accounts_manage/accounts_ui/ui_alerts.js"></script>
-    <script src="accounts_manage/accounts_ui/ui_buttons.js"></script>
-    <script src="accounts_manage/accounts_ui/ui_auth.js"></script>
+    <!-- 1. Módulos Base de Datos y Permisos (Requeridos primero) -->
+    <script src="accounts_manage/accounts_func/memory_acc.js"></script>
+    <script src="accounts_manage/accounts_func/admin.js"></script>
+    <script src="accounts_manage/accounts_func/owner.js"></script>
     <script src="accounts_manage/accounts_func/func_auth.js"></script>
     <script src="accounts_manage/accounts_func/func_bot.js"></script>
 
-    <!-- Enrutador Principal -->
+    <!-- 2. Interfaz de Usuario -->
+    <script src="accounts_manage/accounts_ui/ui_alerts.js"></script>
+    <script src="accounts_manage/accounts_ui/ui_buttons.js"></script>
+    <script src="accounts_manage/accounts_ui/ui_auth.js"></script>
+
+    <!-- 3. Enrutador Principal -->
     <script src="category.js"></script>
 </body>
 </html>
