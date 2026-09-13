@@ -1,99 +1,80 @@
-// func_auth.js - Lógica Principal de Autenticación con Firebase Realtime DB
+// func_auth.js - Lógica Principal de Autenticación Unificada
 
 const FuncAuth = {
     // -------------------------------------------------------------
     // REGISTRO DE NUEVA CUENTA
-    // Requisitos: Correo electrónico, Contraseña, Nombre y Handle (@)
     // -------------------------------------------------------------
     async register({ email, password, username, handle }) {
-        // 1. Sanitizar y formatear Handle
+        const cleanEmail = email.trim().toLowerCase();
         let formattedHandle = handle.trim();
         if (!formattedHandle.startsWith('@')) {
             formattedHandle = '@' + formattedHandle;
         }
-        const cleanHandle = formattedHandle.replace('@', '').toLowerCase();
-        const cleanEmail = email.trim().toLowerCase();
 
-        // 2. Comprobar si el Handle ya existe en Firebase
-        const existingUserByHandle = await MemoryAcc.getUserFromFirebase(cleanHandle);
-        if (existingUserByHandle) {
-            throw new Error("El handle " + formattedHandle + " ya está registrado por otro usuario.");
+        // 1. Comprobar si el Handle ya existe
+        const existingHandle = await MemoryAcc.getUserByHandle(formattedHandle);
+        if (existingHandle) {
+            throw new Error(`El handle ${formattedHandle} ya está registrado por otro usuario.`);
         }
 
-        // 3. Comprobar si el Correo ya está registrado
-        const dbRef = firebase.database().ref('users');
-        const emailSnapshot = await dbRef.orderByChild('email').equalTo(cleanEmail).once('value');
-        if (emailSnapshot.exists()) {
+        // 2. Comprobar si el Correo ya existe
+        const existingEmail = await MemoryAcc.getUserByEmail(cleanEmail);
+        if (existingEmail) {
             throw new Error("El correo electrónico ya está registrado en Stevscon.");
         }
 
-        // 4. Crear estructura del usuario base
-        let newUser = {
+        // 3. Crear estructura del usuario
+        const newUser = {
             email: cleanEmail,
-            password: password, // Almacenado de forma segura en Firebase DB
+            password: password,
             username: username.trim(),
             handle: formattedHandle,
-            role: AdminSystem.ROLES.USER,
+            role: "USER",
             verified: false,
-            bio: "¡Hola! Soy nuevo en Stevscon.com",
-            avatarUrl: "",
-            bannerUrl: "",
             createdAt: new Date().toISOString()
         };
 
-        // 5. Verificar si la cuenta corresponde al Owner principal
-        if (OwnerSystem.isOwner(newUser)) {
-            newUser = await OwnerSystem.ensureOwnerAccount(newUser);
-        } else {
-            await MemoryAcc.syncUserToFirebase(newUser);
-            MemoryAcc.setLocalUser(newUser);
+        // 4. Guardar cuenta
+        await MemoryAcc.syncUserToFirebase(newUser);
+        MemoryAcc.setLocalUser(newUser);
+
+        // 5. Enviar correo de bienvenida si existe el módulo
+        if (typeof FuncBot !== 'undefined' && FuncBot.sendWelcomeEmail) {
+            FuncBot.sendWelcomeEmail(newUser);
         }
 
-        // 6. Disparar Gmail Bot de bienvenida en segundo plano
-        FuncBot.sendWelcomeEmail(newUser);
+        if (typeof UIButtons !== 'undefined' && UIButtons.renderHeaderAuth) {
+            UIButtons.renderHeaderAuth();
+        }
 
-        // 7. Actualizar la interfaz global
-        UIButtons.renderHeaderAuth();
         return newUser;
     },
 
     // -------------------------------------------------------------
     // INICIO DE SESIÓN
-    // Requisitos: Correo electrónico y Contraseña ya creada
     // -------------------------------------------------------------
     async login({ email, password }) {
         const cleanEmail = email.trim().toLowerCase();
 
-        // Buscar el usuario por su correo electrónico en Firebase Realtime DB
-        const dbRef = firebase.database().ref('users');
-        const snapshot = await dbRef.orderByChild('email').equalTo(cleanEmail).once('value');
-
-        if (!snapshot.exists()) {
-            throw new Error("No existe ninguna cuenta asociada a este correo electrónico.");
+        // 1. Verificar si la cuenta existe
+        const user = await MemoryAcc.getUserByEmail(cleanEmail);
+        if (!user) {
+            throw new Error("¡No tienes una cuenta hecha aún! Regístrate primero.");
         }
 
-        let matchedUser = null;
-        snapshot.forEach(child => {
-            const val = child.val();
-            if (val.password === password) {
-                matchedUser = val;
-            }
-        });
-
-        if (!matchedUser) {
+        // 2. Validar la contraseña
+        if (user.password !== password) {
             throw new Error("Contraseña incorrecta. Por favor, inténtalo de nuevo.");
         }
 
-        // Si es el Owner, asegurar permisos máximos y rango Top 1
-        if (OwnerSystem.isOwner(matchedUser)) {
-            matchedUser = await OwnerSystem.ensureOwnerAccount(matchedUser);
-        } else {
-            MemoryAcc.setLocalUser(matchedUser);
+        // 3. Establecer Sesión Activa
+        MemoryAcc.setLocalUser(user);
+
+        if (typeof UIButtons !== 'undefined' && UIButtons.renderHeaderAuth) {
+            UIButtons.renderHeaderAuth();
         }
 
-        // Actualizar interfaz
-        UIButtons.renderHeaderAuth();
-        return matchedUser;
+        return user;
     },
 
     // -------------------------------------------------------------
@@ -101,12 +82,12 @@ const FuncAuth = {
     // -------------------------------------------------------------
     logout() {
         MemoryAcc.clearLocalUser();
-        UIButtons.renderHeaderAuth();
-        
-        // Regresar a la vista principal/social
+        if (typeof UIButtons !== 'undefined' && UIButtons.renderHeaderAuth) {
+            UIButtons.renderHeaderAuth();
+        }
         if (typeof regresarASocial === 'function') {
             regresarASocial();
-        } else if (window.location.reload) {
+        } else {
             window.location.reload();
         }
     }

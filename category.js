@@ -1,11 +1,13 @@
-// category.js - Enrutador Principal Autónomo y Robusto
+// category.js - Enrutador Principal
 const CategoryApp = {
     init() {
         if (typeof UIButtons !== 'undefined' && UIButtons.renderHeaderAuth) {
             UIButtons.renderHeaderAuth();
         }
 
-        const currentUser = this.getUserSession();
+        const currentUser = (typeof MemoryAcc !== 'undefined' && MemoryAcc.getLocalUser) 
+            ? MemoryAcc.getLocalUser() 
+            : null;
 
         if (!currentUser) {
             this.navigate('auth');
@@ -14,27 +16,13 @@ const CategoryApp = {
         }
     },
 
-    getUserSession() {
-        if (typeof MemoryAcc !== 'undefined' && MemoryAcc.getLocalUser) {
-            const user = MemoryAcc.getLocalUser();
-            if (user) return user;
-        }
-        const stored = localStorage.getItem('stevscon_user');
-        return stored ? JSON.parse(stored) : null;
-    },
-
-    setUserSession(user) {
-        if (typeof MemoryAcc !== 'undefined' && MemoryAcc.setLocalUser) {
-            MemoryAcc.setLocalUser(user);
-        }
-        localStorage.setItem('stevscon_user', JSON.stringify(user));
-    },
-
     navigate(view, params = {}) {
         const root = document.getElementById('app-root');
         if (!root) return;
 
-        const currentUser = this.getUserSession();
+        const currentUser = (typeof MemoryAcc !== 'undefined' && MemoryAcc.getLocalUser) 
+            ? MemoryAcc.getLocalUser() 
+            : null;
 
         if (view === 'auth' && !currentUser) {
             if (typeof UIAuth !== 'undefined' && UIAuth.renderAuthForm) {
@@ -50,8 +38,12 @@ const CategoryApp = {
     },
 
     renderFallbackAuth(container, tab = 'login') {
+        if (typeof UIAuth !== 'undefined' && UIAuth.renderAuthForm) {
+            UIAuth.renderAuthForm(tab);
+            return;
+        }
+
         const isLogin = tab === 'login';
-        
         if (typeof UIButtons !== 'undefined' && UIButtons.renderHeaderAuth) {
             UIButtons.renderHeaderAuth();
         }
@@ -79,7 +71,7 @@ const CategoryApp = {
                     <div id="auth-alert-box"></div>
 
                     ${isLogin ? `
-                        <form id="form-login" onsubmit="CategoryApp.handleFallbackLogin(event)">
+                        <form id="form-login" onsubmit="CategoryApp.handleLogin(event)">
                             <div class="form-group">
                                 <label class="form-label"><i class="fa-solid fa-envelope"></i> Correo Electrónico</label>
                                 <input type="email" id="login-email" class="form-input" placeholder="ejemplo@stevscon.com" required>
@@ -93,7 +85,7 @@ const CategoryApp = {
                             </button>
                         </form>
                     ` : `
-                        <form id="form-register" onsubmit="CategoryApp.handleFallbackRegister(event)">
+                        <form id="form-register" onsubmit="CategoryApp.handleRegister(event)">
                             <div class="form-group">
                                 <label class="form-label"><i class="fa-solid fa-user"></i> Nombre de Usuario</label>
                                 <input type="text" id="reg-username" class="form-input" placeholder="Tu Nombre" required maxlength="25">
@@ -120,54 +112,65 @@ const CategoryApp = {
         `;
     },
 
-    handleFallbackLogin(event) {
+    async handleLogin(event) {
         event.preventDefault();
-        const email = document.getElementById('login-email').value.trim();
-        const username = email.split('@')[0] || 'Usuario';
+        const email = document.getElementById('login-email').value;
+        const password = document.getElementById('login-password').value;
+        const submitBtn = document.getElementById('btn-login-submit');
 
-        const user = {
-            username: username,
-            handle: '@' + username.toLowerCase(),
-            email: email
-        };
-
-        this.setUserSession(user);
-        this.showAlert('¡Sesión iniciada con éxito! Redirigiendo...');
-
-        setTimeout(() => {
-            this.init();
-        }, 1000);
+        try {
+            if (submitBtn) submitBtn.disabled = true;
+            await FuncAuth.login({ email, password });
+            this.showSuccess('¡Sesión iniciada con éxito! Redirigiendo...');
+            setTimeout(() => this.init(), 1000);
+        } catch (error) {
+            this.showError(error.message);
+        } finally {
+            if (submitBtn) submitBtn.disabled = false;
+        }
     },
 
-    handleFallbackRegister(event) {
+    async handleRegister(event) {
         event.preventDefault();
-        const username = document.getElementById('reg-username').value.trim();
-        let handle = document.getElementById('reg-handle').value.trim();
-        const email = document.getElementById('reg-email').value.trim();
+        const username = document.getElementById('reg-username').value;
+        const handle = document.getElementById('reg-handle').value;
+        const email = document.getElementById('reg-email').value;
+        const password = document.getElementById('reg-password').value;
+        const submitBtn = document.getElementById('btn-reg-submit');
 
-        if (!handle.startsWith('@')) handle = '@' + handle;
-
-        const user = {
-            username: username,
-            handle: handle,
-            email: email
-        };
-
-        this.setUserSession(user);
-        this.showAlert('¡Has ingresado exitosamente! Bienvenido a Stevscon.');
-
-        setTimeout(() => {
-            this.init();
-        }, 1000);
+        try {
+            if (submitBtn) submitBtn.disabled = true;
+            await FuncAuth.register({ username, handle, email, password });
+            this.showSuccess('¡Cuenta creada con éxito! Bienvenido a Stevscon.');
+            setTimeout(() => this.init(), 1200);
+        } catch (error) {
+            this.showError(error.message);
+        } finally {
+            if (submitBtn) submitBtn.disabled = false;
+        }
     },
 
-    showAlert(message) {
+    showError(msg) {
         const box = document.getElementById('auth-alert-box');
         if (box) {
             box.innerHTML = `
-                <div style="padding: 10px 14px; background: rgba(139, 92, 246, 0.2); border: 1px solid #8b5cf6; color: #ffffff; border-radius: 8px; margin-bottom: 15px; font-size: 0.88rem; text-align: center; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <div style="padding: 10px 14px; background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #ffffff; border-radius: 8px; margin-bottom: 15px; font-size: 0.88rem; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-triangle-exclamation" style="color: #ef4444;"></i>
+                    <span>${msg}</span>
+                </div>
+            `;
+        } else {
+            alert(msg);
+        }
+    },
+
+    showSuccess(msg) {
+        const box = document.getElementById('auth-alert-box');
+        if (box) {
+            box.innerHTML = `
+                <div style="padding: 10px 14px; background: rgba(139, 92, 246, 0.2); border: 1px solid #8b5cf6; color: #ffffff; border-radius: 8px; margin-bottom: 15px; font-size: 0.88rem; display: flex; align-items: center; gap: 8px;">
                     <i class="fa-solid fa-circle-check" style="color: #8b5cf6;"></i>
-                    <span>${message}</span>
+                    <span>${msg}</span>
                 </div>
             `;
         }
@@ -185,7 +188,7 @@ const CategoryApp = {
                     <p style="margin-bottom: 8px;"><strong style="color: #fff;">Correo:</strong> ${user.email || 'N/A'}</p>
                     <p><strong style="color: #fff;">Estado:</strong> Sesión activa en Stevscon Accounts.</p>
                 </div>
-                <button onclick="localStorage.removeItem('stevscon_user'); location.reload();" class="btn btn-outline" style="padding: 10px 20px; border: 1px solid #ef4444; color: #ef4444; background: transparent; border-radius: 6px; cursor: pointer; font-weight: bold;">
+                <button onclick="FuncAuth.logout()" class="btn btn-outline" style="padding: 10px 20px; border: 1px solid #ef4444; color: #ef4444; background: transparent; border-radius: 6px; cursor: pointer; font-weight: bold;">
                     Cerrar Sesión
                 </button>
             </div>

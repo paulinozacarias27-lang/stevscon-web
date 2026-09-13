@@ -1,6 +1,5 @@
-// memory_acc.js - Gestión de memoria local y sincronización con Firebase
+// memory_acc.js - Central de Memoria, Firebase y Almacenamiento Local
 
-// Credenciales oficiales de Firebase Stevscon
 const firebaseConfig = {
     apiKey: "AIzaSyAJN6uAVY65MAXJW1_0aHHP0L5okE9Tytw",
     authDomain: "stevscon-protocole-base.firebaseapp.com",
@@ -11,42 +10,114 @@ const firebaseConfig = {
     measurementId: "G-X93QHQYQPM"
 };
 
-// Inicializar Firebase si aún no está inicializado
-if (!firebase.apps.length) {
+if (typeof firebase !== 'undefined' && !firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
 
-const db = firebase.database();
+const db = (typeof firebase !== 'undefined' && firebase.apps.length) ? firebase.database() : null;
 
 const MemoryAcc = {
-    // Guardar usuario en almacenamiento local
+    // -------------------------------------------------------------
+    // SESIÓN ACTIVA DEL USUARIO
+    // -------------------------------------------------------------
     setLocalUser(userData) {
         localStorage.setItem('stevscon_active_user', JSON.stringify(userData));
     },
 
-    // Obtener usuario activo actual
     getLocalUser() {
         const user = localStorage.getItem('stevscon_active_user');
         return user ? JSON.parse(user) : null;
     },
 
-    // Cerrar sesión local
     clearLocalUser() {
         localStorage.removeItem('stevscon_active_user');
+        localStorage.removeItem('stevscon_user'); // Limpieza de claves obsoletas
     },
 
-    // Sincronizar o guardar datos del usuario en Firebase Realtime Database
+    // -------------------------------------------------------------
+    // BASE DE DATOS LOCAL DE RESPALDO
+    // -------------------------------------------------------------
+    getAllLocalAccounts() {
+        const data = localStorage.getItem('stevscon_accounts_db');
+        return data ? JSON.parse(data) : {};
+    },
+
+    saveLocalAccount(userData) {
+        const accounts = this.getAllLocalAccounts();
+        const cleanHandle = userData.handle.replace('@', '').toLowerCase();
+        accounts[cleanHandle] = userData;
+        localStorage.setItem('stevscon_accounts_db', JSON.stringify(accounts));
+    },
+
+    // -------------------------------------------------------------
+    // CONSULTAS DE USUARIO (FIREBASE Y LOCAL)
+    // -------------------------------------------------------------
+    async getUserByHandle(handle) {
+        if (!handle) return null;
+        const cleanHandle = handle.replace('@', '').toLowerCase();
+
+        // 1. Consultar Firebase
+        if (db) {
+            try {
+                const snapshot = await db.ref('users/' + cleanHandle).once('value');
+                if (snapshot.exists()) return snapshot.val();
+            } catch (e) {
+                console.warn("Error consultando Firebase por handle:", e);
+            }
+        }
+
+        // 2. Respaldo local
+        const localAccounts = this.getAllLocalAccounts();
+        return localAccounts[cleanHandle] || null;
+    },
+
+    async getUserByEmail(email) {
+        if (!email) return null;
+        const cleanEmail = email.trim().toLowerCase();
+
+        // 1. Consultar Firebase
+        if (db) {
+            try {
+                const snapshot = await db.ref('users').orderByChild('email').equalTo(cleanEmail).once('value');
+                if (snapshot.exists()) {
+                    let foundUser = null;
+                    snapshot.forEach(child => {
+                        foundUser = child.val();
+                    });
+                    if (foundUser) return foundUser;
+                }
+            } catch (e) {
+                console.warn("Error consultando Firebase por email:", e);
+            }
+        }
+
+        // 2. Respaldo local
+        const localAccounts = this.getAllLocalAccounts();
+        for (const key in localAccounts) {
+            if (localAccounts[key].email && localAccounts[key].email.toLowerCase() === cleanEmail) {
+                return localAccounts[key];
+            }
+        }
+        return null;
+    },
+
+    // -------------------------------------------------------------
+    // GUARDADO Y SINCRONIZACIÓN DE CUENTAS
+    // -------------------------------------------------------------
     async syncUserToFirebase(userData) {
         if (!userData || !userData.handle) return;
         const cleanHandle = userData.handle.replace('@', '').toLowerCase();
-        await db.ref('users/' + cleanHandle).update(userData);
-    },
 
-    // Consultar datos de un usuario en Firebase por su handle
-    async getUserFromFirebase(handle) {
-        if (!handle) return null;
-        const cleanHandle = handle.replace('@', '').toLowerCase();
-        const snapshot = await db.ref('users/' + cleanHandle).once('value');
-        return snapshot.val();
+        // Guardar localmente
+        this.saveLocalAccount(userData);
+
+        // Sincronizar en Firebase Realtime Database
+        if (db) {
+            try {
+                await db.ref('users/' + cleanHandle).update(userData);
+            } catch (e) {
+                console.warn("Advertencia al sincronizar con Firebase:", e);
+            }
+        }
     }
 };
