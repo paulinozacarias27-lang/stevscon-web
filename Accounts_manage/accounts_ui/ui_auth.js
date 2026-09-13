@@ -15,8 +15,8 @@ const UIAuth = {
                     <!-- LOGO Y TÍTULO -->
                     <div class="accounts-header">
                         <i class="fa-solid fa-shield-cat accounts-logo"></i>
-                        <h2 style="font-weight: 800; color: var(--text-main);">Stevscon Accounts</h2>
-                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">
+                        <h2 style="font-weight: 800; color: var(--text-main, #ffffff);">Stevscon Accounts</h2>
+                        <p style="font-size: 0.85rem; color: var(--text-muted, #aaaaaa); margin-top: 4px;">
                             Ingresa a la comunidad oficial de StevsLoL
                         </p>
                     </div>
@@ -56,7 +56,7 @@ const UIAuth = {
                             <input type="text" id="reg-username" class="form-input" placeholder="Tu Nombre" required maxlength="25">
                         </div>
                         <div class="form-group">
-                            <label class="form-label"><i class="fa-solid fa-at"></i> Handle Unico (@)</label>
+                            <label class="form-label"><i class="fa-solid fa-at"></i> Handle Único (@)</label>
                             <input type="text" id="reg-handle" class="form-input" placeholder="@StevsLoL" required maxlength="20">
                         </div>
                         <div class="form-group">
@@ -79,7 +79,7 @@ const UIAuth = {
     // Cambiar de pestaña
     switchTab(tab) {
         this.activeTab = tab;
-        UIAlerts.clear('auth-alert-box');
+        if (typeof UIAlerts !== 'undefined') UIAlerts.clear('auth-alert-box');
 
         const loginForm = document.getElementById('form-login');
         const regForm = document.getElementById('form-register');
@@ -88,20 +88,20 @@ const UIAuth = {
         tabBtns.forEach(btn => btn.classList.remove('active'));
 
         if (tab === 'login') {
-            tabBtns[0].classList.add('active');
-            loginForm.classList.remove('hidden');
-            regForm.classList.add('hidden');
+            if (tabBtns[0]) tabBtns[0].classList.add('active');
+            if (loginForm) loginForm.classList.remove('hidden');
+            if (regForm) regForm.classList.add('hidden');
         } else {
-            tabBtns[1].classList.add('active');
-            regForm.classList.remove('hidden');
-            loginForm.classList.add('hidden');
+            if (tabBtns[1]) tabBtns[1].classList.add('active');
+            if (regForm) regForm.classList.remove('hidden');
+            if (loginForm) loginForm.classList.add('hidden');
         }
     },
 
     // Procesar Inicio de Sesión
     async handleLoginSubmit(event) {
         event.preventDefault();
-        UIAlerts.clear('auth-alert-box');
+        if (typeof UIAlerts !== 'undefined') UIAlerts.clear('auth-alert-box');
 
         const email = document.getElementById('login-email').value;
         const password = document.getElementById('login-password').value;
@@ -111,8 +111,13 @@ const UIAuth = {
             submitBtn.disabled = true;
             submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Verificando...`;
 
-            await FuncAuth.login({ email, password });
-            UIAlerts.showSuccess('auth-alert-box', '¡Sesión iniciada con éxito! Redirigiendo...');
+            if (typeof FuncAuth !== 'undefined' && FuncAuth.login) {
+                await FuncAuth.login({ email, password });
+            }
+
+            if (typeof UIAlerts !== 'undefined') {
+                UIAlerts.showSuccess('auth-alert-box', '¡Sesión iniciada con éxito! Redirigiendo...');
+            }
 
             setTimeout(() => {
                 if (typeof regresarASocial === 'function') {
@@ -120,7 +125,11 @@ const UIAuth = {
                 }
             }, 1000);
         } catch (error) {
-            UIAlerts.showError('auth-alert-box', error.message);
+            if (typeof UIAlerts !== 'undefined') {
+                UIAlerts.showError('auth-alert-box', error.message || 'Error al iniciar sesión.');
+            } else {
+                alert(error.message || 'Error al iniciar sesión.');
+            }
         } finally {
             submitBtn.disabled = false;
             submitBtn.innerHTML = `<i class="fa-solid fa-arrow-right-to-bracket"></i> Entrar a mi cuenta`;
@@ -130,7 +139,7 @@ const UIAuth = {
     // Procesar Registro de Cuenta
     async handleRegisterSubmit(event) {
         event.preventDefault();
-        UIAlerts.clear('auth-alert-box');
+        if (typeof UIAlerts !== 'undefined') UIAlerts.clear('auth-alert-box');
 
         const username = document.getElementById('reg-username').value;
         const handle = document.getElementById('reg-handle').value;
@@ -142,8 +151,13 @@ const UIAuth = {
             submitBtn.disabled = true;
             submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Creando cuenta...`;
 
-            await FuncAuth.register({ username, handle, email, password });
-            UIAlerts.showSuccess('auth-alert-box', '¡Cuenta creada con éxito! Bienvenido a Stevscon.com.');
+            if (typeof FuncAuth !== 'undefined' && FuncAuth.register) {
+                await FuncAuth.register({ username, handle, email, password });
+            }
+
+            if (typeof UIAlerts !== 'undefined') {
+                UIAlerts.showSuccess('auth-alert-box', '¡Cuenta creada con éxito! Bienvenido a Stevscon.com.');
+            }
 
             setTimeout(() => {
                 if (typeof regresarASocial === 'function') {
@@ -151,7 +165,11 @@ const UIAuth = {
                 }
             }, 1200);
         } catch (error) {
-            UIAlerts.showError('auth-alert-box', error.message);
+            if (typeof UIAlerts !== 'undefined') {
+                UIAlerts.showError('auth-alert-box', error.message || 'Error al registrar la cuenta.');
+            } else {
+                alert(error.message || 'Error al registrar la cuenta.');
+            }
         } finally {
             submitBtn.disabled = false;
             submitBtn.innerHTML = `<i class="fa-solid fa-user-check"></i> Registrarse Ahora`;
