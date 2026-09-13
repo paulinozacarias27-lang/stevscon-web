@@ -1,4 +1,4 @@
-// category.js - Enrutador Principal
+// category.js - Enrutador Principal Robusto sin dependencias estrictas
 const CategoryApp = {
     init() {
         if (typeof UIButtons !== 'undefined' && UIButtons.renderHeaderAuth) {
@@ -38,11 +38,6 @@ const CategoryApp = {
     },
 
     renderFallbackAuth(container, tab = 'login') {
-        if (typeof UIAuth !== 'undefined' && UIAuth.renderAuthForm) {
-            UIAuth.renderAuthForm(tab);
-            return;
-        }
-
         const isLogin = tab === 'login';
         if (typeof UIButtons !== 'undefined' && UIButtons.renderHeaderAuth) {
             UIButtons.renderHeaderAuth();
@@ -120,7 +115,23 @@ const CategoryApp = {
 
         try {
             if (submitBtn) submitBtn.disabled = true;
-            await FuncAuth.login({ email, password });
+
+            if (typeof FuncAuth !== 'undefined' && FuncAuth.login) {
+                await FuncAuth.login({ email, password });
+            } else if (typeof MemoryAcc !== 'undefined') {
+                const cleanEmail = email.trim().toLowerCase();
+                const user = await MemoryAcc.getUserByEmail(cleanEmail);
+                if (!user) {
+                    throw new Error("¡No tienes una cuenta hecha aún! Regístrate primero.");
+                }
+                if (user.password !== password) {
+                    throw new Error("Contraseña incorrecta. Por favor, inténtalo de nuevo.");
+                }
+                MemoryAcc.setLocalUser(user);
+            } else {
+                throw new Error("Error de sistema: No se pudieron cargar los módulos de autenticación.");
+            }
+
             this.showSuccess('¡Sesión iniciada con éxito! Redirigiendo...');
             setTimeout(() => this.init(), 1000);
         } catch (error) {
@@ -140,7 +151,44 @@ const CategoryApp = {
 
         try {
             if (submitBtn) submitBtn.disabled = true;
-            await FuncAuth.register({ username, handle, email, password });
+
+            if (typeof FuncAuth !== 'undefined' && FuncAuth.register) {
+                await FuncAuth.register({ username, handle, email, password });
+            } else if (typeof MemoryAcc !== 'undefined') {
+                const cleanEmail = email.trim().toLowerCase();
+                let formattedHandle = handle.trim();
+                if (!formattedHandle.startsWith('@')) formattedHandle = '@' + formattedHandle;
+
+                const existingHandle = await MemoryAcc.getUserByHandle(formattedHandle);
+                if (existingHandle) {
+                    throw new Error(`El handle ${formattedHandle} ya está registrado por otro usuario.`);
+                }
+
+                const existingEmail = await MemoryAcc.getUserByEmail(cleanEmail);
+                if (existingEmail) {
+                    throw new Error("El correo electrónico ya está registrado en Stevscon.");
+                }
+
+                const newUser = {
+                    email: cleanEmail,
+                    password: password,
+                    username: username.trim(),
+                    handle: formattedHandle,
+                    role: "USER",
+                    verified: false,
+                    createdAt: new Date().toISOString()
+                };
+
+                await MemoryAcc.syncUserToFirebase(newUser);
+                MemoryAcc.setLocalUser(newUser);
+
+                if (typeof FuncBot !== 'undefined' && FuncBot.sendWelcomeEmail) {
+                    FuncBot.sendWelcomeEmail(newUser);
+                }
+            } else {
+                throw new Error("Error de sistema: No se pudieron cargar los módulos de autenticación.");
+            }
+
             this.showSuccess('¡Cuenta creada con éxito! Bienvenido a Stevscon.');
             setTimeout(() => this.init(), 1200);
         } catch (error) {
@@ -188,7 +236,7 @@ const CategoryApp = {
                     <p style="margin-bottom: 8px;"><strong style="color: #fff;">Correo:</strong> ${user.email || 'N/A'}</p>
                     <p><strong style="color: #fff;">Estado:</strong> Sesión activa en Stevscon Accounts.</p>
                 </div>
-                <button onclick="FuncAuth.logout()" class="btn btn-outline" style="padding: 10px 20px; border: 1px solid #ef4444; color: #ef4444; background: transparent; border-radius: 6px; cursor: pointer; font-weight: bold;">
+                <button onclick="if(typeof FuncAuth !== 'undefined'){FuncAuth.logout();}else{MemoryAcc.clearLocalUser();location.reload();}" class="btn btn-outline" style="padding: 10px 20px; border: 1px solid #ef4444; color: #ef4444; background: transparent; border-radius: 6px; cursor: pointer; font-weight: bold;">
                     Cerrar Sesión
                 </button>
             </div>
