@@ -3,79 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
-    <title>Stevscon.com - Official Website</title>
-
-    <!-- Meta etiqueta de descripción para motores de búsqueda (Google) -->
-    <meta name="description" content="Welcome to Stevscon.com, the official community platform by StevsLoL. Explore our early website access, connect with members, and stay updated with official announcements!">
-
-    <!-- Favicons optimizados para Google Search y Navegadores -->
-    <link rel="icon" type="image/png" sizes="192x192" href="SC-LOGO-20260825013121.png">
-    <link rel="apple-touch-icon" href="SC-LOGO-20260825013121.png">
-    <link rel="shortcut icon" type="image/png" href="SC-LOGO-20260825013121.png">
-
-    <!-- Meta etiquetas Open Graph (Vista previa en Discord, X y Redes Sociales) -->
-    <meta property="og:type" content="website">
-    <meta property="og:title" content="Stevscon.com - Official Website by StevsLoL">
-    <meta property="og:description" content="Welcome to Stevscon.com, the official community platform by StevsLoL. Explore our early website access, connect with members, and stay updated with official announcements!">
-    <meta property="og:image" content="https://stevscon.com/SC-LOGO-20260825013121.png">
-    <meta property="og:url" content="https://stevscon.com">
-
-    <link rel="stylesheet" href="styles.css?v=5">
+    <title>Stevscon.com</title>
+    <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
+
     <!-- Navegación Principal -->
     <header class="navbar">
-        <!-- ZONA DE CUENTAS (Esquina Izquierda) -->
-        <div id="auth-header-section" class="auth-header">
-            <!-- Contenido dinámico según la sesión -->
-        </div>
+        <div id="auth-header-section" class="auth-header"></div>
 
         <a href="#" class="brand" onclick="regresarASocial(); return false;">
-            <img src="SC-LOGO-20260825013121.png" alt="Stevscon Logo" class="brand-logo">
+            <img src="SC-LOGO-20260825013121.png" alt="Stevscon Logo" class="brand-logo" onerror="this.style.display='none'">
             <span>Stevscon.com</span>
         </a>
     </header>
 
-    <!-- Contenido Inyectado Dinámicamente -->
+    <!-- Contenedor donde se dibuja el formulario o pantalla principal -->
     <main class="main-container" id="app-root"></main>
 
-    <!-- SDK Oficial de EmailJS para el Gmail Bot -->
+    <!-- CDNs Externos -->
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
-
-    <!-- SDKs Oficiales de Firebase Realtime Database (Sincronización Global) -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
-    <!-- 1. Utilidades y Formato Base -->
-    <script src="usefull.js?v=5"></script>
-    <script src="memory.js?v=5"></script>
-    <script src="fonts.js?v=5"></script>
-    <script src="verified_acc.js?v=5"></script>
-    
-    <!-- 2. Módulo de Cuentas y Bot -->
-    <script src="Stevscon_Accounts/bot_acc.js?v=5"></script>
-    <script src="Stevscon_Accounts/save_acc.js?v=5"></script>
-    <script src="Stevscon_Accounts/admin_accounts.js?v=5"></script>
-    <script src="Stevscon_Accounts/accounts.js?v=5"></script>
-    <script src="Stevscon_Accounts/reset_pass.js?v=5"></script>
-    <script src="Stevscon_Accounts/UI_accounts.js?v=5"></script>
+    <!-- Archivos del Sistema de Cuentas -->
+    <script src="accounts_manage/accounts_ui/ui_alerts.js"></script>
+    <script src="accounts_manage/accounts_ui/ui_buttons.js"></script>
+    <script src="accounts_manage/accounts_ui/ui_auth.js"></script>
+    <script src="accounts_manage/accounts_func/func_auth.js"></script>
+    <script src="accounts_manage/accounts_func/func_bot.js"></script>
 
-    <!-- 3. Módulo Social y Perfil -->
-    <script src="Stevscon_social/profile.js?v=5"></script>
-    <script src="Stevscon_social/ui_social.js?v=5"></script>
-    <script src="Stevscon_social/func_social.js?v=5"></script>
-    <script src="Stevscon_social/acc_func.js?v=5"></script>
-    <script src="Stevscon_social/badges.js?v=5"></script>
-
-    <!-- 4. Módulo de Mensajería Directa (MD) -->
-    <script src="Stevscon_social/md_ui.js?v=5"></script>
-    <script src="Stevscon_social/md_func.js?v=5"></script>
-
-    <!-- 5. Enrutador Principal -->
-    <script src="category.js?v=5"></script>
+    <!-- Enrutador Principal -->
+    <script src="category.js"></script>
 </body>
 </html>
