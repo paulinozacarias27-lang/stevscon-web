@@ -99,13 +99,16 @@ const UIAuth = {
     },
 
     // Procesar Inicio de Sesión
-    async handleLoginSubmit(event) {
+        async handleLoginSubmit(event) {
         event.preventDefault();
         if (typeof UIAlerts !== 'undefined') UIAlerts.clear('auth-alert-box');
 
-        const email = document.getElementById('login-email').value;
-        const password = document.getElementById('login-password').value;
+        const emailInput = document.getElementById('login-email');
+        const passwordInput = document.getElementById('login-password');
         const submitBtn = document.getElementById('btn-login-submit');
+
+        const email = emailInput.value;
+        const password = passwordInput.value;
 
         try {
             submitBtn.disabled = true;
@@ -113,24 +116,30 @@ const UIAuth = {
 
             if (typeof FuncAuth !== 'undefined' && FuncAuth.login) {
                 await FuncAuth.login({ email, password });
-            }
-
-            if (typeof UIAlerts !== 'undefined') {
-                UIAlerts.showSuccess('auth-alert-box', '¡Sesión iniciada con éxito! Redirigiendo...');
-            }
-
-            setTimeout(() => {
-                if (typeof regresarASocial === 'function') {
-                    regresarASocial();
+                
+                if (typeof UIAlerts !== 'undefined') {
+                    UIAlerts.showSuccess('auth-alert-box', '¡Sesión iniciada con éxito! Redirigiendo...');
                 }
-            }, 1000);
+
+                setTimeout(() => {
+                    if (typeof CategoryApp !== 'undefined') {
+                        CategoryApp.init();
+                    } else if (typeof regresarASocial === 'function') {
+                        regresarASocial();
+                    } else {
+                        window.location.reload();
+                    }
+                }, 1000);
+            } else {
+                throw new Error("Módulo de autenticación no encontrado.");
+            }
         } catch (error) {
+            console.error("Error en Login:", error);
             if (typeof UIAlerts !== 'undefined') {
                 UIAlerts.showError('auth-alert-box', error.message || 'Error al iniciar sesión.');
             } else {
                 alert(error.message || 'Error al iniciar sesión.');
             }
-        } finally {
             submitBtn.disabled = false;
             submitBtn.innerHTML = `<i class="fa-solid fa-arrow-right-to-bracket"></i> Entrar a mi cuenta`;
         }

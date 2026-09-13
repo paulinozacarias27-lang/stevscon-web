@@ -3,6 +3,7 @@
 const firebaseConfig = {
     apiKey: "AIzaSyAJN6uAVY65MAXJW1_0aHHP0L5okE9Tytw",
     authDomain: "stevscon-protocole-base.firebaseapp.com",
+    databaseURL: "https://stevscon-protocole-base-default-rtdb.firebaseio.com", // AÑADIDO: URL necesaria para Database
     projectId: "stevscon-protocole-base",
     storageBucket: "stevscon-protocole-base.firebasestorage.app",
     messagingSenderId: "308982842818",
@@ -52,21 +53,25 @@ const MemoryAcc = {
     // -------------------------------------------------------------
     // CONSULTAS DE USUARIO (FIREBASE Y LOCAL)
     // -------------------------------------------------------------
-    async getUserByHandle(handle) {
+        async getUserByHandle(handle) {
         if (!handle) return null;
         const cleanHandle = handle.replace('@', '').toLowerCase();
 
-        // 1. Consultar Firebase
+        // 1. Intentar Firebase con un tiempo límite (Promise.race)
         if (db) {
             try {
-                const snapshot = await db.ref('users/' + cleanHandle).once('value');
-                if (snapshot.exists()) return snapshot.val();
+                // Creamos una promesa que falla a los 5 segundos para no dejar al usuario esperando
+                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000));
+                const dbPromise = db.ref('users/' + cleanHandle).once('value');
+                
+                const snapshot = await Promise.race([dbPromise, timeoutPromise]);
+                if (snapshot && snapshot.exists()) return snapshot.val();
             } catch (e) {
-                console.warn("Error consultando Firebase por handle:", e);
+                console.warn("Firebase no respondió a tiempo o error:", e.message);
             }
         }
 
-        // 2. Respaldo local
+        // 2. Respaldo local inmediato
         const localAccounts = this.getAllLocalAccounts();
         return localAccounts[cleanHandle] || null;
     },
