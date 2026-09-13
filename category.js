@@ -1,4 +1,4 @@
-// category.js - Enrutador Principal Robusto con Fallback
+// category.js - Enrutador Principal Unificado
 const CategoryApp = {
     init() {
         if (typeof UIButtons !== 'undefined' && UIButtons.renderHeaderAuth) {
@@ -37,23 +37,72 @@ const CategoryApp = {
 
     renderFallbackAuth(container, tab = 'login') {
         const isLogin = tab === 'login';
-        container.innerHTML = `
-            <div style="max-width: 400px; margin: 40px auto; padding: 30px; background: #12121a; border: 1px solid #232333; border-radius: 12px; color: #fff; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,0.5);">
-                <h2 style="margin-bottom: 20px; font-size: 1.5rem; color: #fff;">Stevscon Accounts</h2>
-                
-                <div style="display: flex; gap: 10px; margin-bottom: 20px; background: #1a1a26; padding: 4px; border-radius: 8px;">
-                    <button onclick="CategoryApp.renderFallbackAuth(document.getElementById('app-root'), 'login')" style="flex: 1; padding: 8px; border: none; border-radius: 6px; background: ${isLogin ? '#6366f1' : 'transparent'}; color: white; cursor: pointer; font-weight: bold;">Iniciar Sesión</button>
-                    <button onclick="CategoryApp.renderFallbackAuth(document.getElementById('app-root'), 'register')" style="flex: 1; padding: 8px; border: none; border-radius: 6px; background: ${!isLogin ? '#6366f1' : 'transparent'}; color: white; cursor: pointer; font-weight: bold;">Registrarse</button>
-                </div>
+        
+        // Renderizar botones del Header si no están presentes
+        if (typeof UIButtons !== 'undefined' && UIButtons.renderHeaderAuth) {
+            UIButtons.renderHeaderAuth();
+        }
 
-                <form onsubmit="event.preventDefault(); alert('${isLogin ? 'Iniciando sesión...' : 'Registrando cuenta...'}');" style="display: flex; flex-direction: column; gap: 14px;">
-                    ${!isLogin ? `<input type="text" placeholder="Nombre de usuario" required style="padding: 12px; background: #1a1a26; border: 1px solid #333; color: white; border-radius: 6px; outline: none;">` : ''}
-                    <input type="email" placeholder="Correo electrónico" required style="padding: 12px; background: #1a1a26; border: 1px solid #333; color: white; border-radius: 6px; outline: none;">
-                    <input type="password" placeholder="Contraseña" required style="padding: 12px; background: #1a1a26; border: 1px solid #333; color: white; border-radius: 6px; outline: none;">
-                    <button type="submit" style="padding: 12px; background: #6366f1; border: none; color: white; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px;">
-                        ${isLogin ? 'Ingresar' : 'Crear Cuenta'}
-                    </button>
-                </form>
+        container.innerHTML = `
+            <div class="auth-container">
+                <div class="stevscon-accounts-card">
+                    <div class="accounts-header">
+                        <i class="fa-solid fa-shield-cat accounts-logo"></i>
+                        <h2 style="font-weight: 800; color: var(--text-main, #ffffff);">Stevscon Accounts</h2>
+                        <p style="font-size: 0.85rem; color: var(--text-muted, #aaaaaa); margin-top: 4px;">
+                            Ingresa a la comunidad oficial de StevsLoL
+                        </p>
+                    </div>
+
+                    <div class="auth-tabs">
+                        <button class="auth-tab-btn ${isLogin ? 'active' : ''}" onclick="CategoryApp.renderFallbackAuth(document.getElementById('app-root'), 'login')">
+                            <i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesión
+                        </button>
+                        <button class="auth-tab-btn ${!isLogin ? 'active' : ''}" onclick="CategoryApp.renderFallbackAuth(document.getElementById('app-root'), 'register')">
+                            <i class="fa-solid fa-user-plus"></i> Crear Cuenta
+                        </button>
+                    </div>
+
+                    <div id="auth-alert-box"></div>
+
+                    ${isLogin ? `
+                        <form id="form-login" onsubmit="event.preventDefault(); if(typeof UIAuth !== 'undefined') UIAuth.handleLoginSubmit(event);">
+                            <div class="form-group">
+                                <label class="form-label"><i class="fa-solid fa-envelope"></i> Correo Electrónico</label>
+                                <input type="email" id="login-email" class="form-input" placeholder="ejemplo@stevscon.com" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label"><i class="fa-solid fa-lock"></i> Contraseña</label>
+                                <input type="password" id="login-password" class="form-input" placeholder="••••••••" required>
+                            </div>
+                            <button type="submit" id="btn-login-submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">
+                                <i class="fa-solid fa-arrow-right-to-bracket"></i> Entrar a mi cuenta
+                            </button>
+                        </form>
+                    ` : `
+                        <form id="form-register" onsubmit="event.preventDefault(); if(typeof UIAuth !== 'undefined') UIAuth.handleRegisterSubmit(event);">
+                            <div class="form-group">
+                                <label class="form-label"><i class="fa-solid fa-user"></i> Nombre de Usuario</label>
+                                <input type="text" id="reg-username" class="form-input" placeholder="Tu Nombre" required maxlength="25">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label"><i class="fa-solid fa-at"></i> Handle Único (@)</label>
+                                <input type="text" id="reg-handle" class="form-input" placeholder="@StevsLoL" required maxlength="20">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label"><i class="fa-solid fa-envelope"></i> Correo Electrónico</label>
+                                <input type="email" id="reg-email" class="form-input" placeholder="ejemplo@stevscon.com" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label"><i class="fa-solid fa-lock"></i> Contraseña para la Web</label>
+                                <input type="password" id="reg-password" class="form-input" placeholder="Crea una contraseña segura" required minlength="6">
+                            </div>
+                            <button type="submit" id="btn-reg-submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">
+                                <i class="fa-solid fa-user-check"></i> Registrarse Ahora
+                            </button>
+                        </form>
+                    `}
+                </div>
             </div>
         `;
     },
