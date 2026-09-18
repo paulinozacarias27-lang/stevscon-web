@@ -1,239 +1,66 @@
-// category.js - Enrutador Principal Robusto sin dependencias estrictas
 const CategoryApp = {
+    _escape(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    },
+
     init() {
         if (typeof UIButtons !== 'undefined' && UIButtons.renderHeaderAuth) {
             UIButtons.renderHeaderAuth();
         }
 
-        const currentUser = (typeof MemoryAcc !== 'undefined' && MemoryAcc.getLocalUser) 
-            ? MemoryAcc.getLocalUser() 
+        const currentUser = (typeof MemoryAcc !== 'undefined' && MemoryAcc.getLocalUser)
+            ? MemoryAcc.getLocalUser()
             : null;
 
         if (!currentUser) {
-            this.navigate('auth');
+            this.renderAuth('login');
         } else {
-            this.navigate('home', { user: currentUser });
+            this.renderHomeScreen(currentUser);
         }
     },
 
-    navigate(view, params = {}) {
+    onAuthReady(fbUser) {
+        if (!fbUser) {
+            const currentAuthForm = document.querySelector('.stevscon-accounts-card');
+            if (!currentAuthForm) {
+                this.renderAuth('login');
+            }
+        } else {
+            const currentUser = (typeof MemoryAcc !== 'undefined' && MemoryAcc.getLocalUser)
+                ? MemoryAcc.getLocalUser()
+                : null;
+            if (currentUser) {
+                this.renderHomeScreen(currentUser);
+            }
+        }
+    },
+
+    renderAuth(tab = 'login') {
+        if (typeof UIAuth !== 'undefined' && UIAuth.renderAuthForm) {
+            UIAuth.renderAuthForm(tab);
+        }
+    },
+
+    renderHomeScreen(user) {
         const root = document.getElementById('app-root');
         if (!root) return;
 
-        const currentUser = (typeof MemoryAcc !== 'undefined' && MemoryAcc.getLocalUser) 
-            ? MemoryAcc.getLocalUser() 
-            : null;
+        const escapedUsername = this._escape(user.username || 'Usuario');
+        const escapedHandle = this._escape(user.handle || '');
+        const escapedEmail = this._escape(user.email || 'N/A');
+        const avatarInitial = this._escape((user.username || 'U').charAt(0).toUpperCase());
 
-        if (view === 'auth' && !currentUser) {
-            if (typeof UIAuth !== 'undefined' && UIAuth.renderAuthForm) {
-                UIAuth.renderAuthForm(params.tab || 'login');
-            } else {
-                this.renderFallbackAuth(root, params.tab || 'login');
-            }
-        } else if (currentUser) {
-            this.renderHomeScreen(root, currentUser);
-        } else {
-            this.renderFallbackAuth(root, 'login');
-        }
-    },
-
-    renderFallbackAuth(container, tab = 'login') {
-        const isLogin = tab === 'login';
-        if (typeof UIButtons !== 'undefined' && UIButtons.renderHeaderAuth) {
-            UIButtons.renderHeaderAuth();
-        }
-
-        container.innerHTML = `
-            <div class="auth-container">
-                <div class="stevscon-accounts-card">
-                    <div class="accounts-header">
-                        <i class="fa-solid fa-shield-cat accounts-logo"></i>
-                        <h2 style="font-weight: 800; color: var(--text-main, #ffffff);">Stevscon Accounts</h2>
-                        <p style="font-size: 0.85rem; color: var(--text-muted, #aaaaaa); margin-top: 4px;">
-                            Ingresa a la comunidad oficial de StevsLoL
-                        </p>
-                    </div>
-
-                    <div class="auth-tabs">
-                        <button class="auth-tab-btn ${isLogin ? 'active' : ''}" onclick="CategoryApp.renderFallbackAuth(document.getElementById('app-root'), 'login')">
-                            <i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesión
-                        </button>
-                        <button class="auth-tab-btn ${!isLogin ? 'active' : ''}" onclick="CategoryApp.renderFallbackAuth(document.getElementById('app-root'), 'register')">
-                            <i class="fa-solid fa-user-plus"></i> Crear Cuenta
-                        </button>
-                    </div>
-
-                    <div id="auth-alert-box"></div>
-
-                    ${isLogin ? `
-                        <form id="form-login" onsubmit="CategoryApp.handleLogin(event)">
-                            <div class="form-group">
-                                <label class="form-label"><i class="fa-solid fa-envelope"></i> Correo Electrónico</label>
-                                <input type="email" id="login-email" class="form-input" placeholder="ejemplo@stevscon.com" required>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label"><i class="fa-solid fa-lock"></i> Contraseña</label>
-                                <input type="password" id="login-password" class="form-input" placeholder="••••••••" required>
-                            </div>
-                            <button type="submit" id="btn-login-submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">
-                                <i class="fa-solid fa-arrow-right-to-bracket"></i> Entrar a mi cuenta
-                            </button>
-                        </form>
-                    ` : `
-                        <form id="form-register" onsubmit="CategoryApp.handleRegister(event)">
-                            <div class="form-group">
-                                <label class="form-label"><i class="fa-solid fa-user"></i> Nombre de Usuario</label>
-                                <input type="text" id="reg-username" class="form-input" placeholder="Tu Nombre" required maxlength="25">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label"><i class="fa-solid fa-at"></i> Handle Único (@)</label>
-                                <input type="text" id="reg-handle" class="form-input" placeholder="@StevsLoL" required maxlength="20">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label"><i class="fa-solid fa-envelope"></i> Correo Electrónico</label>
-                                <input type="email" id="reg-email" class="form-input" placeholder="ejemplo@stevscon.com" required>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label"><i class="fa-solid fa-lock"></i> Contraseña para la Web</label>
-                                <input type="password" id="reg-password" class="form-input" placeholder="Crea una contraseña segura" required minlength="6">
-                            </div>
-                            <button type="submit" id="btn-reg-submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">
-                                <i class="fa-solid fa-user-check"></i> Registrarse Ahora
-                            </button>
-                        </form>
-                    `}
-                </div>
-            </div>
-        `;
-    },
-
-    async handleLogin(event) {
-        event.preventDefault();
-        const email = document.getElementById('login-email').value;
-        const password = document.getElementById('login-password').value;
-        const submitBtn = document.getElementById('btn-login-submit');
-
-        try {
-            if (submitBtn) submitBtn.disabled = true;
-
-            if (typeof FuncAuth !== 'undefined' && FuncAuth.login) {
-                await FuncAuth.login({ email, password });
-            } else if (typeof MemoryAcc !== 'undefined') {
-                const cleanEmail = email.trim().toLowerCase();
-                const user = await MemoryAcc.getUserByEmail(cleanEmail);
-                if (!user) {
-                    throw new Error("¡No tienes una cuenta hecha aún! Regístrate primero.");
-                }
-                if (user.password !== password) {
-                    throw new Error("Contraseña incorrecta. Por favor, inténtalo de nuevo.");
-                }
-                MemoryAcc.setLocalUser(user);
-            } else {
-                throw new Error("Error de sistema: No se pudieron cargar los módulos de autenticación.");
-            }
-
-            this.showSuccess('¡Sesión iniciada con éxito! Redirigiendo...');
-            setTimeout(() => this.init(), 1000);
-        } catch (error) {
-            this.showError(error.message);
-        } finally {
-            if (submitBtn) submitBtn.disabled = false;
-        }
-    },
-
-    async handleRegister(event) {
-        event.preventDefault();
-        const username = document.getElementById('reg-username').value;
-        const handle = document.getElementById('reg-handle').value;
-        const email = document.getElementById('reg-email').value;
-        const password = document.getElementById('reg-password').value;
-        const submitBtn = document.getElementById('btn-reg-submit');
-
-        try {
-            if (submitBtn) submitBtn.disabled = true;
-
-            if (typeof FuncAuth !== 'undefined' && FuncAuth.register) {
-                await FuncAuth.register({ username, handle, email, password });
-            } else if (typeof MemoryAcc !== 'undefined') {
-                const cleanEmail = email.trim().toLowerCase();
-                let formattedHandle = handle.trim();
-                if (!formattedHandle.startsWith('@')) formattedHandle = '@' + formattedHandle;
-
-                const existingHandle = await MemoryAcc.getUserByHandle(formattedHandle);
-                if (existingHandle) {
-                    throw new Error(`El handle ${formattedHandle} ya está registrado por otro usuario.`);
-                }
-
-                const existingEmail = await MemoryAcc.getUserByEmail(cleanEmail);
-                if (existingEmail) {
-                    throw new Error("El correo electrónico ya está registrado en Stevscon.");
-                }
-
-                const newUser = {
-                    email: cleanEmail,
-                    password: password,
-                    username: username.trim(),
-                    handle: formattedHandle,
-                    role: "USER",
-                    verified: false,
-                    createdAt: new Date().toISOString()
-                };
-
-                await MemoryAcc.syncUserToFirebase(newUser);
-                MemoryAcc.setLocalUser(newUser);
-
-                if (typeof FuncBot !== 'undefined' && FuncBot.sendWelcomeEmail) {
-                    FuncBot.sendWelcomeEmail(newUser);
-                }
-            } else {
-                throw new Error("Error de sistema: No se pudieron cargar los módulos de autenticación.");
-            }
-
-            this.showSuccess('¡Cuenta creada con éxito! Bienvenido a Stevscon.');
-            setTimeout(() => this.init(), 1200);
-        } catch (error) {
-            this.showError(error.message);
-        } finally {
-            if (submitBtn) submitBtn.disabled = false;
-        }
-    },
-
-    showError(msg) {
-        const box = document.getElementById('auth-alert-box');
-        if (box) {
-            box.innerHTML = `
-                <div style="padding: 10px 14px; background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #ffffff; border-radius: 8px; margin-bottom: 15px; font-size: 0.88rem; display: flex; align-items: center; gap: 8px;">
-                    <i class="fa-solid fa-triangle-exclamation" style="color: #ef4444;"></i>
-                    <span>${msg}</span>
-                </div>
-            `;
-        } else {
-            alert(msg);
-        }
-    },
-
-    showSuccess(msg) {
-        const box = document.getElementById('auth-alert-box');
-        if (box) {
-            box.innerHTML = `
-                <div style="padding: 10px 14px; background: rgba(139, 92, 246, 0.2); border: 1px solid #8b5cf6; color: #ffffff; border-radius: 8px; margin-bottom: 15px; font-size: 0.88rem; display: flex; align-items: center; gap: 8px;">
-                    <i class="fa-solid fa-circle-check" style="color: #8b5cf6;"></i>
-                    <span>${msg}</span>
-                </div>
-            `;
-        }
-    },
-
-    renderHomeScreen(container, user) {
-        container.innerHTML = `
+        root.innerHTML = `
             <div style="max-width: 600px; margin: 40px auto; text-align: center; padding: 35px 25px; background: #12121a; border: 1px solid #232333; border-radius: 12px; color: white;">
                 <div style="width: 75px; height: 75px; font-size: 2.2rem; margin: 0 auto 15px auto; background: #6366f1; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold;">
-                    ${user.username ? user.username.charAt(0).toUpperCase() : 'U'}
+                    ${avatarInitial}
                 </div>
-                <h2 style="font-size: 1.8rem; margin-bottom: 5px;">¡Bienvenido, ${user.username}!</h2>
-                <p style="color: #aaa; font-size: 1rem; margin-bottom: 15px;">${user.handle || ''}</p>
+                <h2 style="font-size: 1.8rem; margin-bottom: 5px;">¡Bienvenido, ${escapedUsername}!</h2>
+                <p style="color: #aaa; font-size: 1rem; margin-bottom: 15px;">${escapedHandle}</p>
                 <div style="background: #1a1a26; border: 1px solid #333; border-radius: 10px; padding: 18px; text-align: left; font-size: 0.9rem; color: #aaa; margin-bottom: 20px;">
-                    <p style="margin-bottom: 8px;"><strong style="color: #fff;">Correo:</strong> ${user.email || 'N/A'}</p>
+                    <p style="margin-bottom: 8px;"><strong style="color: #fff;">Correo:</strong> ${escapedEmail}</p>
                     <p><strong style="color: #fff;">Estado:</strong> Sesión activa en Stevscon Accounts.</p>
                 </div>
                 <button onclick="if(typeof FuncAuth !== 'undefined'){FuncAuth.logout();}else{MemoryAcc.clearLocalUser();location.reload();}" class="btn btn-outline" style="padding: 10px 20px; border: 1px solid #ef4444; color: #ef4444; background: transparent; border-radius: 6px; cursor: pointer; font-weight: bold;">

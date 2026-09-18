@@ -1,90 +1,143 @@
-// func_auth.js - Lógica Principal de Autenticación Unificada
-
 const FuncAuth = {
-    // -------------------------------------------------------------
-    // REGISTRO DE NUEVA CUENTA
-    // -------------------------------------------------------------
+    _traducirErrorFirebase(error) {
+        const code = error.code || '';
+        const translations = {
+            'auth/email-already-in-use': 'El correo electrónico ya está registrado.',
+            'auth/invalid-email': 'El correo electrónico no es válido.',
+            'auth/weak-password': 'La contraseña debe tener al menos 6 caracteres.',
+            'auth/user-not-found': 'No existe una cuenta con este correo.',
+            'auth/wrong-password': 'Contraseña incorrecta.',
+            'auth/invalid-credential': 'Credenciales inválidas.',
+            'auth/too-many-requests': 'Demasiados intentos fallidos. Intenta más tarde.',
+            'auth/network-request-failed': 'Error de conexión. Verifica tu internet.'
+        };
+        return translations[code] || error.message || 'Error de autenticación.';
+    },
+
     async register({ email, password, username, handle }) {
+        if (!email || !password || !username || !handle) {
+            throw new Error('Todos los campos son requeridos.');
+        }
+
+        if (password.length < 6) {
+            throw new Error('La contraseña debe tener al menos 6 caracteres.');
+        }
+
+        const cleanHandle = handle.replace('@', '').toLowerCase();
+        if (!/^[a-z0-9_]+$/.test(cleanHandle)) {
+            throw new Error('El handle solo puede contener letras minúsculas, números y guion bajo.');
+        }
+
+        const formattedHandle = '@' + cleanHandle;
         const cleanEmail = email.trim().toLowerCase();
-        let formattedHandle = handle.trim();
-        if (!formattedHandle.startsWith('@')) {
-            formattedHandle = '@' + formattedHandle;
+
+        const existingProfile = await MemoryAcc.getProfileByHandle(formattedHandle);
+        if (existingProfile) {
+            throw new Error(`El handle ${formattedHandle} ya está en uso.`);
         }
 
-        // 1. Comprobar si el Handle ya existe
-        const existingHandle = await MemoryAcc.getUserByHandle(formattedHandle);
-        if (existingHandle) {
-            throw new Error(`El handle ${formattedHandle} ya está registrado por otro usuario.`);
+        let credential;
+        try {
+            credential = await auth.createUserWithEmailAndPassword(cleanEmail, password);
+        } catch (e) {
+            throw new Error(this._traducirErrorFirebase(e));
         }
 
-        // 2. Comprobar si el Correo ya existe
-        const existingEmail = await MemoryAcc.getUserByEmail(cleanEmail);
-        if (existingEmail) {
-            throw new Error("El correo electrónico ya está registrado en Stevscon.");
-        }
-
-        // 3. Crear estructura del usuario
-        const newUser = {
+        const uid = credential.user.uid;
+        const newProfile = {
+            uid: uid,
             email: cleanEmail,
-            password: password,
             username: username.trim(),
             handle: formattedHandle,
-            role: "USER",
+            handleLower: cleanHandle,
+            role: 'User',
             verified: false,
             createdAt: new Date().toISOString()
         };
 
-        // 4. Guardar cuenta
-        await MemoryAcc.syncUserToFirebase(newUser);
-        MemoryAcc.setLocalUser(newUser);
+        try {
+            await credential.user.updateProfile({ displayName: username.trim() });
+        } catch (e) {
+            console.warn("Could not update display name:", e);
+        }
 
-        // 5. Enviar correo de bienvenida si existe el módulo
+        await MemoryAcc.saveUserProfile(uid, newProfile);
+
+        let finalProfile = newProfile;
+        if (OwnerSystem.isOwner(newProfile)) {
+            finalProfile = await OwnerSystem.ensureOwnerAccount(uid, newProfile);
+        }
+
+        MemoryAcc.setLocalUser(finalProfile);
+
         if (typeof FuncBot !== 'undefined' && FuncBot.sendWelcomeEmail) {
-            FuncBot.sendWelcomeEmail(newUser);
+            FuncBot.sendWelcomeEmail(finalProfile);
         }
 
         if (typeof UIButtons !== 'undefined' && UIButtons.renderHeaderAuth) {
             UIButtons.renderHeaderAuth();
         }
 
-        return newUser;
+        return finalProfile;
     },
 
-    // -------------------------------------------------------------
-    // INICIO DE SESIÓN
-    // -------------------------------------------------------------
     async login({ email, password }) {
+        if (!email || !password) {
+            throw new Error('Email y contraseña son requeridos.');
+        }
+
         const cleanEmail = email.trim().toLowerCase();
 
-        // 1. Verificar si la cuenta existe
-        const user = await MemoryAcc.getUserByEmail(cleanEmail);
-        if (!user) {
-            throw new Error("¡No tienes una cuenta hecha aún! Regístrate primero.");
+        let credential;
+        try {
+            credential = await auth.signInWithEmailAndPassword(cleanEmail, password);
+        } catch (e) {
+            throw new Error(this._traducirErrorFirebase(e));
         }
 
-        // 2. Validar la contraseña
-        if (user.password !== password) {
-            throw new Error("Contraseña incorrecta. Por favor, inténtalo de nuevo.");
+        const uid = credential.user.uid;
+        let profile = await MemoryAcc.getUserProfile(uid);
+
+        if (!profile) {
+            profile = {
+                uid: uid,
+                email: cleanEmail,
+                username: credential.user.displayName || 'Usuario',
+                handle: '@usuario',
+                handleLower: 'usuario',
+                role: 'User',
+                verified: false,
+                createdAt: new Date().toISOString()
+            };
+            await MemoryAcc.saveUserProfile(uid, profile);
         }
 
-        // 3. Establecer Sesión Activa
-        MemoryAcc.setLocalUser(user);
+        if (OwnerSystem.isOwner(profile)) {
+            profile = await OwnerSystem.ensureOwnerAccount(uid, profile);
+        }
+
+        MemoryAcc.setLocalUser(profile);
 
         if (typeof UIButtons !== 'undefined' && UIButtons.renderHeaderAuth) {
             UIButtons.renderHeaderAuth();
         }
 
-        return user;
+        return profile;
     },
 
-    // -------------------------------------------------------------
-    // CERRAR SESIÓN
-    // -------------------------------------------------------------
-    logout() {
+    async logout() {
+        try {
+            await auth.signOut();
+        } catch (e) {
+            console.error("Error signing out:", e);
+        }
+
         MemoryAcc.clearLocalUser();
+
         if (typeof UIButtons !== 'undefined' && UIButtons.renderHeaderAuth) {
             UIButtons.renderHeaderAuth();
         }
+
         if (typeof regresarASocial === 'function') {
             regresarASocial();
         } else {
@@ -92,3 +145,29 @@ const FuncAuth = {
         }
     }
 };
+
+if (typeof auth !== 'undefined' && auth) {
+    auth.onAuthStateChanged(async (fbUser) => {
+        if (!fbUser) {
+            MemoryAcc.clearLocalUser();
+        } else {
+            const profile = await MemoryAcc.getUserProfile(fbUser.uid);
+            if (profile) {
+                if (OwnerSystem.isOwner(profile)) {
+                    const verifiedProfile = await OwnerSystem.ensureOwnerAccount(fbUser.uid, profile);
+                    MemoryAcc.setLocalUser(verifiedProfile);
+                } else {
+                    MemoryAcc.setLocalUser(profile);
+                }
+            }
+        }
+
+        if (typeof UIButtons !== 'undefined' && UIButtons.renderHeaderAuth) {
+            UIButtons.renderHeaderAuth();
+        }
+
+        if (typeof CategoryApp !== 'undefined' && CategoryApp.onAuthReady) {
+            CategoryApp.onAuthReady(fbUser);
+        }
+    });
+}

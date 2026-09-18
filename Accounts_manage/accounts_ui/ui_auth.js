@@ -98,14 +98,18 @@ const UIAuth = {
         }
     },
 
-    // Procesar Inicio de Sesión
-        async handleLoginSubmit(event) {
+    async handleLoginSubmit(event) {
         event.preventDefault();
         if (typeof UIAlerts !== 'undefined') UIAlerts.clear('auth-alert-box');
 
         const emailInput = document.getElementById('login-email');
         const passwordInput = document.getElementById('login-password');
         const submitBtn = document.getElementById('btn-login-submit');
+
+        if (!emailInput || !passwordInput || !submitBtn) {
+            console.error("Login form elements not found");
+            return;
+        }
 
         const email = emailInput.value;
         const password = passwordInput.value;
@@ -122,7 +126,7 @@ const UIAuth = {
                 }
 
                 setTimeout(() => {
-                    if (typeof CategoryApp !== 'undefined') {
+                    if (typeof CategoryApp !== 'undefined' && CategoryApp.init) {
                         CategoryApp.init();
                     } else if (typeof regresarASocial === 'function') {
                         regresarASocial();
@@ -145,16 +149,25 @@ const UIAuth = {
         }
     },
 
-    // Procesar Registro de Cuenta
     async handleRegisterSubmit(event) {
         event.preventDefault();
         if (typeof UIAlerts !== 'undefined') UIAlerts.clear('auth-alert-box');
 
-        const username = document.getElementById('reg-username').value;
-        const handle = document.getElementById('reg-handle').value;
-        const email = document.getElementById('reg-email').value;
-        const password = document.getElementById('reg-password').value;
+        const usernameInput = document.getElementById('reg-username');
+        const handleInput = document.getElementById('reg-handle');
+        const emailInput = document.getElementById('reg-email');
+        const passwordInput = document.getElementById('reg-password');
         const submitBtn = document.getElementById('btn-reg-submit');
+
+        if (!usernameInput || !handleInput || !emailInput || !passwordInput || !submitBtn) {
+            console.error("Register form elements not found");
+            return;
+        }
+
+        const username = usernameInput.value;
+        const handle = handleInput.value;
+        const email = emailInput.value;
+        const password = passwordInput.value;
 
         try {
             submitBtn.disabled = true;
@@ -169,8 +182,12 @@ const UIAuth = {
             }
 
             setTimeout(() => {
-                if (typeof regresarASocial === 'function') {
+                if (typeof CategoryApp !== 'undefined' && CategoryApp.init) {
+                    CategoryApp.init();
+                } else if (typeof regresarASocial === 'function') {
                     regresarASocial();
+                } else {
+                    window.location.reload();
                 }
             }, 1200);
         } catch (error) {

@@ -1,9 +1,7 @@
-// memory_acc.js - Central de Memoria, Firebase y Almacenamiento Local
-
 const firebaseConfig = {
     apiKey: "AIzaSyAJN6uAVY65MAXJW1_0aHHP0L5okE9Tytw",
     authDomain: "stevscon-protocole-base.firebaseapp.com",
-    databaseURL: "https://stevscon-protocole-base-default-rtdb.firebaseio.com", // AÑADIDO: URL necesaria para Database
+    databaseURL: "https://stevscon-protocole-base-default-rtdb.firebaseio.com",
     projectId: "stevscon-protocole-base",
     storageBucket: "stevscon-protocole-base.firebasestorage.app",
     messagingSenderId: "308982842818",
@@ -16,11 +14,9 @@ if (typeof firebase !== 'undefined' && !firebase.apps.length) {
 }
 
 const db = (typeof firebase !== 'undefined' && firebase.apps.length) ? firebase.database() : null;
+const auth = (typeof firebase !== 'undefined' && firebase.apps.length) ? firebase.auth() : null;
 
 const MemoryAcc = {
-    // -------------------------------------------------------------
-    // SESIÓN ACTIVA DEL USUARIO
-    // -------------------------------------------------------------
     setLocalUser(userData) {
         localStorage.setItem('stevscon_active_user', JSON.stringify(userData));
     },
@@ -32,97 +28,50 @@ const MemoryAcc = {
 
     clearLocalUser() {
         localStorage.removeItem('stevscon_active_user');
-        localStorage.removeItem('stevscon_user'); // Limpieza de claves obsoletas
+        localStorage.removeItem('stevscon_user');
+        localStorage.removeItem('stevscon_accounts_db');
     },
 
-    // -------------------------------------------------------------
-    // BASE DE DATOS LOCAL DE RESPALDO
-    // -------------------------------------------------------------
-    getAllLocalAccounts() {
-        const data = localStorage.getItem('stevscon_accounts_db');
-        return data ? JSON.parse(data) : {};
-    },
-
-    saveLocalAccount(userData) {
-        const accounts = this.getAllLocalAccounts();
-        const cleanHandle = userData.handle.replace('@', '').toLowerCase();
-        accounts[cleanHandle] = userData;
-        localStorage.setItem('stevscon_accounts_db', JSON.stringify(accounts));
-    },
-
-    // -------------------------------------------------------------
-    // CONSULTAS DE USUARIO (FIREBASE Y LOCAL)
-    // -------------------------------------------------------------
-        async getUserByHandle(handle) {
-        if (!handle) return null;
-        const cleanHandle = handle.replace('@', '').toLowerCase();
-
-        // 1. Intentar Firebase con un tiempo límite (Promise.race)
-        if (db) {
-            try {
-                // Creamos una promesa que falla a los 5 segundos para no dejar al usuario esperando
-                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000));
-                const dbPromise = db.ref('users/' + cleanHandle).once('value');
-                
-                const snapshot = await Promise.race([dbPromise, timeoutPromise]);
-                if (snapshot && snapshot.exists()) return snapshot.val();
-            } catch (e) {
-                console.warn("Firebase no respondió a tiempo o error:", e.message);
-            }
+    async getUserProfile(uid) {
+        if (!uid || !db) return null;
+        try {
+            const snapshot = await db.ref('users/' + uid).once('value');
+            return snapshot.exists() ? snapshot.val() : null;
+        } catch (e) {
+            console.error("Error reading user profile:", e);
+            return null;
         }
-
-        // 2. Respaldo local inmediato
-        const localAccounts = this.getAllLocalAccounts();
-        return localAccounts[cleanHandle] || null;
     },
 
-    async getUserByEmail(email) {
-        if (!email) return null;
-        const cleanEmail = email.trim().toLowerCase();
-
-        // 1. Consultar Firebase
-        if (db) {
-            try {
-                const snapshot = await db.ref('users').orderByChild('email').equalTo(cleanEmail).once('value');
-                if (snapshot.exists()) {
-                    let foundUser = null;
-                    snapshot.forEach(child => {
-                        foundUser = child.val();
-                    });
-                    if (foundUser) return foundUser;
-                }
-            } catch (e) {
-                console.warn("Error consultando Firebase por email:", e);
-            }
+    async saveUserProfile(uid, profileData) {
+        if (!uid || !db || !profileData) return false;
+        try {
+            await db.ref('users/' + uid).update(profileData);
+            return true;
+        } catch (e) {
+            console.error("Error saving user profile:", e);
+            return false;
         }
-
-        // 2. Respaldo local
-        const localAccounts = this.getAllLocalAccounts();
-        for (const key in localAccounts) {
-            if (localAccounts[key].email && localAccounts[key].email.toLowerCase() === cleanEmail) {
-                return localAccounts[key];
-            }
-        }
-        return null;
     },
 
-    // -------------------------------------------------------------
-    // GUARDADO Y SINCRONIZACIÓN DE CUENTAS
-    // -------------------------------------------------------------
-    async syncUserToFirebase(userData) {
-        if (!userData || !userData.handle) return;
-        const cleanHandle = userData.handle.replace('@', '').toLowerCase();
-
-        // Guardar localmente
-        this.saveLocalAccount(userData);
-
-        // Sincronizar en Firebase Realtime Database
-        if (db) {
-            try {
-                await db.ref('users/' + cleanHandle).update(userData);
-            } catch (e) {
-                console.warn("Advertencia al sincronizar con Firebase:", e);
+    async getProfileByHandle(handle) {
+        if (!handle || !db) return null;
+        try {
+            const cleanHandle = handle.replace('@', '').toLowerCase();
+            const snapshot = await db.ref('users').orderByChild('handleLower').equalTo(cleanHandle).once('value');
+            if (snapshot.exists()) {
+                let foundProfile = null;
+                let foundUid = null;
+                snapshot.forEach(child => {
+                    foundUid = child.key;
+                    foundProfile = child.val();
+                });
+                return foundProfile ? { uid: foundUid, ...foundProfile } : null;
             }
+            return null;
+        } catch (e) {
+            console.error("Error getting profile by handle:", e);
+            return null;
         }
     }
 };
