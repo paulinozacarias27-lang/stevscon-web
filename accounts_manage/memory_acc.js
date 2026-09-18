@@ -16,6 +16,13 @@ if (typeof firebase !== 'undefined' && !firebase.apps.length) {
 const db = (typeof firebase !== 'undefined' && firebase.apps.length) ? firebase.database() : null;
 const auth = (typeof firebase !== 'undefined' && firebase.apps.length) ? firebase.auth() : null;
 
+function _withTimeout(promise, ms, label) {
+    return Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error(`Tiempo de espera agotado (${label}). Verifica tu conexión o la configuración de Firebase.`)), ms))
+    ]);
+}
+
 const MemoryAcc = {
     setLocalUser(userData) {
         localStorage.setItem('stevscon_active_user', JSON.stringify(userData));
@@ -35,7 +42,7 @@ const MemoryAcc = {
     async getUserProfile(uid) {
         if (!uid || !db) return null;
         try {
-            const snapshot = await db.ref('users/' + uid).once('value');
+            const snapshot = await _withTimeout(db.ref('users/' + uid).once('value'), 10000, 'getUserProfile');
             return snapshot.exists() ? snapshot.val() : null;
         } catch (e) {
             console.error("Error reading user profile:", e);
@@ -46,7 +53,7 @@ const MemoryAcc = {
     async saveUserProfile(uid, profileData) {
         if (!uid || !db || !profileData) return false;
         try {
-            await db.ref('users/' + uid).update(profileData);
+            await _withTimeout(db.ref('users/' + uid).update(profileData), 10000, 'saveUserProfile');
             return true;
         } catch (e) {
             console.error("Error saving user profile:", e);
@@ -58,7 +65,11 @@ const MemoryAcc = {
         if (!handle || !db) return null;
         try {
             const cleanHandle = handle.replace('@', '').toLowerCase();
-            const snapshot = await db.ref('users').orderByChild('handleLower').equalTo(cleanHandle).once('value');
+            const snapshot = await _withTimeout(
+                db.ref('users').orderByChild('handleLower').equalTo(cleanHandle).once('value'),
+                10000,
+                'getProfileByHandle'
+            );
             if (snapshot.exists()) {
                 let foundProfile = null;
                 let foundUid = null;
@@ -71,7 +82,7 @@ const MemoryAcc = {
             return null;
         } catch (e) {
             console.error("Error getting profile by handle:", e);
-            return null;
+            throw e;
         }
     }
 };
