@@ -22,9 +22,9 @@ const UIButtons = {
 
             let badgeIcon = '';
             if (isOwner) {
-                badgeIcon = '<i class="fa-solid fa-crown" style="color:#f59e0b;" title="Owner"></i>';
+                badgeIcon = '<span class="badge-tooltip-wrapper"><i class="fa-solid fa-crown" style="color:#f59e0b;"></i><span class="badge-tooltip"><span class="badge-tooltip-title">Owner</span><span class="badge-tooltip-desc">Owner of Stevscon.com</span></span></span>';
             } else if (isAdmin) {
-                badgeIcon = '<i class="fa-solid fa-shield-halved" style="color:var(--purple-accent);" title="Admin"></i>';
+                badgeIcon = '<span class="badge-tooltip-wrapper"><i class="fa-solid fa-shield-halved" style="color:var(--purple-accent);"></i><span class="badge-tooltip"><span class="badge-tooltip-title">Admin</span><span class="badge-tooltip-desc">Administrador de Stevscon.com</span></span></span>';
             }
 
             const escapedUsername = this._escape(activeUser.username || 'Usuario');
@@ -39,7 +39,7 @@ const UIButtons = {
             const statusPickerHTML = (typeof ProfileSystem !== 'undefined' && ProfileSystem.getStatusPickerHTML) ? ProfileSystem.getStatusPickerHTML(activeUser.status || 'offline') : '';
 
             container.innerHTML = `
-                <div style="display:flex;align-items:center;gap:10px;position:relative;">
+                <div style="display:flex;align-items:center;gap:10px;">
                     <button class="btn btn-outline btn-sm" onclick="if(typeof MessagesSystem!=='undefined')MessagesSystem.renderMessagesPage()" style="position:relative;" title="Mensajes">
                         <i class="fa-solid fa-envelope"></i>
                         <span id="unread-badge-header" style="display:none;position:absolute;top:-5px;right:-5px;background:var(--danger);color:white;border-radius:50px;padding:1px 6px;font-size:0.65rem;font-weight:800;min-width:16px;text-align:center;">0</span>
@@ -51,18 +51,17 @@ const UIButtons = {
                             <span style="font-size:0.78rem;color:var(--text-muted);">${escapedHandle}</span>
                         </div>
                         <i class="fa-solid fa-chevron-down" style="font-size:0.7rem;color:var(--text-muted);"></i>
+                        <div id="user-dropdown-menu" style="display:none;position:absolute;top:100%;right:0;margin-top:8px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.6);z-index:200;min-width:220px;overflow:visible;">
+                            <div onclick="event.stopPropagation();UIButtons.goToProfile()" style="padding:10px 15px;cursor:pointer;display:flex;align-items:center;gap:10px;color:var(--text-main);font-size:0.9rem;" onmouseover="this.style.background='var(--bg-hover)';" onmouseout="this.style.background='';"><i class="fa-solid fa-user"></i> Ver mi perfil</div>
+                            <div onclick="event.stopPropagation();UIButtons.goToEditProfile()" style="padding:10px 15px;cursor:pointer;display:flex;align-items:center;gap:10px;color:var(--text-main);font-size:0.9rem;" onmouseover="this.style.background='var(--bg-hover)';" onmouseout="this.style.background='';"><i class="fa-solid fa-pen"></i> Editar perfil</div>
+                            <div onclick="event.stopPropagation();ProfileSystem.toggleStatusPicker(event)" style="padding:10px 15px;cursor:pointer;display:flex;align-items:center;gap:10px;color:var(--text-main);font-size:0.9rem;position:relative;" onmouseover="this.style.background='var(--bg-hover)';" onmouseout="this.style.background='';"><span class="status-indicator" style="width:18px;height:18px;">${statusSvg}</span> Cambiar estado <i class="fa-solid fa-chevron-right" style="font-size:0.6rem;margin-left:auto;color:var(--text-muted);"></i></div>
+                            ${statusPickerHTML}
+                            <div onclick="event.stopPropagation();UIButtons.goToFriends()" style="padding:10px 15px;cursor:pointer;display:flex;align-items:center;gap:10px;color:var(--text-main);font-size:0.9rem;" onmouseover="this.style.background='var(--bg-hover)';" onmouseout="this.style.background='';"><i class="fa-solid fa-users"></i> Amigos</div>
+                            <div onclick="event.stopPropagation();UIButtons.goToMessages()" style="padding:10px 15px;cursor:pointer;display:flex;align-items:center;gap:10px;color:var(--text-main);font-size:0.9rem;" onmouseover="this.style.background='var(--bg-hover)';" onmouseout="this.style.background='';"><i class="fa-solid fa-envelope"></i> Mensajes</div>
+                            <div style="border-top:1px solid var(--border-color);"></div>
+                            <div onclick="event.stopPropagation();if(typeof FuncAuth!=='undefined')FuncAuth.logout();" style="padding:10px 15px;cursor:pointer;display:flex;align-items:center;gap:10px;color:var(--danger);font-size:0.9rem;" onmouseover="this.style.background='rgba(239,68,68,0.15)';" onmouseout="this.style.background='';"><i class="fa-solid fa-right-from-bracket"></i> Cerrar sesion</div>
+                        </div>
                     </div>
-                </div>
-                ${statusPickerHTML ? '' : ''}
-                <div id="user-dropdown-menu" style="display:none;position:absolute;top:100%;right:0;margin-top:8px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.6);z-index:200;min-width:200px;overflow:hidden;">
-                    <div onclick="UIButtons.goToProfile()" style="padding:10px 15px;cursor:pointer;display:flex;align-items:center;gap:10px;color:var(--text-main);font-size:0.9rem;" onmouseover="this.style.background='var(--bg-hover)';" onmouseout="this.style.background='';"><i class="fa-solid fa-user"></i> Ver mi perfil</div>
-                    <div onclick="UIButtons.goToEditProfile()" style="padding:10px 15px;cursor:pointer;display:flex;align-items:center;gap:10px;color:var(--text-main);font-size:0.9rem;" onmouseover="this.style.background='var(--bg-hover)';" onmouseout="this.style.background='';"><i class="fa-solid fa-pen"></i> Editar perfil</div>
-                    <div onclick="ProfileSystem.toggleStatusPicker(event)" style="padding:10px 15px;cursor:pointer;display:flex;align-items:center;gap:10px;color:var(--text-main);font-size:0.9rem;position:relative;" onmouseover="this.style.background='var(--bg-hover)';" onmouseout="this.style.background='';"><span class="status-indicator" style="width:18px;height:18px;">${statusSvg}</span> Cambiar estado <i class="fa-solid fa-chevron-right" style="font-size:0.6rem;margin-left:auto;color:var(--text-muted);"></i></div>
-                    ${statusPickerHTML}
-                    <div onclick="UIButtons.goToFriends()" style="padding:10px 15px;cursor:pointer;display:flex;align-items:center;gap:10px;color:var(--text-main);font-size:0.9rem;" onmouseover="this.style.background='var(--bg-hover)';" onmouseout="this.style.background='';"><i class="fa-solid fa-users"></i> Amigos</div>
-                    <div onclick="UIButtons.goToMessages()" style="padding:10px 15px;cursor:pointer;display:flex;align-items:center;gap:10px;color:var(--text-main);font-size:0.9rem;" onmouseover="this.style.background='var(--bg-hover)';" onmouseout="this.style.background='';"><i class="fa-solid fa-envelope"></i> Mensajes</div>
-                    <div style="border-top:1px solid var(--border-color);"></div>
-                    <div onclick="if(typeof FuncAuth!=='undefined')FuncAuth.logout();" style="padding:10px 15px;cursor:pointer;display:flex;align-items:center;gap:10px;color:var(--danger);font-size:0.9rem;" onmouseover="this.style.background='rgba(239,68,68,0.15)';" onmouseout="this.style.background='';"><i class="fa-solid fa-right-from-bracket"></i> Cerrar sesion</div>
                 </div>
             `;
 
@@ -81,20 +80,26 @@ const UIButtons = {
 
     toggleUserMenu() {
         const menu = document.getElementById('user-dropdown-menu');
-        if (menu) {
-            this._menuOpen = !this._menuOpen;
-            menu.style.display = this._menuOpen ? 'block' : 'none';
-            if (this._menuOpen) {
-                setTimeout(() => {
-                    document.addEventListener('click', this._outsideClickHandler = (e) => {
-                        const trigger = document.getElementById('user-menu-trigger');
-                        if (trigger && !trigger.contains(e.target) && menu && !menu.contains(e.target)) {
-                            menu.style.display = 'none';
-                            this._menuOpen = false;
-                            document.removeEventListener('click', this._outsideClickHandler);
-                        }
-                    });
-                }, 0);
+        if (!menu) return;
+        const isShown = menu.style.display === 'block';
+        menu.style.display = isShown ? 'none' : 'block';
+        this._menuOpen = !isShown;
+        if (!isShown) {
+            setTimeout(() => {
+                document.addEventListener('click', this._outsideClickHandler = (e) => {
+                    const trigger = document.getElementById('user-menu-trigger');
+                    if (trigger && !trigger.contains(e.target)) {
+                        menu.style.display = 'none';
+                        this._menuOpen = false;
+                        document.removeEventListener('click', this._outsideClickHandler);
+                        this._outsideClickHandler = null;
+                    }
+                });
+            }, 0);
+        } else {
+            if (this._outsideClickHandler) {
+                document.removeEventListener('click', this._outsideClickHandler);
+                this._outsideClickHandler = null;
             }
         }
     },
@@ -124,6 +129,10 @@ const UIButtons = {
         const menu = document.getElementById('user-dropdown-menu');
         if (menu) menu.style.display = 'none';
         this._menuOpen = false;
+        if (this._outsideClickHandler) {
+            document.removeEventListener('click', this._outsideClickHandler);
+            this._outsideClickHandler = null;
+        }
     },
 
     async updateUnreadBadge() {

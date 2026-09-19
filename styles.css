@@ -986,6 +986,68 @@ body {
     pointer-events: none;
 }
 
+/* ===================================================
+   TOOLTIP DE BADGES (Owner, Admin)
+   =================================================== */
+
+.badge-tooltip-wrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    cursor: help;
+}
+
+.badge-tooltip {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    padding: 8px 12px;
+    min-width: 160px;
+    z-index: 500;
+    pointer-events: none;
+    animation: badgeTooltipFadeIn 0.15s ease;
+}
+
+.badge-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: var(--border-color);
+}
+
+.badge-tooltip-title {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #f59e0b;
+    margin-bottom: 2px;
+}
+
+.badge-tooltip-desc {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.badge-tooltip-wrapper:hover .badge-tooltip {
+    display: block;
+}
+
+@keyframes badgeTooltipFadeIn {
+    from { opacity: 0; transform: translateX(-50%) translateY(4px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
 .profile-action-btn.primary {
     background: var(--purple-accent);
     border-color: var(--purple-accent);

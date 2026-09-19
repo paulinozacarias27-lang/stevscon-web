@@ -93,7 +93,7 @@ const ProfileSystem = {
         const bio = profile.bio ? esc(profile.bio) : '<span style="color:var(--text-muted);">Sin descripcion.</span>';
         const location = profile.location ? esc(profile.location) : null;
         const website = profile.website ? this._renderSafeLink(profile.website) : null;
-        const badge = profile.badge ? '<span class="badges-container-discord"><span class="badge-item-discord" style="width:auto;padding:2px 8px;font-size:0.7rem;">' + esc(profile.badge) + '</span></span>' : '';
+        const badge = profile.badge ? '<span class="badge-tooltip-wrapper"><i class="fa-solid fa-crown" style="color:#f59e0b;font-size:0.9rem;"></i><span class="badge-tooltip"><span class="badge-tooltip-title">Owner</span><span class="badge-tooltip-desc">Owner of Stevscon.com</span></span></span>' : '';
         const verifiedIcon = profile.verified ? '<i class="fa-solid fa-circle-check verified-badge-icon"></i>' : '';
 
         const showStatus = profile.privacy && profile.privacy.showOnlineStatus !== false;
