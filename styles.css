@@ -762,3 +762,143 @@ body {
         font-size: 1.1rem;
     }
 }
+
+/* ===================================================
+   ESTILOS DEL SISTEMA DE PERFILES, AMIGOS Y MENSAJES
+   =================================================== */
+
+/* Dropdown del usuario en el header */
+#user-dropdown-menu > div {
+    transition: background 0.15s;
+}
+
+/* Modal de editar perfil */
+#profile-edit-overlay {
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Estados de carga en perfil */
+.profile-loading {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+}
+
+/* Lista de conversaciones */
+#conversations-list {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-color) transparent;
+}
+
+#conversations-list::-webkit-scrollbar {
+    width: 5px;
+}
+
+#conversations-list::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 5px;
+}
+
+/* Area de chat */
+.chat-messages::-webkit-scrollbar {
+    width: 5px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 5px;
+}
+
+/* Composer de mensaje */
+#msg-input {
+    min-height: 40px;
+    max-height: 120px;
+}
+
+/* Responsive para mensajes en movil */
+@media (max-width: 768px) {
+    #conversations-list {
+        width: 100% !important;
+        max-height: 200px;
+    }
+
+    .chat-messages {
+        min-height: 300px;
+    }
+}
+
+/* Acciones de perfil */
+.profile-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-main);
+    transition: 0.2s;
+}
+
+.profile-action-btn:hover {
+    background: var(--bg-hover);
+}
+
+.profile-action-btn.primary {
+    background: var(--purple-accent);
+    border-color: var(--purple-accent);
+    color: white;
+}
+
+.profile-action-btn.danger {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+.profile-action-btn.danger:hover {
+    background: rgba(239, 68, 68, 0.15);
+}
+
+/* Indicador de estado */
+.status-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+/* Estados vacios */
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+}
+
+.empty-state i {
+    font-size: 2rem;
+    margin-bottom: 10px;
+    display: block;
+}
+
+/* Botones del home screen */
+.home-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    color: white;
+    transition: 0.2s;
+}
