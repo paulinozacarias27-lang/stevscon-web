@@ -19,11 +19,40 @@ const auth = (typeof firebase !== 'undefined' && firebase.apps.length) ? firebas
 function _withTimeout(promise, ms, label) {
     return Promise.race([
         promise,
-        new Promise((_, reject) => setTimeout(() => reject(new Error(`Tiempo de espera agotado (${label}). Verifica tu conexión o la configuración de Firebase.`)), ms))
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))
     ]);
 }
 
 const MemoryAcc = {
+    _dbAvailable: null,
+
+    _getAllLocalProfiles() {
+        const data = localStorage.getItem('stevscon_profiles');
+        return data ? JSON.parse(data) : {};
+    },
+
+    _saveLocalProfile(uid, profile) {
+        const all = this._getAllLocalProfiles();
+        all[uid] = profile;
+        localStorage.setItem('stevscon_profiles', JSON.stringify(all));
+    },
+
+    _getLocalProfile(uid) {
+        const all = this._getAllLocalProfiles();
+        return all[uid] || null;
+    },
+
+    _getLocalProfileByHandle(handle) {
+        const cleanHandle = handle.replace('@', '').toLowerCase();
+        const all = this._getAllLocalProfiles();
+        for (const uid in all) {
+            if (all[uid].handleLower === cleanHandle) {
+                return { uid: uid, ...all[uid] };
+            }
+        }
+        return null;
+    },
+
     setLocalUser(userData) {
         localStorage.setItem('stevscon_active_user', JSON.stringify(userData));
     },
@@ -40,36 +69,62 @@ const MemoryAcc = {
     },
 
     async getUserProfile(uid) {
-        if (!uid || !db) return null;
+        if (!uid) return null;
+
+        const local = this._getLocalProfile(uid);
+
+        if (this._dbAvailable === false || !db) return local;
+
         try {
-            const snapshot = await _withTimeout(db.ref('users/' + uid).once('value'), 10000, 'getUserProfile');
-            return snapshot.exists() ? snapshot.val() : null;
+            const snapshot = await _withTimeout(db.ref('users/' + uid).once('value'), 4000, 'getUserProfile');
+            this._dbAvailable = true;
+            if (snapshot.exists()) {
+                const profile = snapshot.val();
+                this._saveLocalProfile(uid, profile);
+                return profile;
+            }
+            return local;
         } catch (e) {
-            console.error("Error reading user profile:", e);
-            return null;
+            console.warn("DB no disponible, usando localStorage:", e.message);
+            this._dbAvailable = false;
+            return local;
         }
     },
 
     async saveUserProfile(uid, profileData) {
-        if (!uid || !db || !profileData) return false;
+        if (!uid || !profileData) return false;
+
+        this._saveLocalProfile(uid, profileData);
+
+        if (this._dbAvailable === false || !db) return true;
+
         try {
-            await _withTimeout(db.ref('users/' + uid).update(profileData), 10000, 'saveUserProfile');
+            await _withTimeout(db.ref('users/' + uid).update(profileData), 4000, 'saveUserProfile');
+            this._dbAvailable = true;
             return true;
         } catch (e) {
-            console.error("Error saving user profile:", e);
-            return false;
+            console.warn("DB no disponible, perfil guardado solo en localStorage:", e.message);
+            this._dbAvailable = false;
+            return true;
         }
     },
 
     async getProfileByHandle(handle) {
-        if (!handle || !db) return null;
+        if (!handle) return null;
+
+        const local = this._getLocalProfileByHandle(handle);
+        if (local) return local;
+
+        if (this._dbAvailable === false || !db) return null;
+
         try {
             const cleanHandle = handle.replace('@', '').toLowerCase();
             const snapshot = await _withTimeout(
                 db.ref('users').orderByChild('handleLower').equalTo(cleanHandle).once('value'),
-                10000,
+                3000,
                 'getProfileByHandle'
             );
+            this._dbAvailable = true;
             if (snapshot.exists()) {
                 let foundProfile = null;
                 let foundUid = null;
@@ -81,8 +136,9 @@ const MemoryAcc = {
             }
             return null;
         } catch (e) {
-            console.error("Error getting profile by handle:", e);
-            throw e;
+            console.warn("DB no disponible para busqueda de handle, usando localStorage:", e.message);
+            this._dbAvailable = false;
+            return null;
         }
     }
 };

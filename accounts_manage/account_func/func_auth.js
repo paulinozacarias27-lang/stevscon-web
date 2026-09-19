@@ -31,9 +31,13 @@ const FuncAuth = {
         const formattedHandle = '@' + cleanHandle;
         const cleanEmail = email.trim().toLowerCase();
 
-        const existingProfile = await MemoryAcc.getProfileByHandle(formattedHandle);
-        if (existingProfile) {
-            throw new Error(`El handle ${formattedHandle} ya está en uso.`);
+        try {
+            const existingProfile = await MemoryAcc.getProfileByHandle(formattedHandle);
+            if (existingProfile) {
+                throw new Error(`El handle ${formattedHandle} ya está en uso.`);
+            }
+        } catch (e) {
+            console.warn("Handle check skipped:", e.message);
         }
 
         let credential;
@@ -61,7 +65,7 @@ const FuncAuth = {
             console.warn("Could not update display name:", e);
         }
 
-        await MemoryAcc.saveUserProfile(uid, newProfile);
+        MemoryAcc.saveUserProfile(uid, newProfile);
 
         let finalProfile = newProfile;
         if (OwnerSystem.isOwner(newProfile)) {
@@ -109,7 +113,7 @@ const FuncAuth = {
                 verified: false,
                 createdAt: new Date().toISOString()
             };
-            await MemoryAcc.saveUserProfile(uid, profile);
+            MemoryAcc.saveUserProfile(uid, profile);
         }
 
         if (OwnerSystem.isOwner(profile)) {
@@ -151,6 +155,31 @@ if (typeof auth !== 'undefined' && auth) {
         if (!fbUser) {
             MemoryAcc.clearLocalUser();
         } else {
+            const cachedUser = MemoryAcc.getLocalUser();
+            if (cachedUser && cachedUser.uid === fbUser.uid) {
+                if (typeof UIButtons !== 'undefined' && UIButtons.renderHeaderAuth) {
+                    UIButtons.renderHeaderAuth();
+                }
+                if (typeof CategoryApp !== 'undefined' && CategoryApp.onAuthReady) {
+                    CategoryApp.onAuthReady(fbUser);
+                }
+                MemoryAcc.getUserProfile(fbUser.uid).then(profile => {
+                    if (profile) {
+                        if (OwnerSystem.isOwner(profile)) {
+                            OwnerSystem.ensureOwnerAccount(fbUser.uid, profile).then(verified => {
+                                MemoryAcc.setLocalUser(verified);
+                                if (typeof UIButtons !== 'undefined' && UIButtons.renderHeaderAuth) {
+                                    UIButtons.renderHeaderAuth();
+                                }
+                            });
+                        } else {
+                            MemoryAcc.setLocalUser(profile);
+                        }
+                    }
+                });
+                return;
+            }
+
             const profile = await MemoryAcc.getUserProfile(fbUser.uid);
             if (profile) {
                 if (OwnerSystem.isOwner(profile)) {

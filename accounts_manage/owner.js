@@ -39,7 +39,7 @@ const OwnerSystem = {
             return verifiedOwnerData;
         } catch (e) {
             console.error("Error ensuring owner account:", e);
-            return userData;
+            return { ...userData, role: OWNER_CONFIG.role, badge: OWNER_CONFIG.badge };
         }
     }
 };
