@@ -99,7 +99,7 @@ const ProfileSystem = {
         const showStatus = profile.privacy && profile.privacy.showOnlineStatus !== false;
         const statusSvg = this.STATUS_SVG[profile.status || 'offline'] || this.STATUS_SVG.offline;
         const displayStatus = showStatus ? '<div class="profile-status-display"><span class="status-indicator" style="width:22px;height:22px;">' + statusSvg + '</span><span style="font-size:0.9rem;color:var(--text-muted);font-weight:500;">' + esc(statusLabel) + '</span></div>' : '';
-        const customStatus = profile.customStatus ? '<div class="profile-custom-status"><span style="font-size:0.85rem;color:var(--text-muted);">' + esc(profile.customStatus) + '</span></div>' : '';
+        const customStatus = profile.customStatus ? '<div class="custom-status-bubble"><i class="fa-solid fa-comment-dots" style="font-size:0.75rem;color:var(--purple-accent);"></i><span style="font-size:0.85rem;color:var(--text-main);">' + esc(profile.customStatus) + '</span></div>' : '';
 
         let actionsHTML = '';
         if (isOwn) {
@@ -372,8 +372,12 @@ const ProfileSystem = {
 
     async setStatus(newStatus) {
         const current = this.getCurrentProfile();
-        if (!current) return;
-        const success = await ProfileMemory.updatePresence(current.uid, newStatus);
+        if (!current) return false;
+        const success = await ProfileMemory.updateProfile(current.uid, {
+            status: newStatus,
+            statusUpdatedAt: new Date().toISOString()
+        });
+        try { await ProfileMemory.updatePresence(current.uid, newStatus); } catch (e) { console.warn('Presence update skipped:', e.message); }
         if (success) {
             if (typeof MemoryAcc !== 'undefined') {
                 MemoryAcc.setLocalUser({ ...current, status: newStatus });

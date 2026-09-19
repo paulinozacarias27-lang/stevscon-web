@@ -24,12 +24,12 @@ const UIProfile = {
 
                 <div style="margin-bottom:20px;">
                     <div class="profile-banner" style="${bannerStyle};height:120px;border-radius:8px;position:relative;">
-                        <button onclick="ProfileSystem._triggerBannerUpload()" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.6);border:none;border-radius:6px;padding:5px 10px;color:white;cursor:pointer;font-size:0.8rem;"><i class="fa-solid fa-camera"></i></button>
+                        <button onclick="document.getElementById('modal-banner-input').click()" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.6);border:none;border-radius:6px;padding:5px 10px;color:white;cursor:pointer;font-size:0.8rem;"><i class="fa-solid fa-camera"></i></button>
                     </div>
                     <div style="display:flex;align-items:flex-end;gap:10px;margin-top:-30px;padding-left:15px;">
                         <div style="position:relative;">
                             ${avatarHTML}
-                            <button onclick="ProfileSystem._triggerAvatarUpload()" style="position:absolute;bottom:0;right:0;background:var(--purple-accent);border:none;border-radius:50%;width:26px;height:26px;cursor:pointer;color:white;font-size:0.7rem;"><i class="fa-solid fa-camera"></i></button>
+                            <button onclick="document.getElementById('modal-avatar-input').click()" style="position:absolute;bottom:0;right:0;background:var(--purple-accent);border:none;border-radius:50%;width:26px;height:26px;cursor:pointer;color:white;font-size:0.7rem;"><i class="fa-solid fa-camera"></i></button>
                         </div>
                     </div>
                 </div>
@@ -120,6 +120,8 @@ const UIProfile = {
                     <button class="btn btn-primary" style="flex:1;" id="btn-save-profile" onclick="UIProfile.handleSaveProfile()">Guardar cambios</button>
                 </div>
             </div>
+            <input type="file" id="modal-avatar-input" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none;" onchange="UIProfile.handleModalAvatarUpload(event)">
+            <input type="file" id="modal-banner-input" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none;" onchange="UIProfile.handleModalBannerUpload(event)">
         `;
 
         document.body.appendChild(overlay);
@@ -145,6 +147,49 @@ const UIProfile = {
         const label = ProfileSystem.STATUS_LABELS[status] || 'Desconectado';
         iconEl.innerHTML = svg;
         labelEl.textContent = label;
+    },
+
+    async handleModalAvatarUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const current = ProfileSystem.getCurrentProfile();
+        if (!current) return;
+        const alertBox = document.getElementById('edit-profile-alert');
+        if (alertBox) alertBox.innerHTML = '<p style="color:var(--purple-accent);"><i class="fa-solid fa-circle-notch fa-spin"></i> Subiendo avatar...</p>';
+        try {
+            const url = await ProfileMemory.uploadAvatar(current.uid, file);
+            if (url) {
+                if (typeof MemoryAcc !== 'undefined') MemoryAcc.setLocalUser({ ...current, avatarURL: url });
+                if (typeof UIButtons !== 'undefined' && UIButtons.renderHeaderAuth) UIButtons.renderHeaderAuth();
+                if (alertBox) alertBox.innerHTML = '<p style="color:#22c55e;"><i class="fa-solid fa-circle-check"></i> Avatar actualizado.</p>';
+                this.closeModal();
+                ProfileSystem.openProfile(current.uid);
+            }
+        } catch (e) {
+            if (alertBox) alertBox.innerHTML = '<p style="color:var(--danger);">' + this._esc(e.message) + '</p>';
+        }
+        event.target.value = '';
+    },
+
+    async handleModalBannerUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const current = ProfileSystem.getCurrentProfile();
+        if (!current) return;
+        const alertBox = document.getElementById('edit-profile-alert');
+        if (alertBox) alertBox.innerHTML = '<p style="color:var(--purple-accent);"><i class="fa-solid fa-circle-notch fa-spin"></i> Subiendo banner...</p>';
+        try {
+            const url = await ProfileMemory.uploadBanner(current.uid, file);
+            if (url) {
+                if (typeof MemoryAcc !== 'undefined') MemoryAcc.setLocalUser({ ...current, bannerURL: url });
+                if (alertBox) alertBox.innerHTML = '<p style="color:#22c55e;"><i class="fa-solid fa-circle-check"></i> Banner actualizado.</p>';
+                this.closeModal();
+                ProfileSystem.openProfile(current.uid);
+            }
+        } catch (e) {
+            if (alertBox) alertBox.innerHTML = '<p style="color:var(--danger);">' + this._esc(e.message) + '</p>';
+        }
+        event.target.value = '';
     },
 
     async handleSaveProfile() {

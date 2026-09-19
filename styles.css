@@ -905,6 +905,19 @@ body {
     display: inline-block;
 }
 
+.custom-status-bubble {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+    padding: 8px 14px;
+    background: rgba(139, 92, 246, 0.12);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 20px;
+    max-width: 400px;
+    word-break: break-word;
+}
+
 /* ===================================================
    BURBUJA SELECTOR DE ESTADO ESTILO DISCORD
    =================================================== */
