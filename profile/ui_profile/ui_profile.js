@@ -71,7 +71,7 @@ const UIProfile = {
                     <div id="status-preview-box" style="display:flex;align-items:center;gap:10px;margin-top:8px;padding:10px 14px;background:rgba(0,0,0,0.2);border-radius:8px;border:1px solid var(--border-color);">
                         <span class="status-indicator" style="width:22px;height:22px;" id="status-preview-icon">${statusSvg}</span>
                         <div style="display:flex;flex-direction:column;">
-                            <span style="font-size:0.88rem;font-weight:600;color:var(--text-main);" id="status-preview-label">${this._esc(this.getStatusLabel(profile.status))}</span>
+                            <span style="font-size:0.88rem;font-weight:600;color:var(--text-main);" id="status-preview-label">${this._esc(ProfileSystem.getStatusLabel(profile.status))}</span>
                             <span style="font-size:0.72rem;color:var(--text-muted);">Asi te veran los demas.</span>
                         </div>
                     </div>

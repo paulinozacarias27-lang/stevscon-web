@@ -124,8 +124,10 @@ const ProfileSystem = {
                         <div>
                             <h2 class="profile-name">${esc(profile.username)} ${verifiedIcon} ${badge}</h2>
                             <p class="profile-handle">${esc(profile.handle)}</p>
-                            ${displayStatus}
-                            ${customStatus}
+                            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:4px;">
+                                ${displayStatus}
+                                ${customStatus}
+                            </div>
                         </div>
                         <div style="display:flex;gap:8px;flex-wrap:wrap;">${actionsHTML}</div>
                     </div>
@@ -147,7 +149,7 @@ const ProfileSystem = {
                         </div>
                     </div>
 
-                    ${isOwn ? '' : '<div id="profile-action-result" style="margin-top:15px;"></div>'}
+                    <div id="profile-action-result" style="margin-top:15px;"></div>
                 </div>
             </div>
             <input type="file" id="avatar-upload-input" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none;" onchange="ProfileSystem._handleAvatarUpload(event)">
@@ -410,10 +412,13 @@ const ProfileSystem = {
     async changeStatus(newStatus) {
         const picker = document.getElementById('status-picker-bubble');
         if (picker) picker.style.display = 'none';
-        await this.setStatus(newStatus);
-
         const menu = document.getElementById('user-dropdown-menu');
         if (menu) menu.style.display = 'none';
+        await this.setStatus(newStatus);
+        if (typeof CategoryApp !== 'undefined' && CategoryApp._currentView === 'profile') {
+            const current = this.getCurrentProfile();
+            if (current) this.openProfile(current.uid);
+        }
     },
 
     getStatusPickerHTML(currentStatus) {

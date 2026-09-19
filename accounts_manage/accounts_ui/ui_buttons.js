@@ -88,7 +88,7 @@ const UIButtons = {
             setTimeout(() => {
                 document.addEventListener('click', this._outsideClickHandler = (e) => {
                     const trigger = document.getElementById('user-menu-trigger');
-                    if (trigger && !trigger.contains(e.target)) {
+                    if (trigger && !trigger.contains(e.target) && menu && !menu.contains(e.target)) {
                         menu.style.display = 'none';
                         this._menuOpen = false;
                         document.removeEventListener('click', this._outsideClickHandler);
