@@ -157,7 +157,17 @@ const ProfileMemory = {
         if (!validTypes.includes(file.type)) throw new Error('Formato no valido. Usa JPG, PNG, WEBP o GIF.');
         if (file.size > 5 * 1024 * 1024) throw new Error('El archivo supera el limite de 5 MB.');
 
-        const dataUrl = await this._resizeImage(file, 256, 0.85);
+        let dataUrl;
+        if (file.type === 'image/gif') {
+            const reader = new FileReader();
+            dataUrl = await new Promise((resolve, reject) => {
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(new Error('No se pudo leer el GIF.'));
+                reader.readAsDataURL(file);
+            });
+        } else {
+            dataUrl = await this._resizeImage(file, 256, 0.85);
+        }
 
         if (typeof firebase !== 'undefined' && firebase.storage) {
             try {
@@ -181,7 +191,17 @@ const ProfileMemory = {
         if (!validTypes.includes(file.type)) throw new Error('Formato no valido. Usa JPG, PNG, WEBP o GIF.');
         if (file.size > 5 * 1024 * 1024) throw new Error('El archivo supera el limite de 5 MB.');
 
-        const dataUrl = await this._resizeImage(file, 800, 0.8);
+        let dataUrl;
+        if (file.type === 'image/gif') {
+            const reader = new FileReader();
+            dataUrl = await new Promise((resolve, reject) => {
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(new Error('No se pudo leer el GIF.'));
+                reader.readAsDataURL(file);
+            });
+        } else {
+            dataUrl = await this._resizeImage(file, 800, 0.8);
+        }
 
         if (typeof firebase !== 'undefined' && firebase.storage) {
             try {

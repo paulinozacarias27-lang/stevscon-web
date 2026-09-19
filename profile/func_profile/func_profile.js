@@ -98,7 +98,7 @@ const ProfileSystem = {
 
         const showStatus = profile.privacy && profile.privacy.showOnlineStatus !== false;
         const statusSvg = this.STATUS_SVG[profile.status || 'offline'] || this.STATUS_SVG.offline;
-        const displayStatus = showStatus ? '<div class="profile-status-display"><span class="status-indicator" style="width:16px;height:16px;">' + statusSvg + '</span><span style="font-size:0.85rem;color:var(--text-muted);">' + esc(statusLabel) + '</span></div>' : '';
+        const displayStatus = showStatus ? '<div class="profile-status-display"><span class="status-indicator" style="width:22px;height:22px;">' + statusSvg + '</span><span style="font-size:0.9rem;color:var(--text-muted);font-weight:500;">' + esc(statusLabel) + '</span></div>' : '';
         const customStatus = profile.customStatus ? '<div class="profile-custom-status"><span style="font-size:0.85rem;color:var(--text-muted);">' + esc(profile.customStatus) + '</span></div>' : '';
 
         let actionsHTML = '';
@@ -150,8 +150,8 @@ const ProfileSystem = {
                     ${isOwn ? '' : '<div id="profile-action-result" style="margin-top:15px;"></div>'}
                 </div>
             </div>
-            <input type="file" id="avatar-upload-input" accept="image/jpeg,image/png,image/webp" style="display:none;" onchange="ProfileSystem._handleAvatarUpload(event)">
-            <input type="file" id="banner-upload-input" accept="image/jpeg,image/png,image/webp" style="display:none;" onchange="ProfileSystem._handleBannerUpload(event)">
+            <input type="file" id="avatar-upload-input" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none;" onchange="ProfileSystem._handleAvatarUpload(event)">
+            <input type="file" id="banner-upload-input" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none;" onchange="ProfileSystem._handleBannerUpload(event)">
         `;
     },
 
@@ -211,7 +211,7 @@ const ProfileSystem = {
         const esc = this._esc.bind(this);
         const px = size === 'large' ? '130px' : (size === 'small' ? '38px' : '45px');
         const fontSize = size === 'large' ? '3.5rem' : (size === 'small' ? '0.9rem' : '1.1rem');
-        const dotSize = size === 'large' ? '28px' : (size === 'small' ? '14px' : '16px');
+        const dotSize = size === 'large' ? '34px' : (size === 'small' ? '16px' : '18px');
 
         const showDot = showStatusDot !== false && (profile.privacy && profile.privacy.showOnlineStatus !== false);
         const statusDot = showDot ? '<span class="avatar-status-overlay" style="width:' + dotSize + ';height:' + dotSize + ';">' + (this.STATUS_SVG[profile.status] || this.STATUS_SVG.offline) + '</span>' : '';
@@ -385,20 +385,17 @@ const ProfileSystem = {
         return success;
     },
 
-    _statusPickerOpen: false,
-
     toggleStatusPicker(e) {
         if (e) { e.stopPropagation(); }
         const picker = document.getElementById('status-picker-bubble');
         if (!picker) return;
-        this._statusPickerOpen = !this._statusPickerOpen;
-        picker.style.display = this._statusPickerOpen ? 'block' : 'none';
-        if (this._statusPickerOpen) {
+        const isShown = picker.style.display === 'block';
+        picker.style.display = isShown ? 'none' : 'block';
+        if (!isShown) {
             setTimeout(() => {
                 document.addEventListener('click', this._statusOutsideHandler = (ev) => {
                     if (picker && !picker.contains(ev.target)) {
                         picker.style.display = 'none';
-                        this._statusPickerOpen = false;
                         document.removeEventListener('click', this._statusOutsideHandler);
                     }
                 });
@@ -409,8 +406,10 @@ const ProfileSystem = {
     async changeStatus(newStatus) {
         const picker = document.getElementById('status-picker-bubble');
         if (picker) picker.style.display = 'none';
-        this._statusPickerOpen = false;
         await this.setStatus(newStatus);
+
+        const menu = document.getElementById('user-dropdown-menu');
+        if (menu) menu.style.display = 'none';
     },
 
     getStatusPickerHTML(currentStatus) {
@@ -425,7 +424,7 @@ const ProfileSystem = {
         for (const s of statuses) {
             const isActive = currentStatus === s.key;
             html += '<div class="status-picker-item' + (isActive ? ' active' : '') + '" onclick="ProfileSystem.changeStatus(\'' + s.key + '\')">';
-            html += '<span class="status-indicator" style="width:20px;height:20px;">' + this.STATUS_SVG[s.key] + '</span>';
+            html += '<span class="status-indicator" style="width:24px;height:24px;">' + this.STATUS_SVG[s.key] + '</span>';
             html += '<div class="status-picker-text"><div class="status-picker-label">' + this._esc(s.label) + '</div><div class="status-picker-desc">' + this._esc(s.desc) + '</div></div>';
             if (isActive) html += '<i class="fa-solid fa-check" style="color:var(--purple-accent);margin-left:auto;"></i>';
             html += '</div>';

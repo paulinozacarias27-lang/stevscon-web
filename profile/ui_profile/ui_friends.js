@@ -19,7 +19,7 @@ const UIFriends = {
                 <div class="card" style="display:flex;align-items:center;gap:15px;padding:15px;">
                     <div style="position:relative;">
                         ${avatarHTML}
-                        <span class="friend-status-dot" style="width:14px;height:14px;">${statusSvg}</span>
+                        <span class="friend-status-dot" style="width:16px;height:16px;">${statusSvg}</span>
                     </div>
                     <div style="flex-grow:1;">
                         <div style="font-weight:700;font-size:0.95rem;">${esc(friend.username)}</div>

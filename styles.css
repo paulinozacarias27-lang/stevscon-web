@@ -911,8 +911,9 @@ body {
 
 .status-picker-bubble {
     position: absolute;
-    top: 50px;
-    right: 120px;
+    top: 100%;
+    left: 0;
+    margin-top: 4px;
     background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: 10px;

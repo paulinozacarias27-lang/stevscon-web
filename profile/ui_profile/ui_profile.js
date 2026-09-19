@@ -62,15 +62,18 @@ const UIProfile = {
 
                 <div class="form-group">
                     <label class="form-label">Estado de presencia</label>
-                    <select class="form-input" id="edit-status">
+                    <select class="form-input" id="edit-status" onchange="UIProfile.updateStatusPreview()">
                         <option value="online" ${profile.status === 'online' ? 'selected' : ''}>En linea</option>
                         <option value="idle" ${profile.status === 'idle' ? 'selected' : ''}>Ausente</option>
                         <option value="dnd" ${profile.status === 'dnd' ? 'selected' : ''}>No molestar</option>
                         <option value="invisible" ${profile.status === 'invisible' ? 'selected' : ''}>Invisible</option>
                     </select>
-                    <div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding:8px 12px;background:rgba(0,0,0,0.2);border-radius:8px;">
-                        <span class="status-indicator" style="width:18px;height:18px;">${statusSvg}</span>
-                        <span style="font-size:0.82rem;color:var(--text-muted);">Asi te veran los demas usuarios.</span>
+                    <div id="status-preview-box" style="display:flex;align-items:center;gap:10px;margin-top:8px;padding:10px 14px;background:rgba(0,0,0,0.2);border-radius:8px;border:1px solid var(--border-color);">
+                        <span class="status-indicator" style="width:22px;height:22px;" id="status-preview-icon">${statusSvg}</span>
+                        <div style="display:flex;flex-direction:column;">
+                            <span style="font-size:0.88rem;font-weight:600;color:var(--text-main);" id="status-preview-label">${this._esc(this.getStatusLabel(profile.status))}</span>
+                            <span style="font-size:0.72rem;color:var(--text-muted);">Asi te veran los demas.</span>
+                        </div>
                     </div>
                 </div>
 
@@ -130,6 +133,18 @@ const UIProfile = {
                 if (counter) counter.textContent = bioInput.value.length + '/300';
             });
         }
+    },
+
+    updateStatusPreview() {
+        const select = document.getElementById('edit-status');
+        const iconEl = document.getElementById('status-preview-icon');
+        const labelEl = document.getElementById('status-preview-label');
+        if (!select || !iconEl || !labelEl) return;
+        const status = select.value;
+        const svg = ProfileSystem.STATUS_SVG[status] || ProfileSystem.STATUS_SVG.offline;
+        const label = ProfileSystem.STATUS_LABELS[status] || 'Desconectado';
+        iconEl.innerHTML = svg;
+        labelEl.textContent = label;
     },
 
     async handleSaveProfile() {

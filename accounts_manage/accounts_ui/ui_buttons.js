@@ -32,7 +32,7 @@ const UIButtons = {
             const avatarInitial = this._escape((activeUser.username || 'U').charAt(0).toUpperCase());
             const statusSvg = (typeof ProfileSystem !== 'undefined' && ProfileSystem.STATUS_SVG) ? (ProfileSystem.STATUS_SVG[activeUser.status] || ProfileSystem.STATUS_SVG.offline) : '';
             const showStatusDot = activeUser.privacy && activeUser.privacy.showOnlineStatus !== false;
-            const statusDot = showStatusDot ? '<span class="avatar-status-overlay" style="width:14px;height:14px;">' + statusSvg + '</span>' : '';
+            const statusDot = showStatusDot ? '<span class="avatar-status-overlay" style="width:16px;height:16px;">' + statusSvg + '</span>' : '';
             const avatarHTML = activeUser.avatarURL
                 ? '<div class="avatar avatar-with-status" style="width:38px;height:38px;background-image:url(' + this._escape(activeUser.avatarURL) + ');background-size:cover;background-position:center;position:relative;">' + statusDot + '</div>'
                 : '<div class="avatar avatar-with-status" style="width:38px;height:38px;font-size:0.9rem;position:relative;">' + avatarInitial + statusDot + '</div>';
@@ -44,7 +44,7 @@ const UIButtons = {
                         <i class="fa-solid fa-envelope"></i>
                         <span id="unread-badge-header" style="display:none;position:absolute;top:-5px;right:-5px;background:var(--danger);color:white;border-radius:50px;padding:1px 6px;font-size:0.65rem;font-weight:800;min-width:16px;text-align:center;">0</span>
                     </button>
-                    <div style="cursor:pointer;display:flex;align-items:center;gap:10px;padding:4px 10px;border-radius:8px;transition:0.2s;" onclick="UIButtons.toggleUserMenu()" id="user-menu-trigger">
+                    <div style="cursor:pointer;display:flex;align-items:center;gap:10px;padding:4px 10px;border-radius:8px;transition:0.2s;position:relative;" onclick="UIButtons.toggleUserMenu()" id="user-menu-trigger">
                         ${avatarHTML}
                         <div style="display:flex;flex-direction:column;line-height:1.2;">
                             <span style="font-weight:700;font-size:0.92rem;color:var(--text-main);display:flex;align-items:center;gap:6px;">${escapedUsername} ${badgeIcon}</span>
@@ -53,11 +53,12 @@ const UIButtons = {
                         <i class="fa-solid fa-chevron-down" style="font-size:0.7rem;color:var(--text-muted);"></i>
                     </div>
                 </div>
-                ${statusPickerHTML}
-                <div id="user-dropdown-menu" style="display:none;position:absolute;top:55px;right:30px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.6);z-index:200;min-width:200px;overflow:hidden;">
+                ${statusPickerHTML ? '' : ''}
+                <div id="user-dropdown-menu" style="display:none;position:absolute;top:100%;right:0;margin-top:8px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.6);z-index:200;min-width:200px;overflow:hidden;">
                     <div onclick="UIButtons.goToProfile()" style="padding:10px 15px;cursor:pointer;display:flex;align-items:center;gap:10px;color:var(--text-main);font-size:0.9rem;" onmouseover="this.style.background='var(--bg-hover)';" onmouseout="this.style.background='';"><i class="fa-solid fa-user"></i> Ver mi perfil</div>
                     <div onclick="UIButtons.goToEditProfile()" style="padding:10px 15px;cursor:pointer;display:flex;align-items:center;gap:10px;color:var(--text-main);font-size:0.9rem;" onmouseover="this.style.background='var(--bg-hover)';" onmouseout="this.style.background='';"><i class="fa-solid fa-pen"></i> Editar perfil</div>
-                    <div onclick="ProfileSystem.toggleStatusPicker(event)" style="padding:10px 15px;cursor:pointer;display:flex;align-items:center;gap:10px;color:var(--text-main);font-size:0.9rem;" onmouseover="this.style.background='var(--bg-hover)';" onmouseout="this.style.background='';"><span class="status-indicator" style="width:16px;height:16px;">${statusSvg}</span> Cambiar estado</div>
+                    <div onclick="ProfileSystem.toggleStatusPicker(event)" style="padding:10px 15px;cursor:pointer;display:flex;align-items:center;gap:10px;color:var(--text-main);font-size:0.9rem;position:relative;" onmouseover="this.style.background='var(--bg-hover)';" onmouseout="this.style.background='';"><span class="status-indicator" style="width:18px;height:18px;">${statusSvg}</span> Cambiar estado <i class="fa-solid fa-chevron-right" style="font-size:0.6rem;margin-left:auto;color:var(--text-muted);"></i></div>
+                    ${statusPickerHTML}
                     <div onclick="UIButtons.goToFriends()" style="padding:10px 15px;cursor:pointer;display:flex;align-items:center;gap:10px;color:var(--text-main);font-size:0.9rem;" onmouseover="this.style.background='var(--bg-hover)';" onmouseout="this.style.background='';"><i class="fa-solid fa-users"></i> Amigos</div>
                     <div onclick="UIButtons.goToMessages()" style="padding:10px 15px;cursor:pointer;display:flex;align-items:center;gap:10px;color:var(--text-main);font-size:0.9rem;" onmouseover="this.style.background='var(--bg-hover)';" onmouseout="this.style.background='';"><i class="fa-solid fa-envelope"></i> Mensajes</div>
                     <div style="border-top:1px solid var(--border-color);"></div>
