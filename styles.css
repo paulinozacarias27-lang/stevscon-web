@@ -1111,3 +1111,295 @@ body {
     color: white;
     transition: 0.2s;
 }
+
+
+/* ============================================================
+   MEJORAS DE INTERFAZ (v2 corregida) - Stevscon.com
+   Clases nuevas agregadas para: layout de mensajes responsivo,
+   skeletons de carga, panel de inicio, animaciones y microdetalles.
+   ============================================================ */
+
+/* ---------- BUG 5 / MEJORA E: layout de mensajes responsivo ---------- */
+/* En escritorio: barra lateral (conversaciones) + area de chat en fila. */
+.md-layout {
+    display: flex;
+    flex-direction: row;
+    gap: 16px;
+    height: calc(100vh - 160px);
+    min-height: 480px;
+    max-width: 1100px;
+    margin: 20px auto;
+    padding: 0 15px;
+}
+
+.md-sidebar {
+    flex: 0 0 280px;
+    width: 280px;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow-y: auto;
+}
+
+.md-chat {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+    min-width: 0;
+}
+
+/* En movil: columna, la lista de conversaciones se coloca arriba y compacta. */
+@media (max-width: 768px) {
+    .md-layout {
+        flex-direction: column;
+        height: auto;
+        gap: 12px;
+        padding: 0 10px;
+    }
+    .md-sidebar {
+        flex: none;
+        width: 100%;
+        max-height: 200px;
+    }
+    .md-chat {
+        width: 100%;
+        min-height: 420px;
+    }
+}
+
+/* ---------- MEJORA B/E: timestamps y burbujas de mensaje ---------- */
+.msg-timestamp {
+    display: block;
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    margin-top: 3px;
+    text-align: right;
+    opacity: 0.75;
+}
+
+.msg-bubble {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+/* ---------- MEJORA E: skeleton loaders (esqueletos de carga) ---------- */
+.skeleton-box {
+    position: relative;
+    overflow: hidden;
+    background: var(--bg-hover, #261f36);
+    border-radius: 8px;
+}
+
+.skeleton-box::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -150%;
+    width: 150%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
+    animation: skeletonShimmer 1.3s infinite;
+}
+
+.skeleton-circle {
+    border-radius: 50% !important;
+}
+
+.skeleton-wrapper {
+    position: relative;
+}
+
+@keyframes skeletonShimmer {
+    0% { left: -150%; }
+    100% { left: 150%; }
+}
+
+/* ---------- MEJORA C/E: tarjetas de amigos con hover ---------- */
+.friend-card {
+    transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.friend-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--purple-accent);
+    background: var(--bg-hover, #261f36);
+}
+
+/* ---------- MEJORA D/E: animacion del modal de edicion ---------- */
+.profile-edit-overlay {
+    animation: fadeIn 0.2s ease;
+}
+
+.profile-edit-card {
+    animation: modalPopIn 0.22s ease;
+}
+
+@keyframes modalPopIn {
+    from { opacity: 0; transform: translateY(12px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ---------- MEJORA J: auto-cierre de alertas de exito ---------- */
+.success-auto-dismiss {
+    transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.success-auto-dismiss.fade-out {
+    opacity: 0;
+    transform: translateY(-6px);
+}
+
+/* ---------- MEJORA A: panel de inicio (home dashboard) ---------- */
+.home-dashboard {
+    max-width: 720px;
+    margin: 40px auto;
+    padding: 0 15px;
+}
+
+.home-hero {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 22px 24px;
+    margin-bottom: 22px;
+}
+
+.home-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 3px solid var(--purple-accent);
+    flex-shrink: 0;
+}
+
+.home-avatar-initial {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.2rem;
+    font-weight: bold;
+    background: var(--bg-main);
+    color: #fff;
+}
+
+.home-hero-info {
+    min-width: 0;
+}
+
+.home-hero-name {
+    font-size: 1.6rem;
+    margin: 0 0 2px 0;
+    color: var(--text-main, #fff);
+}
+
+.home-hero-handle {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    margin: 0 0 8px 0;
+}
+
+.home-hero-badges {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.home-role-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+}
+
+.home-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 14px;
+}
+
+.home-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 16px 18px;
+    cursor: pointer;
+    transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.home-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--purple-accent);
+    background: var(--bg-hover, #261f36);
+}
+
+.home-card-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.home-card-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.home-card-title {
+    font-weight: 700;
+    color: var(--text-main, #fff);
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.home-card-desc {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.home-card-arrow {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.home-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    background: var(--danger);
+    color: #fff;
+    border-radius: 10px;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.home-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 24px;
+}
