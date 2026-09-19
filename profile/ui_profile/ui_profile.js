@@ -15,6 +15,7 @@ const UIProfile = {
         const esc = this._esc.bind(this);
         const avatarHTML = ProfileSystem.getAvatarMarkup(profile, 'large');
         const bannerStyle = ProfileSystem.getBannerStyle(profile);
+        const statusSvg = ProfileSystem.STATUS_SVG[profile.status || 'offline'] || ProfileSystem.STATUS_SVG.offline;
 
         overlay.innerHTML = `
             <div class="stevscon-accounts-card" style="max-width:500px;width:100%;margin:auto;position:relative;">
@@ -67,6 +68,10 @@ const UIProfile = {
                         <option value="dnd" ${profile.status === 'dnd' ? 'selected' : ''}>No molestar</option>
                         <option value="invisible" ${profile.status === 'invisible' ? 'selected' : ''}>Invisible</option>
                     </select>
+                    <div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding:8px 12px;background:rgba(0,0,0,0.2);border-radius:8px;">
+                        <span class="status-indicator" style="width:18px;height:18px;">${statusSvg}</span>
+                        <span style="font-size:0.82rem;color:var(--text-muted);">Asi te veran los demas usuarios.</span>
+                    </div>
                 </div>
 
                 <h3 class="profile-section-title" style="margin-top:20px;">Privacidad</h3>

@@ -126,42 +126,77 @@ const ProfileMemory = {
         }
     },
 
+    _resizeImage(file, maxDim, quality) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    let w = img.width, h = img.height;
+                    if (w > maxDim || h > maxDim) {
+                        if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+                        else { w = Math.round(w * maxDim / h); h = maxDim; }
+                    }
+                    const canvas = document.createElement('canvas');
+                    canvas.width = w; canvas.height = h;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, w, h);
+                    resolve(canvas.toDataURL('image/jpeg', quality || 0.85));
+                };
+                img.onerror = () => reject(new Error('No se pudo procesar la imagen.'));
+                img.src = e.target.result;
+            };
+            reader.onerror = () => reject(new Error('No se pudo leer el archivo.'));
+            reader.readAsDataURL(file);
+        });
+    },
+
     async uploadAvatar(uid, file) {
         if (!uid || !file) return null;
-        if (typeof firebase === 'undefined' || !firebase.storage) return null;
-        try {
-            if (file.size > 5 * 1024 * 1024) throw new Error('El archivo supera el limite de 5 MB.');
-            const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
-            if (!validTypes.includes(file.type)) throw new Error('Formato no valido. Usa JPG, PNG o WEBP.');
+        const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+        if (!validTypes.includes(file.type)) throw new Error('Formato no valido. Usa JPG, PNG, WEBP o GIF.');
+        if (file.size > 5 * 1024 * 1024) throw new Error('El archivo supera el limite de 5 MB.');
 
-            const storageRef = firebase.storage().ref('profile_uploads/' + uid + '/avatar');
-            const snapshot = await storageRef.put(file);
-            const url = await snapshot.ref.getDownloadURL();
-            await this.updateProfile(uid, { avatarURL: url });
-            return url;
-        } catch (e) {
-            console.warn('ProfileMemory.uploadAvatar:', e.message);
-            throw e;
+        const dataUrl = await this._resizeImage(file, 256, 0.85);
+
+        if (typeof firebase !== 'undefined' && firebase.storage) {
+            try {
+                const storageRef = firebase.storage().ref('profile_uploads/' + uid + '/avatar');
+                const snapshot = await storageRef.put(file);
+                const url = await snapshot.ref.getDownloadURL();
+                await this.updateProfile(uid, { avatarURL: url });
+                return url;
+            } catch (e) {
+                console.warn('Storage upload failed, using base64 fallback:', e.message);
+            }
         }
+
+        await this.updateProfile(uid, { avatarURL: dataUrl });
+        return dataUrl;
     },
 
     async uploadBanner(uid, file) {
         if (!uid || !file) return null;
-        if (typeof firebase === 'undefined' || !firebase.storage) return null;
-        try {
-            if (file.size > 5 * 1024 * 1024) throw new Error('El archivo supera el limite de 5 MB.');
-            const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
-            if (!validTypes.includes(file.type)) throw new Error('Formato no valido. Usa JPG, PNG o WEBP.');
+        const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+        if (!validTypes.includes(file.type)) throw new Error('Formato no valido. Usa JPG, PNG, WEBP o GIF.');
+        if (file.size > 5 * 1024 * 1024) throw new Error('El archivo supera el limite de 5 MB.');
 
-            const storageRef = firebase.storage().ref('profile_uploads/' + uid + '/banner');
-            const snapshot = await storageRef.put(file);
-            const url = await snapshot.ref.getDownloadURL();
-            await this.updateProfile(uid, { bannerURL: url });
-            return url;
-        } catch (e) {
-            console.warn('ProfileMemory.uploadBanner:', e.message);
-            throw e;
+        const dataUrl = await this._resizeImage(file, 800, 0.8);
+
+        if (typeof firebase !== 'undefined' && firebase.storage) {
+            try {
+                const storageRef = firebase.storage().ref('profile_uploads/' + uid + '/banner');
+                const snapshot = await storageRef.put(file);
+                const url = await snapshot.ref.getDownloadURL();
+                await this.updateProfile(uid, { bannerURL: url });
+                return url;
+            } catch (e) {
+                console.warn('Storage upload failed, using base64 fallback:', e.message);
+            }
         }
+
+        await this.updateProfile(uid, { bannerURL: dataUrl });
+        return dataUrl;
     },
 
     async removeAvatar(uid) {

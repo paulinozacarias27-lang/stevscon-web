@@ -14,12 +14,12 @@ const UIFriends = {
 
         const renderFriendItem = (friend) => {
             const avatarHTML = ProfileSystem.getAvatarMarkup(friend, 'small');
-            const statusColor = ProfileSystem.STATUS_COLORS[friend.status] || '#6b7280';
+            const statusSvg = (typeof ProfileSystem !== 'undefined' && ProfileSystem.STATUS_SVG) ? (ProfileSystem.STATUS_SVG[friend.status] || ProfileSystem.STATUS_SVG.offline) : '';
             return `
                 <div class="card" style="display:flex;align-items:center;gap:15px;padding:15px;">
                     <div style="position:relative;">
                         ${avatarHTML}
-                        <span style="position:absolute;bottom:0;right:0;width:12px;height:12px;border-radius:50%;background:${statusColor};border:2px solid var(--bg-card);"></span>
+                        <span class="friend-status-dot" style="width:14px;height:14px;">${statusSvg}</span>
                     </div>
                     <div style="flex-grow:1;">
                         <div style="font-weight:700;font-size:0.95rem;">${esc(friend.username)}</div>

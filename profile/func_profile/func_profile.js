@@ -14,6 +14,14 @@ const ProfileSystem = {
         invisible: 'Invisible'
     },
 
+    STATUS_SVG: {
+        online: '<svg viewBox="0 0 24 24" width="100%" height="100%"><circle cx="12" cy="12" r="9" fill="#22c55e"/></svg>',
+        idle: '<svg viewBox="0 0 24 24" width="100%" height="100%"><circle cx="12" cy="12" r="9" fill="#eab308"/><circle cx="15" cy="9" r="6" fill="#1a1a26"/></svg>',
+        dnd: '<svg viewBox="0 0 24 24" width="100%" height="100%"><circle cx="12" cy="12" r="9" fill="#ef4444"/><rect x="6.5" y="10.5" width="11" height="3" rx="1.5" fill="#1a1a26"/></svg>',
+        offline: '<svg viewBox="0 0 24 24" width="100%" height="100%"><circle cx="12" cy="12" r="9" fill="#6b7280"/><circle cx="12" cy="12" r="4.5" fill="#1a1a26"/></svg>',
+        invisible: '<svg viewBox="0 0 24 24" width="100%" height="100%"><circle cx="12" cy="12" r="9" fill="#6b7280"/><circle cx="12" cy="12" r="4.5" fill="#1a1a26"/></svg>'
+    },
+
     STATUS_COLORS: {
         online: '#22c55e',
         idle: '#eab308',
@@ -89,8 +97,9 @@ const ProfileSystem = {
         const verifiedIcon = profile.verified ? '<i class="fa-solid fa-circle-check verified-badge-icon"></i>' : '';
 
         const showStatus = profile.privacy && profile.privacy.showOnlineStatus !== false;
-        const displayStatus = showStatus ? '<span style="display:inline-flex;align-items:center;gap:5px;font-size:0.85rem;color:var(--text-muted);"><span style="width:8px;height:8px;border-radius:50%;background:' + statusColor + ';"></span>' + esc(statusLabel) + '</span>' : '';
-        const customStatus = profile.customStatus ? '<span style="font-size:0.85rem;color:var(--text-muted);">' + esc(profile.customStatus) + '</span>' : '';
+        const statusSvg = this.STATUS_SVG[profile.status || 'offline'] || this.STATUS_SVG.offline;
+        const displayStatus = showStatus ? '<div class="profile-status-display"><span class="status-indicator" style="width:16px;height:16px;">' + statusSvg + '</span><span style="font-size:0.85rem;color:var(--text-muted);">' + esc(statusLabel) + '</span></div>' : '';
+        const customStatus = profile.customStatus ? '<div class="profile-custom-status"><span style="font-size:0.85rem;color:var(--text-muted);">' + esc(profile.customStatus) + '</span></div>' : '';
 
         let actionsHTML = '';
         if (isOwn) {
@@ -191,16 +200,26 @@ const ProfileSystem = {
         return '<a href="' + esc(url) + '" target="_blank" rel="noopener noreferrer" style="color:var(--purple-accent);text-decoration:none;">' + display + '</a>';
     },
 
-    getAvatarMarkup(profile, size) {
+    getStatusIndicator(status, size) {
+        const svg = this.STATUS_SVG[status] || this.STATUS_SVG.offline;
+        const px = size || 20;
+        return '<span class="status-indicator" style="width:' + px + 'px;height:' + px + 'px;">' + svg + '</span>';
+    },
+
+    getAvatarMarkup(profile, size, showStatusDot) {
         if (!profile) return '';
         const esc = this._esc.bind(this);
         const px = size === 'large' ? '130px' : (size === 'small' ? '38px' : '45px');
         const fontSize = size === 'large' ? '3.5rem' : (size === 'small' ? '0.9rem' : '1.1rem');
+        const dotSize = size === 'large' ? '28px' : (size === 'small' ? '14px' : '16px');
+
+        const showDot = showStatusDot !== false && (profile.privacy && profile.privacy.showOnlineStatus !== false);
+        const statusDot = showDot ? '<span class="avatar-status-overlay" style="width:' + dotSize + ';height:' + dotSize + ';">' + (this.STATUS_SVG[profile.status] || this.STATUS_SVG.offline) + '</span>' : '';
 
         if (profile.avatarURL) {
-            return '<div class="avatar" style="width:' + px + ';height:' + px + ';background-image:url(' + esc(profile.avatarURL) + ');background-size:cover;background-position:center;border-radius:50%;border:2px solid var(--purple-accent);"></div>';
+            return '<div class="avatar avatar-with-status" style="width:' + px + ';height:' + px + ';background-image:url(' + esc(profile.avatarURL) + ');background-size:cover;background-position:center;border-radius:50%;border:2px solid var(--purple-accent);position:relative;">' + statusDot + '</div>';
         }
-        return '<div class="avatar" style="width:' + px + ';height:' + px + ';font-size:' + fontSize + ';border-radius:50%;border:2px solid var(--purple-accent);display:flex;align-items:center;justify-content:center;font-weight:bold;background:var(--bg-main);">' + esc((profile.username || 'U').charAt(0).toUpperCase()) + '</div>';
+        return '<div class="avatar avatar-with-status" style="width:' + px + ';height:' + px + ';font-size:' + fontSize + ';border-radius:50%;border:2px solid var(--purple-accent);display:flex;align-items:center;justify-content:center;font-weight:bold;background:var(--bg-main);position:relative;">' + esc((profile.username || 'U').charAt(0).toUpperCase()) + statusDot + '</div>';
     },
 
     getBannerStyle(profile) {
@@ -364,5 +383,54 @@ const ProfileSystem = {
             }
         }
         return success;
+    },
+
+    _statusPickerOpen: false,
+
+    toggleStatusPicker(e) {
+        if (e) { e.stopPropagation(); }
+        const picker = document.getElementById('status-picker-bubble');
+        if (!picker) return;
+        this._statusPickerOpen = !this._statusPickerOpen;
+        picker.style.display = this._statusPickerOpen ? 'block' : 'none';
+        if (this._statusPickerOpen) {
+            setTimeout(() => {
+                document.addEventListener('click', this._statusOutsideHandler = (ev) => {
+                    if (picker && !picker.contains(ev.target)) {
+                        picker.style.display = 'none';
+                        this._statusPickerOpen = false;
+                        document.removeEventListener('click', this._statusOutsideHandler);
+                    }
+                });
+            }, 0);
+        }
+    },
+
+    async changeStatus(newStatus) {
+        const picker = document.getElementById('status-picker-bubble');
+        if (picker) picker.style.display = 'none';
+        this._statusPickerOpen = false;
+        await this.setStatus(newStatus);
+    },
+
+    getStatusPickerHTML(currentStatus) {
+        const statuses = [
+            { key: 'online', label: 'En linea', desc: 'Disponible para chatear' },
+            { key: 'idle', label: 'Ausente', desc: 'Inactivo por un rato' },
+            { key: 'dnd', label: 'No molestar', desc: 'Silenciar notificaciones' },
+            { key: 'invisible', label: 'Invisible', desc: 'Oculto pero conectado' }
+        ];
+        let html = '<div id="status-picker-bubble" class="status-picker-bubble" style="display:none;">';
+        html += '<div class="status-picker-header">Estado de presencia</div>';
+        for (const s of statuses) {
+            const isActive = currentStatus === s.key;
+            html += '<div class="status-picker-item' + (isActive ? ' active' : '') + '" onclick="ProfileSystem.changeStatus(\'' + s.key + '\')">';
+            html += '<span class="status-indicator" style="width:20px;height:20px;">' + this.STATUS_SVG[s.key] + '</span>';
+            html += '<div class="status-picker-text"><div class="status-picker-label">' + this._esc(s.label) + '</div><div class="status-picker-desc">' + this._esc(s.desc) + '</div></div>';
+            if (isActive) html += '<i class="fa-solid fa-check" style="color:var(--purple-accent);margin-left:auto;"></i>';
+            html += '</div>';
+        }
+        html += '</div>';
+        return html;
     }
 };

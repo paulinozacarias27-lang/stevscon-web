@@ -852,6 +852,139 @@ body {
     background: var(--bg-hover);
 }
 
+/* ===================================================
+   INDICADORES DE ESTADO ESTILO DISCORD
+   =================================================== */
+
+.status-indicator {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    line-height: 0;
+}
+
+.status-indicator svg {
+    display: block;
+    pointer-events: none;
+}
+
+/* Overlay del indicador sobre el avatar */
+.avatar-status-overlay {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    border-radius: 50%;
+    border: 3px solid var(--bg-main);
+    line-height: 0;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.avatar-status-overlay svg {
+    display: block;
+}
+
+.avatar-with-status {
+    position: relative;
+}
+
+/* Display de estado en el perfil */
+.profile-status-display {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.profile-custom-status {
+    margin-top: 2px;
+    padding: 4px 10px;
+    background: rgba(139, 92, 246, 0.1);
+    border-radius: 6px;
+    display: inline-block;
+}
+
+/* ===================================================
+   BURBUJA SELECTOR DE ESTADO ESTILO DISCORD
+   =================================================== */
+
+.status-picker-bubble {
+    position: absolute;
+    top: 50px;
+    right: 120px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+    z-index: 300;
+    min-width: 240px;
+    overflow: hidden;
+    animation: statusBubbleFadeIn 0.15s ease;
+}
+
+@keyframes statusBubbleFadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.status-picker-header {
+    padding: 10px 15px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border-color);
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.status-picker-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 15px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.status-picker-item:hover {
+    background: var(--bg-hover);
+}
+
+.status-picker-item.active {
+    background: rgba(139, 92, 246, 0.1);
+}
+
+.status-picker-text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.status-picker-label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.status-picker-desc {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+/* Indicador de estado en listas de amigos */
+.friend-status-dot {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    border-radius: 50%;
+    border: 2px solid var(--bg-card);
+    line-height: 0;
+    z-index: 2;
+    pointer-events: none;
+}
+
 .profile-action-btn.primary {
     background: var(--purple-accent);
     border-color: var(--purple-accent);
