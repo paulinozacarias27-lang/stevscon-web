@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  
+  <title>Stevscon</title>
+  
+  <!-- Favicon con tu logo oficial -->
+  <link rel="icon" type="image/png" href="SC_LOGO_20260825013121.png">
+  <link rel="apple-touch-icon" href="SC_LOGO_20260825013121.png">
+
+  <!-- Meta tags para SEO y compatibilidad -->
+  <meta name="description" content="Stevscon - Plataforma interactiva y comunidad">
+  <meta name="theme-color" content="#0d0e12">
+
+  <!-- Estilos base -->
+  <link rel="stylesheet" href="styles.css">
+  
+  <!-- Font Awesome para iconografía -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Firebase App & Servicios (SDK Compat v9.x) -->
+  <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+
+  <!-- Módulos de Utilidades y Almacenamiento -->
+  <script defer src="Accounts/memory_acc.js"></script>
+  <script defer src="profile/profile_memory.js"></script>
+
+  <!-- Módulos de Lógica Funcional -->
+  <script defer src="Accounts/func_auth.js"></script>
+  <script defer src="profile/func_profile.js"></script>
+  <script defer src="profile/func_friends.js"></script>
+  <script defer src="profile/func_messages.js"></script>
+  <script defer src="Accounts/func_bot.js"></script>
+
+  <!-- Módulos de UI y Renderizado -->
+  <script defer src="Accounts/ui_alerts.js"></script>
+  <script defer src="Accounts/ui_buttons.js"></script>
+  <script defer src="Accounts/ui_auth.js"></script>
+  <script defer src="profile/ui_profile/ui_profile.js"></script>
+  <script defer src="profile/ui_profile/ui_friends.js"></script>
+  <script defer src="profile/ui_profile/ui_messages.js"></script>
+
+  <!-- Router y Controlador Principal -->
+  <script defer src="category.js"></script>
+</head>
+<body class="theme-dark">
+
+  <!-- Contenedor global de alertas y notificaciones -->
+  <div id="alerts-container" class="alerts-wrapper" aria-live="polite"></div>
+
+  <!-- Barra de Navegación Principal -->
+  <header class="app-header">
+    <div class="header-left">
+      <img src="SC_LOGO_20260825013121.png" alt="Stevscon Logo" class="brand-logo" id="main-brand-logo">
+      <span class="brand-title">Stevscon</span>
+    </div>
+    
+    <nav class="header-nav" id="main-nav">
+      <!-- Los botones de navegación se gestionan dinámicamente o por categorías -->
+      <button class="nav-btn active" data-category="home" title="Inicio">
+        <i class="fa-solid fa-house"></i>
+        <span class="nav-label">Inicio</span>
+      </button>
+      <button class="nav-btn" data-category="friends" title="Amigos">
+        <i class="fa-solid fa-user-group"></i>
+        <span class="nav-label">Amigos</span>
+        <span id="badge-friend-requests" class="nav-badge hidden">0</span>
+      </button>
+      <button class="nav-btn" data-category="messages" title="Mensajes">
+        <i class="fa-solid fa-comments"></i>
+        <span class="nav-label">Mensajes</span>
+        <span id="badge-unread-messages" class="nav-badge hidden">0</span>
+      </button>
+    </nav>
+
+    <div class="header-right" id="user-header-actions">
+      <!-- Estado de Autenticación / Menú de Usuario -->
+      <button id="btn-login-trigger" class="btn btn-primary">Iniciar Sesión</button>
+      
+      <div id="user-profile-badge" class="user-badge hidden">
+        <div class="avatar-wrapper">
+          <img id="header-avatar" src="SC_LOGO_20260825013121.png" alt="Avatar" class="avatar-small">
+          <span id="header-status-dot" class="status-indicator online"></span>
+        </div>
+        <span id="header-username" class="username-display">Usuario</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Área de Contenido Dinámico / Pantallas -->
+  <main id="app-main-viewport" class="main-viewport">
+    <!-- Vista Inicial / Home -->
+    <section id="view-home" class="view-section active">
+      <div class="welcome-container">
+        <h1>Bienvenido a Stevscon</h1>
+        <p>Tu plataforma social, mensajería y comunidad en tiempo real.</p>
+      </div>
+    </section>
+
+    <!-- Vista de Amigos -->
+    <section id="view-friends" class="view-section hidden">
+      <div id="friends-container" class="module-container">
+        <!-- Renderizado dinámico por ui_friends.js -->
+      </div>
+    </section>
+
+    <!-- Vista de Mensajes / MDs -->
+    <section id="view-messages" class="view-section hidden">
+      <div id="messages-container" class="module-container messages-layout">
+        <!-- Renderizado dinámico por ui_messages.js -->
+      </div>
+    </section>
+
+    <!-- Vista de Perfil -->
+    <section id="view-profile" class="view-section hidden">
+      <div id="profile-container" class="module-container">
+        <!-- Renderizado dinámico por ui_profile.js -->
+      </div>
+    </section>
+  </main>
+
+  <!-- Contenedor para Modales (Auth, Editor de Perfil, Confirmaciones) -->
+  <div id="modals-root" class="modals-wrapper"></div>
+
+</body>
+</html>
