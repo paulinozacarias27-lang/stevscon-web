@@ -874,3 +874,47 @@ body {
     .username-display { max-width: 70px; }
     .user-dropdown { right: 10px; }
 }
+
+/* ==== LAYOUT GENERAL Y NAVEGACIÓN (index.html) ==== */
+.main-viewport { flex-grow: 1; width: 100%; }
+.view-section { display: block; }
+
+.module-container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 20px 16px;
+    width: 100%;
+}
+
+.welcome-container { text-align: center; padding: 60px 20px; }
+.welcome-container h1 { font-size: 2rem; font-weight: 800; margin-bottom: 8px; }
+.welcome-container p { color: var(--text-muted); }
+
+.header-nav { display: flex; align-items: center; gap: 6px; }
+
+.nav-btn {
+    position: relative;
+    display: flex; align-items: center; gap: 8px;
+    background: transparent; border: 1px solid transparent;
+    color: var(--text-muted); padding: 8px 14px;
+    border-radius: 8px; font-weight: 600; font-size: 0.88rem;
+    cursor: pointer; transition: all 0.2s ease;
+}
+.nav-btn:hover { color: var(--text-main); background: var(--bg-hover); }
+.nav-btn.active {
+    color: #fff; background: var(--purple-accent);
+    box-shadow: 0 2px 10px var(--purple-glow);
+}
+
+.nav-badge {
+    position: absolute; top: -4px; right: -4px;
+    min-width: 17px; height: 17px; padding: 0 4px;
+    background: var(--danger); color: #fff;
+    border-radius: 20px; font-size: 0.65rem; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+}
+
+@media (max-width: 768px) {
+    .nav-label { display: none; }
+    .brand-title { display: none; }
+}
