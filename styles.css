@@ -749,3 +749,128 @@ body {
         min-height: 420px;
     }
 }
+
+/* ==== STEVSCON ACCOUNTS :: UI EXTRA (toasts, dropdown, modal auth) ==== */
+
+/* Modal overlay */
+.modal-overlay {
+    position: fixed; inset: 0; z-index: 3000;
+    background: rgba(5, 3, 10, 0.75);
+    backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 18px; opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
+}
+.modal-overlay.visible { opacity: 1; pointer-events: auto; }
+.auth-modal-card { width: 100%; max-width: 420px; position: relative; max-height: 92vh; overflow-y: auto; }
+.auth-close-btn {
+    position: absolute; top: 14px; right: 14px; width: 32px; height: 32px;
+    border-radius: 8px; border: 1px solid var(--border-color); background: transparent;
+    color: var(--text-muted); cursor: pointer; transition: 0.2s;
+}
+.auth-close-btn:hover { color: white; background: var(--bg-hover); }
+
+/* Inputs especiales */
+.btn-block { width: 100%; margin-top: 6px; }
+.handler-input-wrap, .password-wrap { position: relative; display: flex; align-items: center; }
+.handler-at { position: absolute; left: 14px; color: var(--purple-accent); font-weight: 700; pointer-events: none; }
+.handler-input-wrap .form-input { padding-left: 32px; }
+.password-toggle {
+    position: absolute; right: 10px; background: transparent; border: none;
+    color: var(--text-muted); cursor: pointer; padding: 6px;
+}
+.password-toggle:hover { color: var(--purple-light); }
+.form-input.input-error { border-color: var(--danger); box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.15); }
+.error-msg i { margin-right: 5px; }
+
+/* Pistas del handler */
+.input-hint { font-size: 0.78rem; margin-top: 5px; min-height: 16px; color: var(--text-muted); }
+.input-hint.hint-ok { color: var(--success); }
+.input-hint.hint-bad { color: var(--danger); }
+
+/* Enlace de recuperar contraseña */
+.auth-forgot-link {
+    display: block; margin: 14px auto 0; background: none; border: none;
+    color: var(--text-muted); font-size: 0.82rem; cursor: pointer;
+}
+.auth-forgot-link:hover { color: var(--purple-light); text-decoration: underline; }
+
+/* Toasts */
+.alerts-wrapper {
+    position: fixed; top: 70px; right: 16px; z-index: 4000;
+    display: flex; flex-direction: column; gap: 10px; max-width: 340px;
+}
+.toast {
+    display: flex; align-items: flex-start; gap: 10px;
+    background: var(--bg-elevated); border: 1px solid var(--border-color);
+    border-left: 4px solid var(--purple-accent); border-radius: 10px;
+    padding: 12px 14px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    opacity: 0; transform: translateX(24px); transition: all 0.3s ease;
+}
+.toast.visible { opacity: 1; transform: translateX(0); }
+.toast-success { border-left-color: var(--success); } .toast-success i { color: var(--success); }
+.toast-error   { border-left-color: var(--danger); }  .toast-error i { color: var(--danger); }
+.toast-warn    { border-left-color: var(--warning); } .toast-warn i { color: var(--warning); }
+.toast-info    { border-left-color: var(--purple-accent); } .toast-info i { color: var(--purple-accent); }
+.toast-content { display: flex; flex-direction: column; font-size: 0.86rem; gap: 2px; }
+.toast-content strong { font-size: 0.9rem; }
+.toast-close { background: none; border: none; color: var(--text-muted); cursor: pointer; margin-left: auto; }
+.toast-close:hover { color: white; }
+
+/* Tarjeta de usuario en el header */
+.user-badge {
+    display: flex; align-items: center; gap: 10px; cursor: pointer;
+    background: var(--bg-card); border: 1px solid var(--border-color);
+    padding: 5px 12px 5px 6px; border-radius: 30px; transition: 0.2s;
+}
+.user-badge:hover { border-color: var(--purple-accent); background: var(--bg-hover); }
+.avatar-wrapper { position: relative; display: flex; }
+.avatar-small { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; }
+.avatar-letter {
+    width: 34px; height: 34px; border-radius: 50%; display: flex;
+    align-items: center; justify-content: center; font-weight: 800;
+    font-size: 0.95rem; color: white; text-transform: uppercase;
+}
+.user-status-dot {
+    position: absolute; bottom: -1px; right: -1px; width: 12px; height: 12px;
+    border-radius: 50%; border: 2.5px solid var(--bg-main); background: var(--offline);
+}
+.user-status-dot.state-online { background: var(--online); }
+.user-status-dot.state-idle { background: var(--idle); }
+.user-status-dot.state-dnd { background: var(--dnd); }
+.username-display { font-weight: 600; font-size: 0.9rem; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-badge { font-size: 0.85rem; display: flex; align-items: center; }
+.user-badge .chev { font-size: 0.65rem; color: var(--text-muted); }
+
+/* Menú desplegable del usuario */
+.user-dropdown {
+    position: absolute; top: 58px; right: 16px; z-index: 2500;
+    width: 240px; background: var(--bg-elevated);
+    border: 1px solid var(--border-color); border-radius: 12px;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.6); overflow: hidden;
+}
+.user-dropdown-header { padding: 14px 16px; border-bottom: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 2px; }
+.user-dropdown-name { font-weight: 700; }
+.user-dropdown-handle { font-size: 0.82rem; color: var(--text-muted); }
+.user-dropdown-item {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    background: none; border: none; color: var(--text-main);
+    padding: 11px 16px; font-size: 0.88rem; cursor: pointer; text-align: left; transition: 0.15s;
+}
+.user-dropdown-item i { color: var(--text-muted); width: 18px; }
+.user-dropdown-item:hover { background: var(--bg-hover); }
+.user-dropdown-item:hover i { color: var(--purple-accent); }
+.user-dropdown-item.danger:hover, .user-dropdown-item.danger i { color: var(--danger); }
+.user-dropdown-sep { height: 1px; background: var(--border-color); }
+
+/* Pantalla de bloqueo (baneado) */
+.blocked-card { max-width: 400px; text-align: center; }
+.blocked-card h2 { margin-bottom: 10px; }
+.blocked-card p { color: var(--text-muted); margin-bottom: 8px; }
+.blocked-note { font-size: 0.82rem; }
+.blocked-card .btn { margin-top: 14px; }
+
+@media (max-width: 768px) {
+    .alerts-wrapper { left: 16px; right: 16px; max-width: none; }
+    .username-display { max-width: 70px; }
+    .user-dropdown { right: 10px; }
+}
