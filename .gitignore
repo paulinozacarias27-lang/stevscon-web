@@ -1,1 +1,3 @@
-Set-Content -Path .gitignore -Value "node_modules/`n*.log`n"
+node_modules/
+*.log
+.DS_Store
