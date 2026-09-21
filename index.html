@@ -27,28 +27,27 @@
   <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 
-  <!-- Módulos de Utilidades y Almacenamiento -->
-  <script defer src="Accounts/memory_acc.js"></script>
-  <script defer src="profile/profile_memory.js"></script>
+ <!-- 1. Memoria y Roles -->
+<script defer src="Accounts/accounts_manager/memory_acc.js"></script>
+<script defer src="Accounts/accounts_manager/owner.js"></script>
+<script defer src="Accounts/accounts_manager/admin.js"></script>
 
-  <!-- Módulos de Lógica Funcional -->
-  <script defer src="Accounts/func_auth.js"></script>
-  <script defer src="profile/func_profile.js"></script>
-  <script defer src="profile/func_friends.js"></script>
-  <script defer src="profile/func_messages.js"></script>
-  <script defer src="Accounts/func_bot.js"></script>
+<!-- 2. Lógica Funcional -->
+<script defer src="Accounts/accounts_manager/func_acc/func_errors.js"></script>
+<script defer src="Accounts/accounts_manager/func_acc/func_auth.js"></script>
+<script defer src="Accounts/accounts_manager/func_acc/func_sessions.js"></script>
+<script defer src="Accounts/accounts_manager/func_acc/func_buttons.js"></script>
 
-  <!-- Módulos de UI y Renderizado -->
-  <script defer src="Accounts/ui_alerts.js"></script>
-  <script defer src="Accounts/ui_buttons.js"></script>
-  <script defer src="Accounts/ui_auth.js"></script>
-  <script defer src="profile/ui_profile/ui_profile.js"></script>
-  <script defer src="profile/ui_profile/ui_friends.js"></script>
-  <script defer src="profile/ui_profile/ui_messages.js"></script>
-
-  <!-- Router y Controlador Principal -->
-  <script defer src="category.js"></script>
+<!-- 3. Interfaz de Usuario -->
+<script defer src="Accounts/accounts_manager/ui_acc/ui_errors.js"></script>
+<script defer src="Accounts/accounts_manager/ui_acc/ui_buttons.js"></script>
+<script defer src="Accounts/accounts_manager/ui_acc/ui_auth.js"></script>
+<script defer src="Accounts/accounts_manager/ui_acc/ui_sessions.js"></script>
 </head>
+
+<!-- Archivo independiente de configuración y memoria base -->
+<script src="firebase_config.js"></script>
+
 <body class="theme-dark">
 
   <!-- Contenedor global de alertas y notificaciones -->
