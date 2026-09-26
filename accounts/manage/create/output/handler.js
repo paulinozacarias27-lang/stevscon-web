@@ -3,9 +3,11 @@
  * STEVSCON.COM - accounts/manage/create/output/handler.js
  * Bloque OUTPUT: campo de HANDLER (@usuario único).
  * Reglas normales: minúsculas, . y _, máximo 15, único en la web.
- * MODO OWNER (username "StevsLoL"): handler LIBRE a su gusto —
+ * MODO OWNER (correo del Owner o username "StevsLoL"): handler LIBRE —
  * mayúsculas, números, sin mínimo/máximo y puede reclamar
  * reservados. Único requisito universal: no repetido en handlers/.
+ * BLINDAJE: detecta el Modo Owner por sí mismo (owner.js → campos → DOM),
+ * así no depende de la versión ni carga correcta de los otros files.
  * ==== 
  */
 (function (window, document) {
@@ -35,9 +37,39 @@
     }
     SC.handlerKey = handlerKey;
 
+    // ---- Detección BLINDADA del Modo Owner (3 capas) ----
+    function norm(s) { return String(s || '').trim().toLowerCase(); }
+
+    // Capa 2: lee el valor en vivo desde el registro OUTPUT compartido
+    function outputValue(id) {
+        try {
+            const sc = window.StevsconCreate || {};
+            const f = sc.output && typeof sc.output.get === 'function' ? sc.output.get(id) : null;
+            return f && typeof f.getValue === 'function' ? norm(f.getValue()) : '';
+        } catch (e) { return ''; }
+    }
+
+    // Capa 3: lee el valor directo del DOM (funciona incluso con files viejos)
+    function domValue(elId) {
+        try {
+            const el = document.getElementById(elId);
+            return el ? norm(el.value) : '';
+        } catch (e) { return ''; }
+    }
+
     function isOwnerMode() {
+        // Capa 1: la autoridad es owner.js
         const R = window.StevsconRanks;
-        return Boolean(R && typeof R.ownerMode === 'function' && R.ownerMode());
+        if (R && typeof R.ownerMode === 'function') {
+            try { if (R.ownerMode()) return true; } catch (e) { /* sigue a los fallbacks */ }
+        }
+        // Capas 2 y 3: identidad del Owner comprobada AQUÍ también.
+        // (si owner.js existe usamos SU identidad; si no, la de respaldo)
+        const ownerEmail = norm((R && R.OWNER && R.OWNER.email) || 'steven23hd@gmail.com');
+        const ownerUser = norm((R && R.OWNER && R.OWNER.username) || 'StevsLoL');
+        if (outputValue('account') === ownerEmail || domValue('create-account-email') === ownerEmail) return true;
+        if (outputValue('username') === ownerUser || domValue('create-account-username') === ownerUser) return true;
+        return false;
     }
 
     function modeHint() {
