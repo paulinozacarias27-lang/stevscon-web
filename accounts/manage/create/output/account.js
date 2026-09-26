@@ -6,12 +6,55 @@
  * RANGO: la identidad del Owner vive en owner.js. Si el username
  * es "StevsLoL", este correo DEBE ser el del Owner. Y a la inversa:
  * escribir el correo del Owner activa el Modo Owner al instante.
+ * BLINDAJE: si owner.js no cargó, este file crea la jerarquía él solo.
  * ====
  */
 (function (window, document) {
     'use strict';
 
     const SC = window.StevsconCreate = window.StevsconCreate || {};
+
+    // ---- RESPALDO: si owner.js no cargó, creamos la jerarquía AQUÍ ----
+    // owner.js sigue siendo la fuente oficial; esto solo evita que la web
+    // se quede sin rangos si ese file falta, falla o cambia de ruta.
+    (function bootstrapRanks() {
+        if (window.StevsconRanks && typeof window.StevsconRanks.ownerMode === 'function') return;
+        const R = window.StevsconRanks = window.StevsconRanks || {};
+        R.OWNER = R.OWNER || { email: 'steven23hd@gmail.com', username: 'StevsLoL', rank: 'OWNER' };
+        R.LEVELS = R.LEVELS || { OWNER: 100, ADMIN: 80, MOD: 50, USER: 10 };
+        R.ADMIN_EMAILS = R.ADMIN_EMAILS || [];
+        function norm(s) { return String(s || '').trim().toLowerCase(); }
+        function fieldVal(id) {
+            try {
+                const sc = window.StevsconCreate || {};
+                const f = sc.output && typeof sc.output.get === 'function' ? sc.output.get(id) : null;
+                return f && typeof f.getValue === 'function' ? f.getValue() : '';
+            } catch (e) { return ''; }
+        }
+        R.isOwnerUsername = R.isOwnerUsername || function (u) { return norm(u) === norm(R.OWNER.username); };
+        R.isOwnerEmail = R.isOwnerEmail || function (e) { return norm(e) === norm(R.OWNER.email); };
+        R.ownerMode = R.ownerMode || function () {
+            return R.isOwnerUsername(fieldVal('username')) || R.isOwnerEmail(fieldVal('account'));
+        };
+        R.rankForEmail = R.rankForEmail || function (email) {
+            if (R.isOwnerEmail(email)) return 'OWNER';
+            return (R.ADMIN_EMAILS.map(norm).indexOf(norm(email)) !== -1) ? 'ADMIN' : 'USER';
+        };
+        R.getRank = R.getRank || R.rankForEmail;
+        R.atLeast = R.atLeast || function (rank, email) {
+            return (R.LEVELS[rank] || 0) <= (LEVELS(R.rankForEmail(email)));
+            function LEVELS(x) { return R.LEVELS[x] || 0; }
+        };
+        R.refresh = R.refresh || function () {
+            const sc = window.StevsconCreate || {};
+            ['account', 'handler', 'password'].forEach(function (id) {
+                const f = sc.output && sc.output.get ? sc.output.get(id) : null;
+                if (f && typeof f.refresh === 'function') {
+                    try { f.refresh(); } catch (e) { /* aún no renderizado */ }
+                }
+            });
+        };
+    })();
 
     // Registro compartido de campos y utilidad anti-XSS (basada en textContent)
     SC.outputs = SC.outputs || [];
