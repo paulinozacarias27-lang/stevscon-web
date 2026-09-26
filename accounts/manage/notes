@@ -3,6 +3,16 @@ THIS I NEED TO DO.
 -# CREATE
 
 >>>> UI <<<<
+(UI means the Output and buttons on the Create ACCOUNT will be.)
 
--
->
+> Output (Subcategory)
+>> Username - username.js
+>> Handler @ - handler.js
+>> Account create - account.js
+>> Password - password.js
+>> Gmail bot - mail.js
+
+> Buttons (Subcategory)
+>> Create account Button - acc_create.js
+>> Allow buttons - acc_allow.js
+>> Errors on buttons - acc_errors.js
