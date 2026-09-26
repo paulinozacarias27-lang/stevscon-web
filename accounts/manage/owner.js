@@ -1,12 +1,14 @@
 /**
  * ============================================================
- * STEVSCON.COM - owner.js  ·  JERARQUÍA DE RANGOS
- * ⬆️ ESTE FILE DEBE CARGAR SIEMPRE ALTO DE TODO:
- *    es el PRIMER <script> del index, antes que Firebase.
+ * STEVSCON.COM - accounts/owner.js  ·  JERARQUÍA DE RANGOS
+ * ⬆️ Carga SIEMPRE ALTO DE TODO (primer <script> del index).
  *
- * OWNER = TOP absoluto de la web (nadie por encima).
- * Si en el crear cuentas el username es "StevsLoL", se activa
- * el MODO OWNER: handler y contraseña libres a su gusto.
+ * IDENTIDAD DEL OWNER (INQUEBRANTABLE, guardada aquí):
+ * → steven23hd@gmail.com  /  StevsLoL
+ *
+ * MODO OWNER en el formulario: se activa si el username escrito
+ * es "StevsLoL" O el correo escrito es el del Owner. Con uno solo
+ * de los dos basta. Ahí handler y contraseña quedan libres.
  * ============================================================
  */
 (function (window) {
@@ -14,7 +16,7 @@
 
     const Ranks = window.StevsconRanks = {};
 
-    // ===== IDENTIDAD DEL OWNER (INQUEBRANTABLE) =====
+    // ===== IDENTIDAD DEL OWNER (guardada AQUÍ y solo aquí) =====
     const OWNER = {
         email: 'steven23hd@gmail.com',
         username: 'StevsLoL',
@@ -32,7 +34,6 @@
 
     function norm(s) { return String(s || '').trim().toLowerCase(); }
 
-    // ¿El username escrito es el del Owner? (compara sin mayúsculas)
     Ranks.isOwnerUsername = function (username) {
         return norm(username) === norm(OWNER.username);
     };
@@ -41,14 +42,20 @@
         return norm(email) === norm(OWNER.email);
     };
 
-    // ¿El formulario está en MODO OWNER ahora mismo?
-    // Lee el campo username en vivo desde el registro OUTPUT.
-    Ranks.ownerMode = function () {
+    // Lee en vivo el valor de un campo OUTPUT por su id
+    function fieldValue(id) {
         try {
             const SC = window.StevsconCreate;
-            const f = SC && SC.output && SC.output.get ? SC.output.get('username') : null;
-            return Ranks.isOwnerUsername(f && f.getValue ? f.getValue() : '');
-        } catch (e) { return false; }
+            const f = SC && SC.output && SC.output.get ? SC.output.get(id) : null;
+            return f && typeof f.getValue === 'function' ? f.getValue() : '';
+        } catch (e) { return ''; }
+    }
+
+    // ¿El formulario está en MODO OWNER ahora mismo?
+    // Basta con el username del Owner O su correo oficial.
+    Ranks.ownerMode = function () {
+        return Ranks.isOwnerUsername(fieldValue('username')) ||
+               Ranks.isOwnerEmail(fieldValue('account'));
     };
 
     // Rango de un correo: OWNER > ADMIN > USER
