@@ -9,18 +9,16 @@
   <link rel="icon" type="image/png" href="SC-LOGO-20260825013121.png">
   <link rel="apple-touch-icon" href="SC-LOGO-20260825013121.png">
 
-  <!-- Fuente Inter (tu styles.css la declara) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 
-  <!-- Estilos -->
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=2">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-  <!-- ⬆️ 0) JERARQUÍA DE RANGOS · owner.js SIEMPRE ALTO DE TODO -->
-  <script defer src="owner.js"></script>
-  <script defer src="admin.js"></script>
+  <!-- 0) JERARQUÍA DE RANGOS · owner.js SIEMPRE ALTO DE TODO -->
+  <script defer src="owner.js?v=2"></script>
+  <script defer src="admin.js?v=2"></script>
 
   <!-- 1) SDK de Firebase -->
   <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -28,45 +26,62 @@
   <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 
-  <!-- 2) Configuración e inicialización de Firebase (SIEMPRE justo después del SDK) -->
-  <script defer src="firebase_data.js"></script>
+  <!-- 2) Configuración de Firebase (SIEMPRE justo después del SDK) -->
+  <script defer src="firebase_data.js?v=2"></script>
 
-  <!-- 3) CREATE · Output (campos del formulario) -->
-  <script defer src="accounts/manage/create/output/account.js"></script>
-  <script defer src="accounts/manage/create/output/username.js"></script>
-  <script defer src="accounts/manage/create/output/handler.js"></script>
-  <script defer src="accounts/manage/create/output/password.js"></script>
+  <!-- 3) CREATE · Output -->
+  <script defer src="accounts/manage/create/output/account.js?v=2"></script>
+  <script defer src="accounts/manage/create/output/username.js?v=2"></script>
+  <script defer src="accounts/manage/create/output/handler.js?v=2"></script>
+  <script defer src="accounts/manage/create/output/password.js?v=2"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
-  <script defer src="accounts/manage/create/output/mail.js"></script>
+  <script defer src="accounts/manage/create/output/mail.js?v=2"></script>
 
   <!-- 4) CREATE · Botones -->
-  <script defer src="accounts/manage/create/buttons/acc_allow.js"></script>
-  <script defer src="accounts/manage/create/buttons/acc_create.js"></script>
-  <script defer src="accounts/manage/create/buttons/acc_errors.js"></script>
+  <script defer src="accounts/manage/create/buttons/acc_allow.js?v=2"></script>
+  <script defer src="accounts/manage/create/buttons/acc_create.js?v=2"></script>
+  <script defer src="accounts/manage/create/buttons/acc_errors.js?v=2"></script>
 
-  <!-- 5) CREATE · Coordinador de la categoría (SIEMPRE al final) -->
-  <script defer src="accounts/manage/category_acc.js"></script>
+  <!-- 5) Coordinador de la categoría (SIEMPRE al final)
+       ⚠ Si tu category_acc.js está en la RAÍZ, cambia la ruta a: src="category_acc.js?v=2" -->
+  <script defer src="accounts/manage/category_acc.js?v=2"></script>
 </head>
 <body class="theme-dark">
 
-  <!-- Barra de Navegación Superior -->
   <header class="navbar">
     <div class="brand">
       <img src="SC-LOGO-20260825013121.png" alt="Stevscon Logo" class="brand-logo" id="main-brand-logo">
       <span class="brand-title">Stevscon.com</span>
     </div>
-
-    <!-- Zona para acciones del usuario (ACCESS llegará aquí) -->
     <div class="auth-header" id="user-header-actions"></div>
   </header>
 
-  <!-- Contenedor Principal -->
-  <main id="app-main-viewport" class="main-viewport">
-  </main>
+  <main id="app-main-viewport" class="main-viewport"></main>
 
-  <!-- Contenedor para Alertas y Modales -->
   <div id="alerts-container" class="alerts-wrapper"></div>
   <div id="modals-root" class="modals-wrapper"></div>
 
+  <!-- Autodiagnóstico: si la web no arranca, dice en pantalla qué file falta -->
+  <script>
+  window.addEventListener('load', function () {
+    setTimeout(function () {
+      var main = document.getElementById('app-main-viewport');
+      if (!main || main.childNodes.length > 0) return; // todo bien, la web arrancó
+      var missing = [];
+      if (!window.StevsconRanks) missing.push('owner.js / admin.js');
+      if (!window.StevsconFirebase) missing.push('firebase_data.js');
+      if (!window.StevsconCreate) missing.push('los módulos de accounts/');
+      if (!window.StevsconCreate || !window.StevsconCreate.output) missing.push('category_acc.js o los campos output');
+      var box = document.createElement('div');
+      box.style.cssText = 'margin:60px auto;max-width:540px;padding:20px 24px;border:1px solid #ef4444;' +
+        'border-radius:10px;color:#f87171;font-family:Inter,sans-serif;font-size:14px;text-align:center;' +
+        'background:rgba(239,68,68,.08)';
+      box.textContent = 'La web no arrancó. Revisa que existan y se llamen EXACTO: ' +
+        (missing.join(' · ') || 'category_acc.js') +
+        '. Pulsa F12 > Console para ver el error exacto.';
+      main.appendChild(box);
+    }, 1500);
+  });
+  </script>
 </body>
 </html>
