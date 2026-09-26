@@ -5,22 +5,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Stevscon.com</title>
 
-  <!-- Favicon -->
+  <meta name="description" content="Stevscon - Plataforma social, mensajería y comunidad en tiempo real.">
   <link rel="icon" type="image/png" href="SC-LOGO-20260825013121.png">
+  <link rel="apple-touch-icon" href="SC-LOGO-20260825013121.png">
+
+  <!-- Fuente Inter (tu styles.css la declara) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 
   <!-- Estilos -->
   <link rel="stylesheet" href="styles.css">
-
-  <!-- Font Awesome para iconos -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-  <!-- Firebase SDK (Compat v9.x) -->
+  <!-- 1) SDK de Firebase -->
   <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 
-  <!-- Categoría Accounts · Manage · Create -->
+  <!-- 2) Configuración e inicialización de Firebase (SIEMPRE justo después del SDK) -->
+  <script defer src="firebase_data.js"></script>
+
+  <!-- 3) CREATE · Output (campos del formulario) -->
   <script defer src="accounts/manage/create/output/account.js"></script>
   <script defer src="accounts/manage/create/output/username.js"></script>
   <script defer src="accounts/manage/create/output/handler.js"></script>
@@ -28,8 +35,13 @@
   <script defer src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
   <script defer src="accounts/manage/create/output/mail.js"></script>
 
-  <!-- Configuración de Firebase -->
-  <script defer src="firebase_data.js"></script>
+  <!-- 4) CREATE · Botones -->
+  <script defer src="accounts/manage/create/buttons/acc_allow.js"></script>
+  <script defer src="accounts/manage/create/buttons/acc_create.js"></script>
+  <script defer src="accounts/manage/create/buttons/acc_errors.js"></script>
+
+  <!-- 5) CREATE · Coordinador de la categoría (SIEMPRE al final) -->
+  <script defer src="accounts/manage/category_acc.js"></script>
 </head>
 <body class="theme-dark">
 
@@ -40,11 +52,11 @@
       <span class="brand-title">Stevscon.com</span>
     </div>
 
-    <!-- Zona para acciones del usuario (Inicio de sesión) -->
+    <!-- Zona para acciones del usuario (ACCESS llegará aquí) -->
     <div class="auth-header" id="user-header-actions"></div>
   </header>
 
-  <!-- Contenedor Principal Vacío -->
+  <!-- Contenedor Principal -->
   <main id="app-main-viewport" class="main-viewport">
   </main>
 

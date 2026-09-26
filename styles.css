@@ -248,3 +248,406 @@ body {
 .strength-meter.level-2 .strength-bar:nth-child(-n+2) { background: #f59e0b; }
 .strength-meter.level-3 .strength-bar:nth-child(-n+3) { background: #eab308; }
 .strength-meter.level-4 .strength-bar { background: #4ade80; }
+
+/* ============================================
+   CREATE · BOTONES (checkbox, crear, errores)
+   ============================================ */
+
+/* Checkbox "No soy un robot" */
+.checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin-bottom: 16px;
+    cursor: pointer;
+    transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.checkbox-row:hover { border-color: var(--purple-accent); }
+
+.checkbox-input {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    border: 2px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--bg-elevated);
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.checkbox-input:checked {
+    background: var(--purple-accent);
+    border-color: var(--purple-accent);
+}
+
+.checkbox-input:checked::after {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 1px;
+    width: 4px;
+    height: 9px;
+    border-right: 2.5px solid #fff;
+    border-bottom: 2.5px solid #fff;
+    transform: rotate(45deg);
+}
+
+.checkbox-label {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-main);
+    cursor: pointer;
+    user-select: none;
+}
+
+/* Botón principal Crear cuenta */
+.btn-create {
+    width: 100%;
+    justify-content: center;
+    padding: 12px 20px;
+    font-size: 0.95rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: none;
+    border-radius: 8px;
+    background: var(--purple-accent);
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.btn-create:hover:not(:disabled) {
+    background: var(--purple-dark);
+    box-shadow: 0 4px 16px var(--purple-glow);
+}
+
+.btn-create:active:not(:disabled) { transform: scale(0.985); }
+
+.btn-create:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.btn-create.is-success { background: #22c55e; }
+
+.btn-create.is-success:hover:not(:disabled) { background: #16a34a; }
+
+/* Spinner de carga */
+.spinner {
+    width: 16px;
+    height: 16px;
+    border: 2.5px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: sc-spin 0.7s linear infinite;
+}
+
+@keyframes sc-spin { to { transform: rotate(360deg); } }
+
+/* Cajas de error y éxito de los botones */
+.feedback-wrap { margin-bottom: 16px; }
+
+.errors-box,
+.success-box {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 11px 14px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.errors-box {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    color: #f87171;
+}
+
+.success-box {
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.35);
+    color: #4ade80;
+}
+
+.errors-box i, .success-box i { margin-top: 2px; }
+
+/* Rerender de .btn base si tu styles.css aún no lo tiene */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: none;
+    border-radius: 8px;
+    padding: 9px 18px;
+    font-size: 0.88rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-primary {
+    background: var(--purple-accent);
+    color: #fff;
+}
+
+.btn-primary:hover { background: var(--purple-dark); }
+
+/* ============================================
+   UTILIDADES
+   ============================================ */
+.hidden { display: none !important; }
+
+/* ============================================
+   HOME · Categoría principal "Crear cuenta"
+   ============================================ */
+.home-hero {
+    min-height: calc(100vh - 60px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 40px 20px;
+    gap: 10px;
+}
+
+.home-logo {
+    width: 84px;
+    height: 84px;
+    object-fit: contain;
+    border-radius: 20px;
+    margin-bottom: 8px;
+}
+
+.home-title {
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.home-subtitle {
+    color: var(--text-muted);
+    font-size: 1rem;
+    max-width: 480px;
+}
+
+.category-card {
+    margin-top: 28px;
+    width: 100%;
+    max-width: 420px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    text-align: left;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 18px 20px;
+    cursor: pointer;
+    transition: border-color 0.2s ease, transform 0.15s ease, background 0.2s ease;
+    color: inherit;
+    font-family: inherit;
+}
+
+.category-card:hover {
+    border-color: var(--purple-accent);
+    background: var(--bg-hover);
+    transform: translateY(-2px);
+}
+
+.category-card.is-static { cursor: default; }
+.category-card.is-static:hover {
+    border-color: var(--border-color);
+    background: var(--bg-card);
+    transform: none;
+}
+
+.category-icon {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--purple-accent);
+    color: #fff;
+    border-radius: 10px;
+    font-size: 1.05rem;
+}
+
+.category-text {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex: 1;
+    min-width: 0;
+}
+
+.category-text strong {
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--text-main);
+}
+
+.category-text span {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+}
+
+.category-arrow { color: var(--text-muted); transition: color 0.2s ease; }
+.category-card:hover .category-arrow { color: var(--purple-light); }
+
+/* Tarjeta de sesión activa */
+.session-avatar {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--purple-dark);
+    color: #fff;
+    border-radius: 50%;
+    font-weight: 800;
+    font-size: 1.1rem;
+}
+
+.copy-id-btn {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.copy-id-btn:hover {
+    color: #fff;
+    border-color: var(--purple-accent);
+}
+
+/* ============================================
+   MODAL (usado por CREATE)
+   ============================================ */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(5, 3, 10, 0.72);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 2000;
+}
+
+.modal {
+    width: 100%;
+    max-width: 440px;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    animation: modal-in 0.22s ease;
+}
+
+@keyframes modal-in {
+    from { opacity: 0; transform: translateY(14px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 20px 22px 0;
+}
+
+.modal-titles h2 { font-size: 1.25rem; font-weight: 800; }
+.modal-titles p { font-size: 0.85rem; color: var(--text-muted); margin-top: 3px; }
+
+.modal-close {
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.modal-close:hover { color: #fff; border-color: var(--purple-accent); }
+
+.modal-body { padding: 18px 22px 22px; }
+
+.create-form { display: flex; flex-direction: column; }
+
+/* ============================================
+   TOASTS (alertas globales, esquina inferior)
+   ============================================ */
+.alerts-wrapper {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 3000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: min(360px, calc(100vw - 40px));
+}
+
+.toast {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    animation: toast-in 0.3s ease;
+}
+
+.toast-success {
+    background: var(--bg-card);
+    border: 1px solid rgba(34, 197, 94, 0.4);
+    color: #4ade80;
+}
+
+.toast-out {
+    opacity: 0;
+    transform: translateY(8px);
+    transition: all 0.35s ease;
+}
+
+@keyframes toast-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
