@@ -1,10 +1,11 @@
 /**
- * ============================================================
+ * ====
  * STEVSCON.COM - accounts/manage/create/output/account.js
  * Bloque OUTPUT: campo de CORREO ELECTRÓNICO.
- * Es el bloque blanco donde el usuario escribe su cuenta.
  * Cerebro propio: verifica contra Firebase Auth si el correo ya existe.
- * ============================================================
+ * RANGO: si el username es "StevsLoL" (Modo Owner), este correo
+ * DEBE ser el del Owner — nadie más puede usar ese nombre.
+ * ====
  */
 (function (window, document) {
     'use strict';
@@ -77,8 +78,13 @@
         checkTimer = setTimeout(checkRegistered, 700);
     }
 
+    // Valor actual del campo username (para el Modo Owner)
+    function getUsernameValue() {
+        const f = SC.output && SC.output.get ? SC.output.get('username') : null;
+        return f && typeof f.getValue === 'function' ? f.getValue() : '';
+    }
+
     // Cerebro propio: pregunta a Firebase Auth si el correo ya está registrado.
-    // Es la mejor estimación: la decisión final la toma acc_create.js al registrar.
     function checkRegistered() {
         const val = getValue();
         if (!EMAIL_RE.test(val)) return;
@@ -86,14 +92,13 @@
 
         window.StevsconFirebase.auth.fetchSignInMethodsForEmail(val)
             .then(function (methods) {
-                if (getValue() !== val) return; // el usuario siguió escribiendo
+                if (getValue() !== val) return;
                 if (methods && methods.length > 0) {
                     setState('error', 'Este correo ya tiene una cuenta. Inicia sesión con él.');
                 }
             })
             .catch(function () {
-                // Si la protección anti-enumeración de Firebase bloquea la consulta,
-                // se ignora en silencio: no es un error del usuario.
+                // Protección anti-enumeración de Firebase: se ignora en silencio
             });
     }
 
@@ -113,6 +118,13 @@
         const val = getValue();
         if (!val) return { ok: false, msg: 'Escribe tu correo electrónico.' };
         if (!EMAIL_RE.test(val)) return { ok: false, msg: 'El correo no tiene un formato válido.' };
+
+        // RANGO: el nombre del Owner exige su correo oficial
+        const R = window.StevsconRanks;
+        if (R && typeof R.isOwnerUsername === 'function' && R.isOwnerUsername(getUsernameValue())
+            && typeof R.isOwnerEmail === 'function' && !R.isOwnerEmail(val)) {
+            return { ok: false, msg: 'El nombre "StevsLoL" pertenece al Owner de Stevscon.' };
+        }
         return { ok: true, msg: '' };
     }
 
@@ -122,7 +134,17 @@
         setState('', 'Esta será tu cuenta para iniciar sesión.');
     }
 
-    const FIELD = { id: 'account', order: 1, render, getValue, validate, clear };
+    // Re-evaluación cuando entra/sale el Modo Owner
+    function refresh() {
+        if (!inputEl) return;
+        const val = getValue();
+        if (!val) { setState('', 'Esta será tu cuenta para iniciar sesión.'); return; }
+        const r = validate();
+        if (!r.ok) setState('error', r.msg);
+        else setState('ok', 'Formato correcto.');
+    }
+
+    const FIELD = { id: 'account', order: 1, render, getValue, validate, clear, refresh };
     SC.outputs.push(FIELD);
 
     // ---- Orquestador compartido (lo define el primer file cargado) ----
@@ -136,6 +158,17 @@
                 try { container.appendChild(f.render()); }
                 catch (e) { console.error('[Stevscon Create] Error renderizando campo:', f.id, e); }
             });
+            // RANGO: al escribir el username, refresca handler/password/account
+            // por si el Modo Owner entra o sale en vivo.
+            if (!container.dataset.rankHook) {
+                container.dataset.rankHook = '1';
+                container.addEventListener('input', function (e) {
+                    const R = window.StevsconRanks;
+                    if (!R || typeof R.refresh !== 'function') return;
+                    const group = e.target && e.target.closest ? e.target.closest('.form-group') : null;
+                    if (group && group.dataset && group.dataset.field === 'username') R.refresh();
+                });
+            }
             return fields;
         };
     }

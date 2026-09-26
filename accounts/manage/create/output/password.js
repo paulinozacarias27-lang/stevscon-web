@@ -1,10 +1,12 @@
 /**
- * ============================================================
+ * ====
  * STEVSCON.COM - accounts/manage/create/output/password.js
  * Bloque OUTPUT: campo de CONTRASEÑA.
- * Regla: mínimo 8 caracteres. NUNCA se guarda en la base de
- * datos: Firebase Auth la hashea automáticamente.
- * ============================================================
+ * Regla normal: mínimo 8 caracteres.
+ * MODO OWNER (username "StevsLoL"): contraseña libre — el único
+ * piso es 6, el mínimo DURO del servidor de Firebase Auth.
+ * NUNCA se guarda en la base de datos: Firebase la hashea.
+ * ====
  */
 (function (window, document) {
     'use strict';
@@ -13,12 +15,27 @@
     SC.outputs = SC.outputs || [];
 
     const MIN = 8;
+    const MIN_OWNER = 6; // piso absoluto de Firebase Auth
     const MAX = 128;
 
     let inputEl = null;
     let hintEl = null;
     let meterEl = null;
     let iconEl = null;
+
+    function isOwnerMode() {
+        const R = window.StevsconRanks;
+        return Boolean(R && typeof R.ownerMode === 'function' && R.ownerMode());
+    }
+
+    function minRequired() {
+        return isOwnerMode() ? MIN_OWNER : MIN;
+    }
+
+    function hintFor(emptyState) {
+        if (isOwnerMode()) return 'Modo Owner: contraseña libre (mínimo ' + MIN_OWNER + ', límite de Firebase).';
+        return emptyState || ('Mínimo ' + MIN + ' caracteres. Usa mayúsculas y números para más seguridad.');
+    }
 
     function render() {
         const group = document.createElement('div');
@@ -100,15 +117,16 @@
 
     function onInput() {
         const val = inputEl.value;
+        const min = minRequired();
         if (!val) {
             meterEl.className = 'strength-meter';
-            setState('', 'Mínimo ' + MIN + ' caracteres. Usa mayúsculas y números para más seguridad.');
+            setState('', hintFor());
             return;
         }
         const lvl = scorePassword(val);
         meterEl.className = 'strength-meter level-' + lvl;
-        if (val.length < MIN) {
-            setState('error', 'Te faltan ' + (MIN - val.length) + ' caracteres.');
+        if (val.length < min) {
+            setState('error', 'Te faltan ' + (min - val.length) + ' caracteres.');
         } else {
             const labels = { 1: 'Débil', 2: 'Aceptable', 3: 'Buena', 4: 'Excelente' };
             setState('ok', 'Contraseña ' + (labels[lvl] || 'válida') + '.');
@@ -129,8 +147,9 @@
 
     function validate() {
         const val = getValue();
+        const min = minRequired();
         if (!val) return { ok: false, msg: 'Escribe tu contraseña.' };
-        if (val.length < MIN) return { ok: false, msg: 'La contraseña debe tener al menos ' + MIN + ' caracteres.' };
+        if (val.length < min) return { ok: false, msg: 'La contraseña debe tener al menos ' + min + ' caracteres.' };
         return { ok: true, msg: '' };
     }
 
@@ -139,9 +158,16 @@
         if (meterEl) meterEl.className = 'strength-meter';
         iconEl.className = 'fa-solid fa-eye';
         if (inputEl) inputEl.type = 'password';
-        setState('', 'Mínimo ' + MIN + ' caracteres. Usa mayúsculas y números para más seguridad.');
+        setState('', hintFor());
     }
 
-    const FIELD = { id: 'password', order: 4, render, getValue, validate, clear };
+    // Re-evaluación cuando entra/sale el Modo Owner
+    function refresh() {
+        if (!inputEl) return;
+        if (inputEl.value) onInput();
+        else setState('', hintFor());
+    }
+
+    const FIELD = { id: 'password', order: 4, render, getValue, validate, clear, refresh };
     SC.outputs.push(FIELD);
 })(window, document);
