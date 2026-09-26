@@ -96,3 +96,155 @@ body {
     flex-grow: 1;
     width: 100%;
 }
+
+/* ============================================
+   CREATE · FORMULARIO DE REGISTRO (output)
+   Bloques blancos de escritura + acentos morados
+   ============================================ */
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 16px;
+}
+
+.field-label-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+.field-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-main);
+    letter-spacing: 0.02em;
+}
+
+.field-counter {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+/* El bloque blanco donde se escribe */
+.field-input {
+    width: 100%;
+    background: #ffffff;
+    color: #16121f;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    padding: 11px 14px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.field-input::placeholder {
+    color: #9b93ab;
+    font-weight: 400;
+}
+
+.field-input:focus {
+    border-color: var(--purple-accent);
+    box-shadow: 0 0 0 3px var(--purple-glow);
+}
+
+.field-input.is-invalid { border-color: #ef4444; }
+.field-input.is-invalid:focus { box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18); }
+.field-input.is-valid { border-color: #4ade80; }
+
+/* Pistas bajo cada campo */
+.field-hint {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    min-height: 1em;
+}
+.field-hint.hint-error { color: #f87171; }
+.field-hint.hint-ok { color: #4ade80; }
+
+/* Handler: el @ fijo antes del bloque blanco */
+.handler-wrap {
+    display: flex;
+    align-items: center;
+    background: #ffffff;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.handler-wrap:focus-within {
+    border-color: var(--purple-accent);
+    box-shadow: 0 0 0 3px var(--purple-glow);
+}
+
+.handler-wrap.has-error { border-color: #ef4444; }
+.handler-wrap.has-ok { border-color: #4ade80; }
+
+.handler-wrap .at-sign {
+    color: #16121f;
+    font-weight: 800;
+    padding-left: 14px;
+    user-select: none;
+}
+
+.handler-wrap .field-input {
+    border: none;
+    box-shadow: none;
+    flex: 1;
+}
+
+/* Contraseña: input + botón de ojo */
+.password-wrap {
+    position: relative;
+    display: flex;
+}
+
+.password-wrap .field-input {
+    padding-right: 46px;
+}
+
+.field-eye {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: #6b6478;
+    cursor: pointer;
+    transition: color 0.15s ease, background 0.15s ease;
+}
+
+.field-eye:hover {
+    color: var(--purple-accent);
+    background: rgba(139, 92, 246, 0.12);
+}
+
+/* Medidor de fuerza de la contraseña */
+.strength-meter {
+    display: flex;
+    gap: 5px;
+    margin-top: 2px;
+}
+
+.strength-bar {
+    height: 4px;
+    flex: 1;
+    background: var(--border-color);
+    border-radius: 3px;
+    transition: background 0.25s ease;
+}
+
+.strength-meter.level-1 .strength-bar:nth-child(1) { background: #ef4444; }
+.strength-meter.level-2 .strength-bar:nth-child(-n+2) { background: #f59e0b; }
+.strength-meter.level-3 .strength-bar:nth-child(-n+3) { background: #eab308; }
+.strength-meter.level-4 .strength-bar { background: #4ade80; }
