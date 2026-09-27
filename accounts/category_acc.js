@@ -7,9 +7,12 @@
  * - ACCESS: delega en acc_access.js (SC.access.open).
  * - Los dos se abren, se cierran y se alternan sin pisarse.
  * - Vigila la sesion: con usuario activo, ambas tarjetas ceden.
- * - NUEVO: el avatar de la tarjeta de sesion usa el cerebro COMPARTIDO
- *   de media_acc.js (GIFs animados incluidos) y se refresca solo cuando
- *   Perfiles dispara 'stevscon:profile-updated'.
+ * - NUEVO v3: tarjeta de sesion AUTOCONTENIDA e IRROMPIBLE — el avatar se
+ *   pinta AQUI dentro con estilos inline (background-image sobre el span
+ *   circular, GIFs animados incluidos) y NO depende de media_acc.js.
+ *   Layout fijo: avatar circulo | username grande / handler pequeno / ID
+ *   en texto normal | boton de copiar a la derecha.
+ *   Se refresca sola cuando Perfiles dispara 'stevscon:profile-updated'.
  * Cargar SIEMPRE al final (despues de outputs, buttons y access).
  * ====
  */
@@ -152,26 +155,55 @@
     }
     document.addEventListener('stevscon:profile-updated', refreshSessionCard);
 
+    // ---- TARJETA DE SESION: autocontenida, con estilos inline ----
+
     function renderSessionCard(container, user) {
         const card = document.createElement('div');
-        card.className = 'category-card is-static';
+        card.className = 'category-card is-static session-card';
+        // Layout FIJO con inline: avatar | columna de texto | boton copiar.
+        card.style.cssText = 'display:flex;align-items:center;gap:14px;text-align:left;';
 
+        // 1) AVATAR: span circular GARANTIZADO con inline (aunque el CSS no
+        //    tenga la clase). Aqui se pinta la imagen/GIF con background.
         const avatar = document.createElement('span');
         avatar.className = 'session-avatar';
+        avatar.style.cssText = [
+            'flex:none', 'width:56px', 'height:56px',
+            'border-radius:50%', 'overflow:hidden',
+            'display:flex', 'align-items:center', 'justify-content:center',
+            'background-color:#2e2440', 'background-size:cover',
+            'background-position:center', 'background-repeat:no-repeat',
+            'color:#f8fafc', 'font-weight:800', 'font-size:1.2rem',
+            'box-sizing:border-box'
+        ].join(';');
         avatar.textContent = 'S';
 
-        const text = document.createElement('span');
-        text.className = 'category-text';
+        // 2) COLUMNA de texto SIEMPRE al lado del avatar:
+        //    username GRANDE / handler pequeno / ID normal hasta abajo.
+        const info = document.createElement('span');
+        info.style.cssText = 'display:flex;flex-direction:column;justify-content:center;gap:2px;flex:1;min-width:0;overflow:hidden;';
+
         const name = document.createElement('strong');
         name.textContent = 'Sesion iniciada';
-        const detail = document.createElement('span');
-        detail.textContent = user.email || 'Cargando tu perfil...';
-        text.appendChild(name);
-        text.appendChild(detail);
+        name.style.cssText = 'font-size:1.05rem;font-weight:800;color:#f8fafc;letter-spacing:-.2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
 
+        const handlerEl = document.createElement('span');
+        handlerEl.textContent = user.email || '';
+        handlerEl.style.cssText = 'font-size:.8rem;font-weight:600;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+
+        const idEl = document.createElement('span');
+        idEl.textContent = 'ID: —';
+        idEl.style.cssText = 'font-size:.85rem;font-weight:500;color:#cbd5e1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+
+        info.appendChild(name);
+        info.appendChild(handlerEl);
+        info.appendChild(idEl);
+
+        // 3) Boton de copiar ID: fijo a la derecha, sin pisar la columna.
         const copyBtn = document.createElement('button');
         copyBtn.type = 'button';
         copyBtn.className = 'copy-id-btn';
+        copyBtn.style.cssText = 'flex:none;margin-left:auto;';
         copyBtn.title = 'Copiar tu ID';
         copyBtn.setAttribute('aria-label', 'Copiar tu ID');
         const copyIcon = document.createElement('i');
@@ -179,9 +211,12 @@
         copyBtn.appendChild(copyIcon);
 
         card.appendChild(avatar);
-        card.appendChild(text);
+        card.appendChild(info);
         card.appendChild(copyBtn);
         container.appendChild(card);
+
+        let currentId = null;
+        copyBtn.addEventListener('click', function () { if (currentId) copyId(currentId); });
 
         // Cerebro propio: el perfil vive en users/{uid} y el avatar
         // (base64 o GIF animado) en users/{uid}/profile
@@ -191,50 +226,56 @@
                     const p = snap.val() || {};
                     paintSessionAvatar(avatar, p.profile || {}, p);
                     name.textContent = p.username || 'Sesion iniciada';
-                    detail.textContent = '@' + (p.handler || '') + ' · ID: ' + (p.userId || '—');
-                    copyBtn.addEventListener('click', function () { copyId(p.userId); });
+                    handlerEl.textContent = p.handler ? '@' + p.handler : (user.email || '');
+                    currentId = p.userId || null;
+                    idEl.textContent = 'ID: ' + (p.userId || '—');
                 })
                 .catch(function () { /* sin perfil aun: dejamos el correo */ });
         }
     }
 
-    // Avatar de la tarjeta: usa el cerebro COMPARTIDO de media_acc.js
-    // (imagen JPG/PNG o GIF animado, preset, o letra de respaldo).
+    // Pintor LOCAL de la tarjeta: SOLO background-image sobre el span.
+    // NUNCA crea <img> y NUNCA llama a media_acc.js: la tarjeta no puede
+    // romperse por ninguna otra version de ningun otro file.
     function paintSessionAvatar(avatarEl, profile, userRow) {
-        const M = window.StevsconMedia;
-        if (M && typeof M.applyAvatar === 'function') {
-            M.applyAvatar(avatarEl, profile, userRow);
-            return;
-        }
+        const letter = String((userRow && userRow.username) || (profile && profile.username) || 'S').charAt(0).toUpperCase();
+        const url = profile && (profile.avatarUrl || profile.avatarURL);
 
-        // Plan B: logica propia por si media_acc.js no cargo.
-        const letter = String((userRow && userRow.username) || 'S').charAt(0).toUpperCase();
+        // Limpieza: sin URL (o antes de pintar) volvemos al color de fabrica
+        // y al preset guardado si existe, con la letra de respaldo.
+        avatarEl.style.background = '';
+        avatarEl.style.backgroundColor = '#2e2440';
 
-        if (profile && profile.avatarUrl) {
-            const img = document.createElement('img');
-            img.src = profile.avatarUrl;
-            img.alt = 'Tu avatar';
-            img.referrerPolicy = 'no-referrer';
-            img.className = avatarEl.className;
-            img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block;';
-            img.onerror = function () {
-                if (img.parentNode) img.parentNode.replaceChild(avatarEl, img);
-                avatarEl.textContent = letter;
-            };
-            avatarEl.parentNode.replaceChild(img, avatarEl);
-            return;
-        }
-
-        const SCp = window.StevsconProfiles;
-        if (profile && profile.avatarPreset && SCp && SCp.presets && SCp.presets.avatar) {
-            for (let i = 0; i < SCp.presets.avatar.length; i++) {
-                if (SCp.presets.avatar[i].id === profile.avatarPreset) {
-                    avatarEl.style.background = SCp.presets.avatar[i].css;
-                    break;
+        if (!url) {
+            const SCp = window.StevsconProfiles;
+            if (profile && profile.avatarPreset && SCp && SCp.presets && SCp.presets.avatar) {
+                for (let i = 0; i < SCp.presets.avatar.length; i++) {
+                    if (SCp.presets.avatar[i].id === profile.avatarPreset) {
+                        avatarEl.style.background = SCp.presets.avatar[i].css;
+                        break;
+                    }
                 }
             }
+            avatarEl.textContent = letter;
+            return;
         }
+
         avatarEl.textContent = letter;
+        const probe = new Image();
+        probe.onerror = function () {
+            avatarEl.style.backgroundImage = 'none';
+            avatarEl.textContent = letter;
+        };
+        probe.onload = function () {
+            avatarEl.style.background = '';
+            avatarEl.style.backgroundColor = '#2e2440';
+            avatarEl.style.backgroundImage = 'url("' + String(url).replace(/"/g, '%22') + '")';
+            avatarEl.style.backgroundSize = 'cover';
+            avatarEl.style.backgroundPosition = 'center';
+            avatarEl.style.backgroundRepeat = 'no-repeat';
+            avatarEl.textContent = '';
+        };
+        probe.src = String(url);
     }
 
     function copyId(id) {
