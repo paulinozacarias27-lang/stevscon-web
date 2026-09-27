@@ -59,3 +59,6 @@
     console.log("[Stevscon Firebase] Conectado exitosamente a:", firebaseConfig.projectId);
 
 })(window);
+
+// Correos de Firebase (reset, verificación) en español:
+firebase.auth().languageCode = 'es';

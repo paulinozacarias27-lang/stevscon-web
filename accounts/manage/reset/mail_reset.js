@@ -1,59 +1,57 @@
 /**
  * ====
  * STEVSCON.COM - accounts/manage/reset/mail_reset.js
- * RESET · AVISO OFICIAL de Stevscon (EmailJS, template_p89fuyt).
- *
- * El {{reset_link}} del template apunta a reset_password.html con
- * el correo del usuario: al hacer clic se abre Stevscon con el
- * modal de recuperar ya abierto y el correo precargado.
- * El CAMBIO final de la contraseña lo hace el enlace seguro que
- * manda Firebase aparte. Si EmailJS falla, no pasa NADA.
+ * RESET · AVISO bonito por correo (EmailJS) cuando alguien pide recuperar.
+ * El LINK oficial lo manda Firebase; este es solo el aviso de Stevscon.
+ * NUNCA bloquea el proceso, pero ahora AVISA cuando falla (antes fallaba
+ * en silencio y por eso nunca te llegó).
  * ====
  */
-(function (window) {
+(function (window, document) {
     'use strict';
 
     const SC = window.StevsconCreate = window.StevsconCreate || {};
     SC.reset = SC.reset || {};
 
-    const SERVICE_ID = 'stevscon_servicebot';
-    const TEMPLATE_ID = 'template_p89fuyt';
-    const PUBLIC_KEY = 'RYyF8BFvKEL2CwV4y';
+    // ⚠️ Copia estas 3 llaves EXACTAS desde EmailJS. Una letra mal y falla.
+    const CONFIG = {
+        serviceId: 'stevscon_servicebot',
+        templateId: 'template_p89fuyt',
+        publicKey: 'RYyF8BFvKEL2CwV4y'
+    };
 
-    // Página de la web donde aterrizan al hacer clic en el botón
-    const RESET_PAGE = 'https://www.stevscon.com/reset_password.html';
-
-    function buildResetLink(email) {
-        if (!email) return RESET_PAGE;
-        return RESET_PAGE + '?email=' + encodeURIComponent(email);
+    function init() {
+        if (typeof window.emailjs === 'undefined' || typeof window.emailjs.send !== 'function') return false;
+        try { window.emailjs.init({ publicKey: CONFIG.publicKey }); }
+        catch (e) { try { window.emailjs.init(CONFIG.publicKey); } catch (e2) {} }
+        return true;
     }
 
-    function sendNotice(data) {
-        data = data || {};
-        if (typeof window.emailjs === 'undefined') {
-            console.warn('[Stevscon Reset] emailjs no está cargado; el aviso se omite.');
-            return null;
-        }
-        try {
-            const params = {
-                to_email: data.email || '',
-                email: data.email || '',
-                handle: data.handle || '—',
-                username: data.username || 'Stevsconero',
-                reset_link: buildResetLink(data.email || '')
+    function sendNotice(params) {
+        params = params || {};
+        return new Promise(function (resolve) {
+            if (!init()) {
+                console.error('[Stevscon Reset Mail] EmailJS no está cargado (¿falta el CDN email.min.js en el index?). El aviso bonito NO se envió.');
+                resolve({ ok: false, reason: 'sdk-no-cargado' });
+                return;
+            }
+            const templateParams = {
+                to_email: params.email || '',
+                handle: params.handle || '—',
+                reset_link: 'https://stevscon.com/reset_password.html' + (params.email ? '?email=' + encodeURIComponent(params.email) : '')
             };
-            return window.emailjs.send(SERVICE_ID, TEMPLATE_ID, params, { publicKey: PUBLIC_KEY })
+            window.emailjs.send(CONFIG.serviceId, CONFIG.templateId, templateParams)
                 .then(function () {
-                    console.log('[Stevscon Reset] Aviso oficial enviado a:', params.to_email);
+                    console.log('[Stevscon Reset Mail] Aviso bonito enviado a ' + templateParams.to_email);
+                    resolve({ ok: true });
                 })
-                .catch(function (e) {
-                    console.warn('[Stevscon Reset] El aviso falló (el enlace de Firebase SÍ se envió):', e);
+                .catch(function (err) {
+                    console.error('[Stevscon Reset Mail] EmailJS RECHAZÓ el envío:', err);
+                    resolve({ ok: false, reason: (err && (err.text || err.status || err.message)) || 'desconocido' });
                 });
-        } catch (e) {
-            console.warn('[Stevscon Reset] El aviso por correo falló:', e);
-            return null;
-        }
+        });
     }
 
-    SC.reset.mail = { sendNotice: sendNotice, buildResetLink: buildResetLink };
-})(window);
+    SC.reset.mail = { sendNotice: sendNotice };
+    console.log('[Stevscon] mail_reset.js listo.');
+})(window, document);

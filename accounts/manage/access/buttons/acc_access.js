@@ -1,14 +1,13 @@
 /**
  * ====
  * STEVSCON.COM - ACCESS · Botón ENTRAR + modal + cerebro del login.
- * (cargar DESPUÉS de los campos access_account.js y access_password.js,
- *  y ANTES de category_acc.js)
+ * (cargar DESPUÉS de access_account.js y access_password.js, y ANTES
+ *  de category_acc.js)
  *
- * - Modal propio, estilo morado de la web.
- * - Entra con CORREO o con @HANDLER (resuelve el handler contra
- *   handlers/ → uid → users/{uid}/email, y luego Firebase Auth).
- * - "¿Olvidaste tu contraseña?" abre el sistema RESET (SC.reset.open).
- * - "Crear una" avisa a category_acc.js para abrir el modal CREATE.
+ * - Entra con CORREO o con @HANDLER (handlers/ → uid → users/{uid}/email).
+ * - NUEVO: si un error no está traducido, muestra el CÓDIGO técnico en
+ *   pantalla (línea gris pequeña) para cazar bugs sin abrir consola.
+ * - "¿Olvidaste tu contraseña?" abre SC.reset.open().
  * - Nada de contraseñas en localStorage: solo Firebase Auth.
  * ====
  */
@@ -42,22 +41,31 @@
         return null;
     }
 
-    /* ================= ERRORES (SC.access.errors) ================= */
+    /* ==== ERRORES (SC.access.errors) ==== */
 
     const AUTH_ERRORS = {
         'auth/invalid-credential': 'Correo o contraseña incorrectos.',
+        'auth/invalid-login-credentials': 'Correo o contraseña incorrectos.',
         'auth/wrong-password': 'Contraseña incorrecta.',
         'auth/user-not-found': 'No existe una cuenta con ese correo.',
         'auth/invalid-email': 'El formato del correo no es válido.',
         'auth/user-disabled': 'Esta cuenta fue deshabilitada. Contacta al equipo de Stevscon.',
         'auth/too-many-requests': 'Demasiados intentos fallidos. Espera un momento y vuelve a intentarlo.',
         'auth/network-request-failed': 'Sin conexión. Revisa tu internet e inténtalo de nuevo.',
+        'auth/operation-not-allowed': 'El acceso con correo/contraseña está APAGADO en Firebase. Actívalo en Authentication → Sign-in method → Email/Password.',
+        'auth/unauthorized-domain': 'Esta web no está autorizada en Firebase. Agrega el dominio en Authentication → Settings → Authorized domains.',
+        'auth/internal-error': 'Error interno de Firebase. Revisa tu conexión e inténtalo de nuevo.',
+        'auth/api-key-not-valid': 'La API key de Firebase no es válida. Revisa firebase_data.js.',
+        'auth/app-not-authorized': 'La API key no autoriza esta web. Revisa sus restricciones en Google Cloud.',
+        'permission_denied': 'Firebase denegó la lectura (Rules). Revisa las reglas de Realtime Database.',
         'stevscon/handler-not-found': 'No encontramos ninguna cuenta con ese @handler. Prueba con tu correo.',
+        'stevscon/db-permission': 'Sin permiso para leer la base de datos (Rules de Firebase).',
         'stevscon/no-database': 'La base de datos no está disponible. Recarga la página.'
     };
 
     let errorBox = null;
     let errorText = null;
+    let errorMeta = null;
 
     const errors = {
         render: function () {
@@ -66,25 +74,36 @@
             errorBox.setAttribute('role', 'alert');
             errorText = document.createElement('p');
             errorText.style.cssText = 'margin:0;';
+            errorMeta = document.createElement('p');
+            errorMeta.style.cssText = 'margin:6px 0 0;font-size:11px;color:#94a3b8;word-break:break-all;';
             errorBox.appendChild(errorText);
+            errorBox.appendChild(errorMeta);
             return errorBox;
         },
-        show: function (msg) {
+        show: function (msg, meta) {
             if (!errorBox || !errorText) return;
             errorText.textContent = String(msg || 'Algo salió mal. Inténtalo de nuevo.');
+            if (meta) {
+                errorMeta.textContent = 'Código técnico: ' + meta;
+                errorMeta.classList.remove('hidden');
+            } else {
+                errorMeta.textContent = '';
+                errorMeta.classList.add('hidden');
+            }
             errorBox.classList.remove('hidden');
         },
         clear: function () {
             if (errorBox) errorBox.classList.add('hidden');
             if (errorText) errorText.textContent = '';
+            if (errorMeta) errorMeta.textContent = '';
         },
         translateAuthError: function (code) {
-            return AUTH_ERRORS[code] || 'No pudimos iniciar sesión. Inténtalo de nuevo.';
+            return AUTH_ERRORS[code] || null;
         }
     };
     SC.access.errors = errors;
 
-    /* ================= REGISTRO DE CAMPOS (API) ================= */
+    /* ==== REGISTRO DE CAMPOS (API) ==== */
 
     function sorted() {
         return SC.access.fields.slice().sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
@@ -114,7 +133,15 @@
         return { ok: true };
     };
 
-    /* ================= CEREBRO: ENTRAR ================= */
+    /* ==== CEREBRO: ENTRAR ==== */
+
+    function safeOnce(ref) {
+        return ref.once('value').catch(function (err) {
+            const c = (err && err.code) || '';
+            if (c === 'permission_denied' || c === 'PERMISSION_DENIED') throw { code: 'stevscon/db-permission' };
+            throw err;
+        });
+    }
 
     // Si escribió un @handler, lo resolvemos: handlers/{h} → uid → users/{uid}/email
     function resolveEmail(idVal) {
@@ -124,11 +151,12 @@
         if (!D) return Promise.reject({ code: 'stevscon/no-database' });
 
         const h = idVal.replace(/^@/, '').toLowerCase();
-        return D.ref('handlers/' + h).once('value')
+        return safeOnce(D.ref('handlers/' + h))
             .then(function (snap) {
-                const uid = snap ? snap.val() : null;
+                let uid = snap ? snap.val() : null;
+                if (uid && typeof uid === 'object') uid = uid.uid || uid.id || null;
                 if (!uid) throw { code: 'stevscon/handler-not-found' };
-                return D.ref('users/' + uid + '/email').once('value');
+                return safeOnce(D.ref('users/' + uid + '/email'));
             })
             .then(function (snap) {
                 const email = snap ? snap.val() : null;
@@ -176,12 +204,16 @@
             .catch(function (err) {
                 setBusy(false, 'Entrar');
                 const code = (err && err.code) || '';
+                const mapped = AUTH_ERRORS[code];
                 console.error('[Stevscon Access] Error al iniciar sesión:', err);
-                errors.show(errors.translateAuthError(code));
+                errors.show(
+                    mapped || 'No pudimos iniciar sesión. Inténtalo de nuevo.',
+                    mapped ? '' : (code || String((err && err.message) || 'error desconocido'))
+                );
             });
     }
 
-    /* ================= MODAL ================= */
+    /* ==== MODAL ==== */
 
     function makeLink(text, onClick) {
         const b = document.createElement('button');
@@ -199,7 +231,6 @@
             if (SC.create && typeof SC.create.open === 'function') { SC.create.open(); opened = true; }
         } catch (e) { /* seguimos con el plan B */ }
         if (!opened) {
-            // Avisamos por el bus de eventos y por DOM, por si el coordinador escucha cualquiera de los dos.
             try { if (typeof SC.emit === 'function') SC.emit('create:open'); } catch (e) {}
             try { if (typeof SC.emit === 'function') SC.emit('open-create'); } catch (e) {}
             try { window.dispatchEvent(new CustomEvent('stevscon:open-create')); } catch (e) {}
@@ -311,5 +342,5 @@
     SC.access.open = open;
     SC.access.close = close;
 
-    console.log('[Stevscon] acc_access.js listo.');
+    console.log('[Stevscon] acc_access.js listo (v13 con detector de errores).');
 })(window, document);
