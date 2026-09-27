@@ -1,25 +1,26 @@
 /**
  * ====
  * STEVSCON.COM - language.js  (RAIZ del proyecto)
- * IDIOMA · Traduccion ES/EN de TODA la web en UN solo file · v1
+ * IDIOMA · Traduccion ES/EN de TODA la web en UN solo file · v2
  * - NO toca ningun otro file: los demas siguen pintando en espanol y este
  *   file traduce el DOM al vuelo (textos, placeholders, title, aria-label),
  *   INCLUYENDO lo que se renderiza despues (modals, toasts, menu del avatar)
  *   gracias a un MutationObserver.
- * - Boton de idioma en el menu del avatar (esquina) + boton flotante ES/EN
- *   en la home mientras se ven las tarjetas ACCESS / CREATE (tambien queda
- *   por encima de los modals abiertos).
+ * - v2: deteccion del menu del avatar POR CONTENIDO (busca "Ver perfil" +
+ *   "Cerrar sesion", da igual como lo construya session.js). Si el menu se
+ *   reconstruye, se re-inyecta solo. Boton flotante ES/EN ahora SIEMPRE
+ *   visible (v1 lo ocultaba con sesion activa: por eso "no salia").
  * - Preferencia: localStorage('stevscon_lang') y, si hay sesion, espejo en
- *   Firebase users/{uid}/settings/lang (solo la preferencia de idioma, nada
- *   sensible). Al iniciar, si Firebase trae otro valor, manda Firebase.
- * - Evento global 'stevscon:lang-changed' para files futuros.
- * - StevsconLang.debug(): lista en consola los textos aun sin traducir para
- *   ampliar el diccionario.
+ *   Firebase users/{uid}/settings/lang. Si Firebase trae otro valor, manda
+ *   Firebase.
+ * - StevsconLang.diagnose(): diagnostico completo en consola.
  * Cargar al FINAL del index (despues de category_acc.js).
  * ====
  */
 (function (window, document) {
     'use strict';
+
+    var VERSION = 2;
 
     // ---- Diccionario: clave = texto EXACTO que pinta el codigo (espanol) ----
     var DICT = {
@@ -69,6 +70,7 @@
     var attrOriginals = new WeakMap();  // Element -> { atributo: original }
     var debugOn = false;
     var debugSeen = {};
+    var menuInjectedOnce = false;
 
     // ---- Nucleo de traduccion ----
 
@@ -86,7 +88,6 @@
         var s = original.trim();
         if (s.length < 2 || s.length > 120) return;
         if (debugSeen[s]) return;
-        // omitir numeros, simbolos solos, correos y URLs
         if (!/[a-zA-ZáéíóúñÁÉÍÓÚÑ¡¿]/.test(s)) return;
         if (/^[^\s]+@[^\s]+$/.test(s)) return;
         if (/^https?:/i.test(s)) return;
@@ -100,14 +101,13 @@
         if (!cur || !cur.trim()) return;
         if (isSkipped(node)) return;
 
-        // Recuperar/actualizar el original espanol de este nodo
         var original;
         if (originals.has(node)) {
             var stored = originals.get(node);
             if (stored === cur || translateText(stored) === cur) {
-                original = stored;              // sin cambios o es nuestra propia traduccion
+                original = stored;
             } else {
-                original = cur;                 // el file pinto texto NUEVO: nuevo original
+                original = cur;
             }
         } else {
             original = cur;
@@ -209,7 +209,31 @@
         } catch (e) {}
     }
 
-    // ---- Boton de idioma en el MENU del avatar (esquina) ----
+    // ---- MENU del avatar: deteccion POR CONTENIDO (a prueba de todo) ----
+
+    // Un elemento "es el menu" si contiene Ver perfil + (Editar perfil o Cerrar sesion)
+    function looksLikeMenu(el) {
+        if (!el || el.nodeType !== 1 || !el.textContent) return false;
+        var t = el.textContent;
+        if (!/ver\s+perfil/i.test(t)) return false;
+        return (/editar\s+perfil/i.test(t) || /cerrar\s+sesi/i.test(t));
+    }
+
+    function findMenuBoxesGlobal() {
+        var boxes = [];
+        var all = document.querySelectorAll('div,nav,aside,section');
+        for (var i = 0; i < all.length; i++) if (looksLikeMenu(all[i])) boxes.push(all[i]);
+        // Quedarnos con el MAS PEQUENO que cumpla (el menu real, no envoltorios)
+        var deepest = [];
+        for (var k = 0; k < boxes.length; k++) {
+            var isWrapper = false;
+            for (var m = 0; m < boxes.length; m++) {
+                if (m !== k && boxes[k].contains(boxes[m])) { isWrapper = true; break; }
+            }
+            if (!isWrapper) deepest.push(boxes[k]);
+        }
+        return deepest;
+    }
 
     function makeMenuItem() {
         var b = document.createElement('button');
@@ -227,9 +251,7 @@
         b.addEventListener('mouseleave', function () { b.style.background = 'none'; });
         b.addEventListener('click', function (e) {
             e.stopPropagation();
-            var menu = b.parentNode;
-            if (menu && menu.nodeType === 1) menu.hidden = true;
-            setLang(lang === 'es' ? 'en' : 'es');
+            setLang(lang === 'es' ? 'en' : 'es'); // el menu queda abierto: ves el cambio al instante
         });
         return b;
     }
@@ -242,21 +264,34 @@
         }
     }
 
-    function injectMenu() {
-        var slot = document.getElementById('user-header-actions');
-        if (!slot) return;
-        var divs = slot.getElementsByTagName('div');
-        for (var i = 0; i < divs.length; i++) {
-            var m = divs[i];
-            if (m.style.position !== 'absolute') continue;   // el menu de session.js
-            if (m.hasAttribute('data-sclang-injected')) continue;
-            m.setAttribute('data-sclang-injected', '1');
-            m.insertBefore(makeMenuItem(), m.firstChild);     // primero de la lista
-        }
+    function injectInto(box) {
+        if (box.hasAttribute('data-sclang-injected') && box.querySelector('[data-sclang-item]')) return;
+        box.setAttribute('data-sclang-injected', '1');
+        box.insertBefore(makeMenuItem(), box.firstChild); // primero de la lista
         updateMenuItems();
+        if (!menuInjectedOnce) {
+            menuInjectedOnce = true;
+            console.log('[Stevscon i18n] boton de idioma anadido al menu del avatar.');
+        }
     }
 
-    // ---- Boton flotante ES/EN en la home (ACCESS / CREATE sin sesion) ----
+    function injectMenu() {
+        // Estrategia A: slot conocido del header
+        var slot = document.getElementById('user-header-actions');
+        if (slot) {
+            var divs = slot.getElementsByTagName('div');
+            for (var i = 0; i < divs.length; i++) {
+                if (looksLikeMenu(divs[i])) { injectInto(divs[i]); return; }
+            }
+        }
+        // Estrategia B: escaneo global (solo si aun no hay boton inyectado)
+        if (!document.querySelector('[data-sclang-item]')) {
+            var boxes = findMenuBoxesGlobal();
+            for (var j = 0; j < boxes.length; j++) { injectInto(boxes[j]); return; }
+        }
+    }
+
+    // ---- Boton flotante ES/EN: SIEMPRE visible (v2) ----
 
     var floatBtn = null;
 
@@ -294,14 +329,6 @@
         }
     }
 
-    // Visible SOLO mientras se ven las tarjetas ACCESS/CREATE (sin sesion)
-    function updateFloatVisibility() {
-        if (!floatBtn) return;
-        var access = document.getElementById('home-access-card');
-        var visible = !!(access && !access.classList.contains('hidden'));
-        floatBtn.style.display = visible ? 'flex' : 'none';
-    }
-
     // ---- Observador: traduce TODO lo que aparezca, siempre ----
 
     var batch = [];
@@ -330,17 +357,27 @@
 
             injectMenu();
             ensureFloatBtn();
-            updateFloatVisibility();
         });
     }
 
     // ---- API publica ----
 
     window.StevsconLang = {
-        version: 1,
+        version: VERSION,
         get: function () { return lang; },
         set: setLang,
         toggle: function () { setLang(lang === 'es' ? 'en' : 'es'); },
+        diagnose: function () {
+            var inMenu = document.querySelectorAll('[data-sclang-item]').length;
+            var stored = '(bloqueado)';
+            try { stored = localStorage.getItem(STORE_KEY) || '(sin guardar)'; } catch (e) {}
+            console.log('=== StevsconLang diagnose ===');
+            console.log('- version:', VERSION, '| idioma actual:', lang);
+            console.log('- boton de idioma en el menu:', inMenu ? 'SI (' + inMenu + ')' : 'NO (se reintentara solo al abrir el menu)');
+            console.log('- boton flotante ES/EN:', floatBtn ? 'creado' : 'aun no creado');
+            console.log("- localStorage['stevscon_lang']:", stored);
+            console.log('- Si nada de esto aparece, revisa que index tenga: <script defer src="language.js?v=2"></script>');
+        },
         debug: function () {
             debugOn = true;
             debugSeen = {};
@@ -355,7 +392,6 @@
         applyAll();
         injectMenu();
         ensureFloatBtn();
-        updateFloatVisibility();
         initFromFirebase();
 
         var mo = new MutationObserver(schedule);
@@ -367,7 +403,7 @@
             attributeFilter: ATTRS.concat(['class', 'hidden'])
         });
 
-        console.log('[Stevscon] language.js listo (v1 · ES/EN · ' + Object.keys(DICT).length + ' entradas).');
+        console.log('[Stevscon] language.js listo (v' + VERSION + ' · ES/EN · ' + Object.keys(DICT).length + ' entradas).');
     }
 
     if (document.readyState === 'loading') {
