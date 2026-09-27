@@ -1,12 +1,14 @@
 /**
- * ============================================================
+ * ====
  * STEVSCON.COM - accounts/manage/category_acc.js
- * Coordinador visual de la categoría CREATE.
- * - Pinta la categoría "Crear cuenta" como principal de la web.
- * - Abre el modal con todos los bloques OUTPUT + BUTTONS.
- * - Vigila la sesión: con usuario activo, CREATE cede su lugar.
- * Cargar SIEMPRE al final (después de outputs y buttons).
- * ============================================================
+ * Coordinador visual de las categorías CREATE + ACCESS (UNIDAS).
+ * - Pinta la home con las DOS tarjetas: "Iniciar sesión" y "Crear cuenta".
+ * - CREATE: modal propio ensamblando OUTPUT + BUTTONS.
+ * - ACCESS: delega en acc_access.js (SC.access.open).
+ * - Los dos se abren, se cierran y se alternan sin pisarse.
+ * - Vigila la sesión: con usuario activo, ambas tarjetas ceden.
+ * Cargar SIEMPRE al final (después de outputs, buttons y access).
+ * ====
  */
 (function (window, document) {
     'use strict';
@@ -15,12 +17,44 @@
 
     const LOGO_SRC = 'SC-LOGO-20260825013121.png'; // mismo nombre que en el navbar
 
-    let modalEl = null;
-    let modalOpen = false;
+    let createModalEl = null;
+    let createModalOpen = false;
     let lastFocus = null;
     let successTimer = null;
 
-    // ---------- HOME: categoría "Crear cuenta" ----------
+    // ---- HOME: las dos categorías juntas ----
+
+    // Helper: una tarjeta de categoría (icono + título + descripción + flecha)
+    function makeCategoryCard(id, iconClass, title, desc, onClick) {
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'category-card';
+        card.id = id;
+        card.addEventListener('click', onClick);
+
+        const iconWrap = document.createElement('span');
+        iconWrap.className = 'category-icon';
+        const icon = document.createElement('i');
+        icon.className = iconClass;
+        iconWrap.appendChild(icon);
+
+        const textWrap = document.createElement('span');
+        textWrap.className = 'category-text';
+        const cTitle = document.createElement('strong');
+        cTitle.textContent = title;
+        const cDesc = document.createElement('span');
+        cDesc.textContent = desc;
+        textWrap.appendChild(cTitle);
+        textWrap.appendChild(cDesc);
+
+        const arrow = document.createElement('i');
+        arrow.className = 'fa-solid fa-chevron-right category-arrow';
+
+        card.appendChild(iconWrap);
+        card.appendChild(textWrap);
+        card.appendChild(arrow);
+        return card;
+    }
 
     function renderHome() {
         const viewport = document.getElementById('app-main-viewport');
@@ -43,34 +77,25 @@
         subtitle.className = 'home-subtitle';
         subtitle.textContent = 'Tu plataforma social, mensajería y comunidad en tiempo real.';
 
-        // Tarjeta de acceso a la categoría CREATE
-        const card = document.createElement('button');
-        card.type = 'button';
-        card.className = 'category-card';
-        card.id = 'home-create-card';
-        card.addEventListener('click', openModal);
+        // ---- Tarjetas ACCESS + CREATE, juntas y unidas ----
+        const stack = document.createElement('div');
+        stack.className = 'category-stack';
 
-        const iconWrap = document.createElement('span');
-        iconWrap.className = 'category-icon';
-        const icon = document.createElement('i');
-        icon.className = 'fa-solid fa-user-plus';
-        iconWrap.appendChild(icon);
+        stack.appendChild(makeCategoryCard(
+            'home-access-card',
+            'fa-solid fa-right-to-bracket',
+            'Iniciar sesión',
+            'Ya tienes cuenta: entra con tu correo o tu @handler.',
+            openAccess
+        ));
 
-        const textWrap = document.createElement('span');
-        textWrap.className = 'category-text';
-        const cTitle = document.createElement('strong');
-        cTitle.textContent = 'Crear cuenta';
-        const cDesc = document.createElement('span');
-        cDesc.textContent = 'Únete gratis: elige tu @handler, tu nombre y tu contraseña.';
-        textWrap.appendChild(cTitle);
-        textWrap.appendChild(cDesc);
-
-        const arrow = document.createElement('i');
-        arrow.className = 'fa-solid fa-chevron-right category-arrow';
-
-        card.appendChild(iconWrap);
-        card.appendChild(textWrap);
-        card.appendChild(arrow);
+        stack.appendChild(makeCategoryCard(
+            'home-create-card',
+            'fa-solid fa-user-plus',
+            'Crear cuenta',
+            'Únete gratis: elige tu @handler, tu nombre y tu contraseña.',
+            openCreateModal
+        ));
 
         // Zona donde vive la tarjeta de sesión (si el usuario ya inició sesión)
         const sessionBox = document.createElement('div');
@@ -80,28 +105,31 @@
         home.appendChild(logo);
         home.appendChild(title);
         home.appendChild(subtitle);
-        home.appendChild(card);
+        home.appendChild(stack);
         home.appendChild(sessionBox);
         viewport.appendChild(home);
     }
 
-    // ---------- Sesión: CREATE cede cuando ya hay usuario ----------
+    // ---- Sesión: CREATE y ACCESS ceden cuando ya hay usuario ----
 
     function watchSession() {
         if (typeof window.StevsconFirebase === 'undefined' || !window.StevsconFirebase.auth) return;
         window.StevsconFirebase.auth.onAuthStateChanged(function (user) {
-            const card = document.getElementById('home-create-card');
+            const accessCard = document.getElementById('home-access-card');
+            const createCard = document.getElementById('home-create-card');
             const sessionBox = document.getElementById('home-session-box');
-            if (!card || !sessionBox) return;
+            if (!sessionBox) return;
 
             while (sessionBox.firstChild) sessionBox.removeChild(sessionBox.firstChild);
 
             if (user) {
-                card.classList.add('hidden');
+                if (accessCard) accessCard.classList.add('hidden');
+                if (createCard) createCard.classList.add('hidden');
                 sessionBox.classList.remove('hidden');
                 renderSessionCard(sessionBox, user);
             } else {
-                card.classList.remove('hidden');
+                if (accessCard) accessCard.classList.remove('hidden');
+                if (createCard) createCard.classList.remove('hidden');
                 sessionBox.classList.add('hidden');
             }
         });
@@ -131,7 +159,7 @@
         copyBtn.setAttribute('aria-label', 'Copiar tu ID');
         const copyIcon = document.createElement('i');
         copyIcon.className = 'fa-solid fa-copy';
-        copyBtn.appendChild(copyBtnIcon(copyIcon));
+        copyBtn.appendChild(copyIcon);
 
         card.appendChild(avatar);
         card.appendChild(text);
@@ -152,9 +180,6 @@
         }
     }
 
-    // El icono vive dentro del botón (helper por claridad)
-    function copyBtnIcon(icon) { return icon; }
-
     function copyId(id) {
         if (!id) return;
         const done = function () { showToast('ID copiado: ' + id); };
@@ -170,15 +195,20 @@
         }
     }
 
-    // ---------- MODAL: ensambla OUTPUT + BUTTONS ----------
+    // ---- MODAL CREATE: ensambla OUTPUT + BUTTONS ----
 
-    function buildModal() {
+    function buildCreateModal() {
+        // Sin limpiar modals-root: ahí también vive el modal de ACCESS.
+        if (document.getElementById('create-modal-overlay')) {
+            createModalEl = document.getElementById('create-modal-overlay');
+            return;
+        }
         const root = document.getElementById('modals-root');
         if (!root) return;
-        while (root.firstChild) root.removeChild(root.firstChild);
 
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay hidden';
+        overlay.id = 'create-modal-overlay';
 
         const modal = document.createElement('div');
         modal.className = 'modal';
@@ -206,7 +236,7 @@
         const closeIcon = document.createElement('i');
         closeIcon.className = 'fa-solid fa-xmark';
         closeBtn.appendChild(closeIcon);
-        closeBtn.addEventListener('click', closeModal);
+        closeBtn.addEventListener('click', closeCreateModal);
 
         header.appendChild(titles);
         header.appendChild(closeBtn);
@@ -243,34 +273,47 @@
             }
         }
 
+        // Puente entre categorías: desde CREATE también puedes ir a ACCESS
+        const toAccess = document.createElement('button');
+        toAccess.type = 'button';
+        toAccess.textContent = '¿Ya tienes cuenta? Inicia sesión';
+        toAccess.style.cssText = 'display:block;background:none;border:0;padding:0;margin:12px auto 0;font-family:Inter,sans-serif;font-size:12.5px;color:#8b5cf6;cursor:pointer;';
+        toAccess.addEventListener('click', function () {
+            closeCreateModal();
+            openAccess();
+        });
+        form.appendChild(toAccess);
+
         body.appendChild(form);
         modal.appendChild(header);
         modal.appendChild(body);
         overlay.appendChild(modal);
 
         overlay.addEventListener('click', function (e) {
-            if (e.target === overlay) closeModal();
+            if (e.target === overlay) closeCreateModal();
         });
 
         root.appendChild(overlay);
-        modalEl = overlay;
+        createModalEl = overlay;
     }
 
-    function openModal() {
-        if (!modalEl) buildModal();
-        if (!modalEl) return;
+    function openCreateModal() {
+        // Alternancia limpia: si ACCESS está abierto, se cierra primero
+        if (SC.access && typeof SC.access.close === 'function') SC.access.close();
+        if (!createModalEl) buildCreateModal();
+        if (!createModalEl) return;
         lastFocus = document.activeElement;
-        modalEl.classList.remove('hidden');
-        modalOpen = true;
+        createModalEl.classList.remove('hidden');
+        createModalOpen = true;
         document.body.style.overflow = 'hidden';
-        const firstInput = modalEl.querySelector('input');
+        const firstInput = createModalEl.querySelector('input');
         if (firstInput) setTimeout(function () { firstInput.focus(); }, 60);
     }
 
-    function closeModal() {
-        if (!modalEl || !modalOpen) return;
-        modalEl.classList.add('hidden');
-        modalOpen = false;
+    function closeCreateModal() {
+        if (!createModalEl || !createModalOpen) return;
+        createModalEl.classList.add('hidden');
+        createModalOpen = false;
         document.body.style.overflow = '';
         if (successTimer) { clearTimeout(successTimer); successTimer = null; }
         resetAll();
@@ -286,21 +329,40 @@
         }
     }
 
-    // ---------- Éxito del registro + toast global ----------
+    // ---- ACCESS: se delega en acc_access.js (modal propio) ----
+
+    function openAccess() {
+        // Alternancia limpia: si CREATE está abierto, se cierra primero
+        closeCreateModal();
+        if (SC.access && typeof SC.access.open === 'function') {
+            SC.access.open();
+        } else {
+            showToast('No pudimos abrir el inicio de sesión: falta acc_access.js. Revisa el index.', 'error');
+        }
+    }
+
+    // Enlace "¿Aún no tienes cuenta? Crear una" del modal ACCESS
+    document.addEventListener('sc:open-create', openCreateModal);
+
+    // ---- Éxito de cada categoría + toast global ----
 
     function onCreateSuccess(data) {
         showToast('¡Cuenta creada! Bienvenido, ' + data.username + ' (ID: ' + data.userId + ')');
-        successTimer = setTimeout(closeModal, 5000);
+        successTimer = setTimeout(closeCreateModal, 5000);
     }
 
-    function showToast(msg) {
+    function onAccessSuccess() {
+        showToast('Sesión iniciada. ¡Hola de nuevo!');
+    }
+
+    function showToast(msg, kind) {
         const wrap = document.getElementById('alerts-container');
         if (!wrap) return;
         const toast = document.createElement('div');
-        toast.className = 'toast toast-success';
+        toast.className = 'toast ' + (kind === 'error' ? 'toast-error' : 'toast-success');
 
         const icon = document.createElement('i');
-        icon.className = 'fa-solid fa-circle-check';
+        icon.className = kind === 'error' ? 'fa-solid fa-circle-exclamation' : 'fa-solid fa-circle-check';
 
         const text = document.createElement('span');
         text.textContent = msg; // siempre textContent: nunca innerHTML
@@ -317,15 +379,18 @@
         }, 4500);
     }
 
-    // ---------- Init ----------
+    // ---- Init ----
 
     function init() {
         renderHome();
-        buildModal();
+        buildCreateModal();
         watchSession();
-        if (typeof SC.on === 'function') SC.on('create:success', onCreateSuccess);
+        if (typeof SC.on === 'function') {
+            SC.on('create:success', onCreateSuccess);
+            SC.on('access:success', onAccessSuccess);
+        }
         document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape' && modalOpen) closeModal();
+            if (e.key === 'Escape' && createModalOpen) closeCreateModal();
         });
     }
 
