@@ -1,13 +1,16 @@
 /**
  * ====
  * STEVSCON.COM - accounts/manage/category_acc.js
- * Coordinador visual de las categorías CREATE + ACCESS (UNIDAS).
- * - Pinta la home con las DOS tarjetas: "Iniciar sesión" y "Crear cuenta".
+ * Coordinador visual de las categorias CREATE + ACCESS (UNIDAS).
+ * - Pinta la home con las DOS tarjetas: "Iniciar sesion" y "Crear cuenta".
  * - CREATE: modal propio ensamblando OUTPUT + BUTTONS.
  * - ACCESS: delega en acc_access.js (SC.access.open).
  * - Los dos se abren, se cierran y se alternan sin pisarse.
- * - Vigila la sesión: con usuario activo, ambas tarjetas ceden.
- * Cargar SIEMPRE al final (después de outputs, buttons y access).
+ * - Vigila la sesion: con usuario activo, ambas tarjetas ceden.
+ * - NUEVO: el avatar de la tarjeta de sesion usa el cerebro COMPARTIDO
+ *   de media_acc.js (GIFs animados incluidos) y se refresca solo cuando
+ *   Perfiles dispara 'stevscon:profile-updated'.
+ * Cargar SIEMPRE al final (despues de outputs, buttons y access).
  * ====
  */
 (function (window, document) {
@@ -21,10 +24,11 @@
     let createModalOpen = false;
     let lastFocus = null;
     let successTimer = null;
+    let lastSessionUser = null;
 
-    // ---- HOME: las dos categorías juntas ----
+    // ---- HOME: las dos categorias juntas ----
 
-    // Helper: una tarjeta de categoría (icono + título + descripción + flecha)
+    // Helper: una tarjeta de categoria (icono + titulo + descripcion + flecha)
     function makeCategoryCard(id, iconClass, title, desc, onClick) {
         const card = document.createElement('button');
         card.type = 'button';
@@ -75,7 +79,7 @@
 
         const subtitle = document.createElement('p');
         subtitle.className = 'home-subtitle';
-        subtitle.textContent = 'Tu plataforma social, mensajería y comunidad en tiempo real.';
+        subtitle.textContent = 'Tu plataforma social, mensajeria y comunidad en tiempo real.';
 
         // ---- Tarjetas ACCESS + CREATE, juntas y unidas ----
         const stack = document.createElement('div');
@@ -84,7 +88,7 @@
         stack.appendChild(makeCategoryCard(
             'home-access-card',
             'fa-solid fa-right-to-bracket',
-            'Iniciar sesión',
+            'Iniciar sesion',
             'Ya tienes cuenta: entra con tu correo o tu @handler.',
             openAccess
         ));
@@ -93,11 +97,11 @@
             'home-create-card',
             'fa-solid fa-user-plus',
             'Crear cuenta',
-            'Únete gratis: elige tu @handler, tu nombre y tu contraseña.',
+            'Unete gratis: elige tu @handler, tu nombre y tu contrasena.',
             openCreateModal
         ));
 
-        // Zona donde vive la tarjeta de sesión (si el usuario ya inició sesión)
+        // Zona donde vive la tarjeta de sesion (si el usuario ya inicio sesion)
         const sessionBox = document.createElement('div');
         sessionBox.className = 'hidden';
         sessionBox.id = 'home-session-box';
@@ -110,11 +114,13 @@
         viewport.appendChild(home);
     }
 
-    // ---- Sesión: CREATE y ACCESS ceden cuando ya hay usuario ----
+    // ---- Sesion: CREATE y ACCESS ceden cuando ya hay usuario ----
 
     function watchSession() {
         if (typeof window.StevsconFirebase === 'undefined' || !window.StevsconFirebase.auth) return;
         window.StevsconFirebase.auth.onAuthStateChanged(function (user) {
+            lastSessionUser = user || null;
+
             const accessCard = document.getElementById('home-access-card');
             const createCard = document.getElementById('home-create-card');
             const sessionBox = document.getElementById('home-session-box');
@@ -135,7 +141,18 @@
         });
     }
 
-function renderSessionCard(container, user) {
+    // Refresca la tarjeta de sesion (avatar nuevo, username nuevo, etc.)
+    // sin recargar la web. Lo dispara el evento 'stevscon:profile-updated'.
+    function refreshSessionCard() {
+        if (!lastSessionUser) return;
+        const box = document.getElementById('home-session-box');
+        if (!box) return;
+        while (box.firstChild) box.removeChild(box.firstChild);
+        renderSessionCard(box, lastSessionUser);
+    }
+    document.addEventListener('stevscon:profile-updated', refreshSessionCard);
+
+    function renderSessionCard(container, user) {
         const card = document.createElement('div');
         card.className = 'category-card is-static';
 
@@ -146,7 +163,7 @@ function renderSessionCard(container, user) {
         const text = document.createElement('span');
         text.className = 'category-text';
         const name = document.createElement('strong');
-        name.textContent = 'Sesión iniciada';
+        name.textContent = 'Sesion iniciada';
         const detail = document.createElement('span');
         detail.textContent = user.email || 'Cargando tu perfil...';
         text.appendChild(name);
@@ -167,23 +184,30 @@ function renderSessionCard(container, user) {
         container.appendChild(card);
 
         // Cerebro propio: el perfil vive en users/{uid} y el avatar
-        // (imagen base64 o preset) en users/{uid}/profile
+        // (base64 o GIF animado) en users/{uid}/profile
         if (typeof window.StevsconFirebase !== 'undefined' && window.StevsconFirebase.database) {
             window.StevsconFirebase.database.ref('users/' + user.uid).once('value')
                 .then(function (snap) {
                     const p = snap.val() || {};
                     paintSessionAvatar(avatar, p.profile || {}, p);
-                    name.textContent = p.username || 'Sesión iniciada';
+                    name.textContent = p.username || 'Sesion iniciada';
                     detail.textContent = '@' + (p.handler || '') + ' · ID: ' + (p.userId || '—');
                     copyBtn.addEventListener('click', function () { copyId(p.userId); });
                 })
-                .catch(function () { /* sin perfil aún: dejamos el correo */ });
+                .catch(function () { /* sin perfil aun: dejamos el correo */ });
         }
     }
 
-    // Avatar de la tarjeta: imagen del perfil (base64) si existe,
-    // degradado del preset si no, y letra de respaldo.
+    // Avatar de la tarjeta: usa el cerebro COMPARTIDO de media_acc.js
+    // (imagen JPG/PNG o GIF animado, preset, o letra de respaldo).
     function paintSessionAvatar(avatarEl, profile, userRow) {
+        const M = window.StevsconMedia;
+        if (M && typeof M.applyAvatar === 'function') {
+            M.applyAvatar(avatarEl, profile, userRow);
+            return;
+        }
+
+        // Plan B: logica propia por si media_acc.js no cargo.
         const letter = String((userRow && userRow.username) || 'S').charAt(0).toUpperCase();
 
         if (profile && profile.avatarUrl) {
@@ -192,7 +216,7 @@ function renderSessionCard(container, user) {
             img.alt = 'Tu avatar';
             img.referrerPolicy = 'no-referrer';
             img.className = avatarEl.className;
-            img.style.cssText = 'object-fit:cover;';
+            img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block;';
             img.onerror = function () {
                 if (img.parentNode) img.parentNode.replaceChild(avatarEl, img);
                 avatarEl.textContent = letter;
@@ -231,7 +255,7 @@ function renderSessionCard(container, user) {
     // ---- MODAL CREATE: ensambla OUTPUT + BUTTONS ----
 
     function buildCreateModal() {
-        // Sin limpiar modals-root: ahí también vive el modal de ACCESS.
+        // Sin limpiar modals-root: ahi tambien vive el modal de ACCESS.
         if (document.getElementById('create-modal-overlay')) {
             createModalEl = document.getElementById('create-modal-overlay');
             return;
@@ -258,7 +282,7 @@ function renderSessionCard(container, user) {
         mTitle.id = 'create-modal-title';
         mTitle.textContent = 'Crear cuenta';
         const mSub = document.createElement('p');
-        mSub.textContent = 'Únete a Stevscon en menos de un minuto.';
+        mSub.textContent = 'Unete a Stevscon en menos de un minuto.';
         titles.appendChild(mTitle);
         titles.appendChild(mSub);
 
@@ -282,17 +306,17 @@ function renderSessionCard(container, user) {
         form.noValidate = true;
         form.addEventListener('submit', function (e) { e.preventDefault(); });
 
-        // Defensa: si los módulos no cargaron, avisamos en vez de fallar
+        // Defensa: si los modulos no cargaron, avisamos en vez de fallar
         if (typeof SC.output === 'undefined' || typeof SC.output.renderAll !== 'function') {
             const warn = document.createElement('p');
             warn.className = 'field-hint hint-error';
-            warn.textContent = 'Error interno: los módulos OUTPUT no cargaron. Revisa el orden de los <script> en el index.';
+            warn.textContent = 'Error interno: los modulos OUTPUT no cargaron. Revisa el orden de los scripts en el index.';
             form.appendChild(warn);
         } else {
             // 1) Campos: account, username, handler, password
             SC.output.renderAll(form);
 
-            // 2) Caja de errores/éxito de los botones
+            // 2) Caja de errores/exito de los botones
             if (SC.buttons && SC.buttons.errors && typeof SC.buttons.errors.render === 'function') {
                 form.appendChild(SC.buttons.errors.render());
             }
@@ -300,16 +324,16 @@ function renderSessionCard(container, user) {
             if (SC.buttons && SC.buttons.allow && typeof SC.buttons.allow.render === 'function') {
                 form.appendChild(SC.buttons.allow.render());
             }
-            // 4) Botón Crear cuenta
+            // 4) Boton Crear cuenta
             if (SC.buttons && SC.buttons.create && typeof SC.buttons.create.render === 'function') {
                 form.appendChild(SC.buttons.create.render());
             }
         }
 
-        // Puente entre categorías: desde CREATE también puedes ir a ACCESS
+        // Puente entre categorias: desde CREATE tambien puedes ir a ACCESS
         const toAccess = document.createElement('button');
         toAccess.type = 'button';
-        toAccess.textContent = '¿Ya tienes cuenta? Inicia sesión';
+        toAccess.textContent = '¿Ya tienes cuenta? Inicia sesion';
         toAccess.style.cssText = 'display:block;background:none;border:0;padding:0;margin:12px auto 0;font-family:Inter,sans-serif;font-size:12.5px;color:#8b5cf6;cursor:pointer;';
         toAccess.addEventListener('click', function () {
             closeCreateModal();
@@ -331,7 +355,7 @@ function renderSessionCard(container, user) {
     }
 
     function openCreateModal() {
-        // Alternancia limpia: si ACCESS está abierto, se cierra primero
+        // Alternancia limpia: si ACCESS esta abierto, se cierra primero
         if (SC.access && typeof SC.access.close === 'function') SC.access.close();
         if (!createModalEl) buildCreateModal();
         if (!createModalEl) return;
@@ -365,19 +389,19 @@ function renderSessionCard(container, user) {
     // ---- ACCESS: se delega en acc_access.js (modal propio) ----
 
     function openAccess() {
-        // Alternancia limpia: si CREATE está abierto, se cierra primero
+        // Alternancia limpia: si CREATE esta abierto, se cierra primero
         closeCreateModal();
         if (SC.access && typeof SC.access.open === 'function') {
             SC.access.open();
         } else {
-            showToast('No pudimos abrir el inicio de sesión: falta acc_access.js. Revisa el index.', 'error');
+            showToast('No pudimos abrir el inicio de sesion: falta acc_access.js. Revisa el index.', 'error');
         }
     }
 
-    // Enlace "¿Aún no tienes cuenta? Crear una" del modal ACCESS
+    // Enlace "¿Aun no tienes cuenta? Crear una" del modal ACCESS
     document.addEventListener('sc:open-create', openCreateModal);
 
-    // ---- Éxito de cada categoría + toast global ----
+    // ---- Exito de cada categoria + toast global ----
 
     function onCreateSuccess(data) {
         showToast('¡Cuenta creada! Bienvenido, ' + data.username + ' (ID: ' + data.userId + ')');
@@ -385,7 +409,7 @@ function renderSessionCard(container, user) {
     }
 
     function onAccessSuccess() {
-        showToast('Sesión iniciada. ¡Hola de nuevo!');
+        showToast('Sesion iniciada. ¡Hola de nuevo!');
     }
 
     function showToast(msg, kind) {
