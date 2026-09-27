@@ -240,7 +240,15 @@
         forgot.type = 'button';
         forgot.textContent = '¿Olvidaste tu contraseña?';
         forgot.style.cssText = 'display:block;background:none;border:0;padding:0;margin:14px auto 0;font-family:Inter,sans-serif;font-size:12.5px;color:#a78bfa;cursor:pointer;text-decoration:underline;';
-        forgot.addEventListener('click', recoverPassword);
+        forgot.addEventListener('click', function () {
+            // El flujo completo vive en accounts/manage/reset/acc_reset.js
+            if (SC.reset && typeof SC.reset.open === 'function') {
+                close();
+                SC.reset.open();
+            } else {
+                recoverPassword(); // respaldo si acc_reset.js no cargó
+            }
+        });
 
         const toCreate = document.createElement('button');
         toCreate.type = 'button';
