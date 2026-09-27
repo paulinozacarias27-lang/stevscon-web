@@ -135,7 +135,7 @@
         });
     }
 
-    function renderSessionCard(container, user) {
+function renderSessionCard(container, user) {
         const card = document.createElement('div');
         card.className = 'category-card is-static';
 
@@ -166,18 +166,51 @@
         card.appendChild(copyBtn);
         container.appendChild(card);
 
-        // Cerebro propio: el perfil vive en users/{uid}
+        // Cerebro propio: el perfil vive en users/{uid} y el avatar
+        // (imagen base64 o preset) en users/{uid}/profile
         if (typeof window.StevsconFirebase !== 'undefined' && window.StevsconFirebase.database) {
             window.StevsconFirebase.database.ref('users/' + user.uid).once('value')
                 .then(function (snap) {
                     const p = snap.val() || {};
-                    avatar.textContent = (p.username || 'S').charAt(0).toUpperCase();
+                    paintSessionAvatar(avatar, p.profile || {}, p);
                     name.textContent = p.username || 'Sesión iniciada';
                     detail.textContent = '@' + (p.handler || '') + ' · ID: ' + (p.userId || '—');
                     copyBtn.addEventListener('click', function () { copyId(p.userId); });
                 })
                 .catch(function () { /* sin perfil aún: dejamos el correo */ });
         }
+    }
+
+    // Avatar de la tarjeta: imagen del perfil (base64) si existe,
+    // degradado del preset si no, y letra de respaldo.
+    function paintSessionAvatar(avatarEl, profile, userRow) {
+        const letter = String((userRow && userRow.username) || 'S').charAt(0).toUpperCase();
+
+        if (profile && profile.avatarUrl) {
+            const img = document.createElement('img');
+            img.src = profile.avatarUrl;
+            img.alt = 'Tu avatar';
+            img.referrerPolicy = 'no-referrer';
+            img.className = avatarEl.className;
+            img.style.cssText = 'object-fit:cover;';
+            img.onerror = function () {
+                if (img.parentNode) img.parentNode.replaceChild(avatarEl, img);
+                avatarEl.textContent = letter;
+            };
+            avatarEl.parentNode.replaceChild(img, avatarEl);
+            return;
+        }
+
+        const SCp = window.StevsconProfiles;
+        if (profile && profile.avatarPreset && SCp && SCp.presets && SCp.presets.avatar) {
+            for (let i = 0; i < SCp.presets.avatar.length; i++) {
+                if (SCp.presets.avatar[i].id === profile.avatarPreset) {
+                    avatarEl.style.background = SCp.presets.avatar[i].css;
+                    break;
+                }
+            }
+        }
+        avatarEl.textContent = letter;
     }
 
     function copyId(id) {
