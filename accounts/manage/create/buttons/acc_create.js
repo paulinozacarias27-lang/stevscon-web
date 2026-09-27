@@ -1,33 +1,34 @@
 /**
- * ============================================================
+ * ====
  * STEVSCON.COM - accounts/manage/create/buttons/acc_create.js
- * Botón CREATE: crea la cuenta completa.
+ * Botón CREATE: crea la cuenta completa.  ·  v2 BLINDADO
  *
- * Flujo: validar todo → verificar anti-bot → crear usuario en
- * Firebase Auth → reservar ID numérico (16 dígitos, transacción)
- * → reservar handler (transacción) → escribir perfil en users/.
- * Si cualquier paso de base de datos falla, se borra el usuario
- * de Auth para que NUNCA queden cuentas a medias.
- * ============================================================
+ * Flujo: validar → anti-bot → crear usuario en Firebase Auth
+ * (queda autenticado) → verificar handler → reservar ID (transacción)
+ * → reservar handler (transacción) → perfil en users/.
+ * Si algo falla después de crear el usuario, se limpia TODO
+ * (Auth + base de datos) y se muestra el detalle real del error.
+ * El correo de bienvenida NUNCA puede bloquear el registro.
+ * ====
  */
 (function (window, document) {
     'use strict';
 
     const SC = window.StevsconCreate = window.StevsconCreate || {};
 
-    // Correo del Owner: se le asigna rango OWNER automáticamente.
-    // (Más adelante el sistema de admin/owner gestionará esto solo.)
     const OWNER_EMAIL = 'steven23hd@gmail.com';
-
-    const ID_LENGTH = 16;   // dígitos del ID estilo Discord
-    const ID_MAX_TRIES = 5; // reintentos si un ID colisiona
+    const ID_LENGTH = 16;
+    const ID_MAX_TRIES = 5;
 
     let btnEl = null;
     let labelEl = null;
     let spinnerEl = null;
     let busy = false;
 
-    // ---------- Utilidades de generación/reserva ----------
+    // Rastreo de lo reservado en este intento (para limpieza total)
+    let currentAuthUser = null;
+    let reservedId = null;
+    let reservedHandlerKey = null;
 
     function generateId() {
         let id = String(Math.floor(Math.random() * 9) + 1); // primer dígito 1-9
@@ -47,9 +48,9 @@
         const db = getDatabase();
         const id = generateId();
         return db.ref('ids/' + id).transaction(function (current) {
-            return current === null ? uid : undefined; // si está ocupado, aborta
+            return current === null ? uid : undefined;
         }).then(function (res) {
-            if (res.committed) return id;
+            if (res.committed) { reservedId = id; return id; }
             if (tries >= ID_MAX_TRIES) throw new Error('id_exhausted');
             return reserveId(uid, tries + 1);
         });
@@ -60,32 +61,39 @@
         const db = getDatabase();
         const key = (typeof SC.handlerKey === 'function')
             ? SC.handlerKey(handler)
-            : String(handler).toLowerCase().replace(/\./g, ',');
+            : String(handler).toLowerCase().replace(/[.$#\[\]]/g, function (ch) {
+                return ch === '.' ? ',' : { '#': '~a', '$': '~b', '[': '~c', ']': '~d' }[ch];
+            });
         return db.ref('handlers/' + key).transaction(function (current) {
             return current === null ? uid : undefined;
         }).then(function (res) {
             if (!res.committed) throw new Error('handler_taken');
+            reservedHandlerKey = key;
             return key;
         });
     }
 
-    // Limpieza total si algo falla a mitad del registro
-    function cleanup(authUser, uid, reservedId, reservedHandlerKey) {
+    // Limpieza total: base de datos + usuario de Auth recién creado
+    function cleanup() {
         const db = getDatabase();
         const tasks = [];
-        if (uid && db) {
-            tasks.push(db.ref('users/' + uid).remove().catch(function () {}));
+        if (currentAuthUser && db) {
+            tasks.push(db.ref('users/' + currentAuthUser.uid).remove().catch(function () {}));
             if (reservedId) tasks.push(db.ref('ids/' + reservedId).remove().catch(function () {}));
             if (reservedHandlerKey) tasks.push(db.ref('handlers/' + reservedHandlerKey).remove().catch(function () {}));
         }
         return Promise.all(tasks).then(function () {
-            if (authUser && typeof authUser.delete === 'function') {
-                return authUser.delete().catch(function () {});
+            if (currentAuthUser && typeof currentAuthUser.delete === 'function') {
+                return currentAuthUser.delete().catch(function () {});
             }
+        }).then(function () {
+            currentAuthUser = null;
+            reservedId = null;
+            reservedHandlerKey = null;
         });
     }
 
-    // ---------- Render y estados del botón ----------
+    // ---- Render y estados del botón ----
 
     function render() {
         btnEl = document.createElement('button');
@@ -103,7 +111,6 @@
         btnEl.appendChild(spinnerEl);
         btnEl.appendChild(labelEl);
 
-        // Estado inicial según el checkbox anti-bot
         btnEl.disabled = !isAllowChecked();
         if (typeof SC.on === 'function') {
             SC.on('allow:change', function (checked) {
@@ -127,7 +134,7 @@
         labelEl.textContent = labelText || 'Crear cuenta';
     }
 
-    // ---------- El registro completo ----------
+    // ---- El registro completo ----
 
     function submit() {
         if (busy) return;
@@ -138,10 +145,7 @@
         // 1. Validar todos los campos OUTPUT
         const v = (typeof SC.output !== 'undefined' && typeof SC.output.validateAll === 'function')
             ? SC.output.validateAll() : { ok: false, firstError: 'Error interno: no hay formulario cargado.' };
-        if (!v.ok) {
-            errors.show(v.firstError);
-            return;
-        }
+        if (!v.ok) { errors.show(v.firstError); return; }
 
         // 2. Verificar anti-bot
         if (!isAllowChecked()) {
@@ -163,23 +167,26 @@
         const handler = values.handler || '';
         const password = values.password || '';
 
-        setBusy(true, 'Creando tu cuenta...');
-
-        // 4. Verificación rápida del handler (fail-fast antes de crear nada)
         const handlerKey = (typeof SC.handlerKey === 'function')
             ? SC.handlerKey(handler) : handler.toLowerCase().replace(/\./g, ',');
 
-        db.ref('handlers/' + handlerKey).once('value')
-            .then(function (snap) {
-                if (snap.exists()) throw new Error('handler_taken');
-                // 5. Crear usuario en Firebase Auth (queda autologgeado)
-                return auth.createUserWithEmailAndPassword(email, password);
-            })
+        currentAuthUser = null;
+        reservedId = null;
+        reservedHandlerKey = null;
+
+        setBusy(true, 'Creando tu cuenta...');
+
+        // 4. Crear usuario en Auth (queda autenticado desde ya)
+        auth.createUserWithEmailAndPassword(email, password)
             .then(function (cred) {
-                const uid = cred.user.uid;
-                // 6. Reservar ID numérico y handler, y escribir el perfil
-                return reserveId(uid, 0).then(function (userId) {
-                    return reserveHandler(handler, uid).then(function (hKey) {
+                currentAuthUser = cred.user;
+
+                // 5. Ya autenticados: handler único y reserva del ID
+                return db.ref('handlers/' + handlerKey).once('value').then(function (snap) {
+                    if (snap.exists()) throw new Error('handler_taken');
+                    return reserveId(currentAuthUser.uid, 0);
+                }).then(function (userId) {
+                    return reserveHandler(handler, currentAuthUser.uid).then(function (hKey) {
                         const isOwner = email.toLowerCase() === OWNER_EMAIL;
                         const profile = {
                             userId: userId,
@@ -189,60 +196,63 @@
                             rank: isOwner ? 'OWNER' : 'USER',
                             createdAt: window.firebase.database.ServerValue.TIMESTAMP
                         };
-                        return db.ref('users/' + uid).set(profile).then(function () {
-                            return { uid: uid, userId: userId, handlerKey: hKey, profile: profile };
-                        });
+                        return db.ref('users/' + currentAuthUser.uid).set(profile)
+                            .then(function () {
+                                return { userId: userId, handlerKey: hKey, profile: profile };
+                            });
                     });
                 });
             })
             .then(function (done) {
-                // 7. Éxito: correo de bienvenida (no bloquea la UI) + evento
-                if (SC.mail && typeof SC.mail.sendWelcome === 'function') {
-                    SC.mail.sendWelcome({
-                        email: email,
-                        username: username,
-                        handler: handler,
-                        userId: done.userId
-                    });
+                // 6. Éxito: el correo de bienvenida va blindado — si falla, no importa
+                try {
+                    const mailResult = (SC.mail && typeof SC.mail.sendWelcome === 'function')
+                        ? SC.mail.sendWelcome({
+                            email: email, username: username,
+                            handler: handler, userId: done.userId
+                        }) : null;
+                    if (mailResult && typeof mailResult.catch === 'function') {
+                        mailResult.catch(function (e) {
+                            console.warn('[Stevscon] El correo de bienvenida falló (tu cuenta SÍ fue creada):', e);
+                        });
+                    }
+                } catch (mailErr) {
+                    console.warn('[Stevscon] El correo de bienvenida falló (tu cuenta SÍ fue creada):', mailErr);
                 }
+
                 setBusy(false, '¡Cuenta creada!');
                 btnEl.classList.add('is-success');
                 errors.success('¡Bienvenido a Stevscon, ' + username + '! Tu ID es ' + done.userId + '.');
                 SC.emit('create:success', {
-                    uid: done.uid,
+                    uid: currentAuthUser.uid,
                     userId: done.userId,
                     username: username,
                     handler: handler,
                     email: email,
                     rank: done.profile.rank
                 });
+                currentAuthUser = null;
+                reservedId = null;
+                reservedHandlerKey = null;
             })
             .catch(function (err) {
-                // 8. Errores: traducir, limpiar restos y volver al formulario
-                const authUser = (err && err.user) ? err.user : null;
-                const uid = authUser ? authUser.uid : null;
+                // 7. Error real en consola + detalle visible en pantalla
+                console.error('[Stevscon Create] Error en el registro:', err);
+
+                if (currentAuthUser) cleanup();
 
                 if (err && err.message === 'handler_taken') {
-                    if (authUser) cleanup(authUser, uid, null, null);
                     errors.show('El handler @' + handler + ' acaba de ser tomado. Prueba otro.');
                 } else if (err && err.message === 'id_exhausted') {
-                    if (authUser) cleanup(authUser, uid, null, null);
                     errors.show('No pudimos asignarte un ID. Inténtalo de nuevo.');
                 } else if (err && err.code && err.code.indexOf('auth/') === 0) {
-                    if (uid && authUser && authUser.metadata.createdAt === authUser.metadata.lastSignInTime) {
-                        // Solo borramos si la cuenta se acaba de crear en este intento
-                        cleanup(authUser, uid, null, null);
-                    }
                     errors.show(SC.translateAuthError ? SC.translateAuthError(err.code) : 'No pudimos crear tu cuenta.');
                 } else {
-                    if (authUser) {
-                        cleanup(authUser, uid, err && err.reservedId, err && err.handlerKey);
-                    }
-                    errors.show('No pudimos terminar tu registro. Inténtalo de nuevo.');
+                    const detail = (err && (err.code || err.message)) ? String(err.code || err.message) : 'desconocido';
+                    errors.show('No pudimos terminar tu registro. Detalle: ' + detail);
                 }
 
                 setBusy(false, 'Crear cuenta');
-                console.error('[Stevscon Create] Error en el registro:', err);
             });
     }
 
