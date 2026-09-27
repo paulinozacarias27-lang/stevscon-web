@@ -103,7 +103,7 @@
         inner.style.cssText = 'padding:0 18px 18px;';
 
         const avatarRow = document.createElement('div');
-        avatarRow.style.cssText = 'display:flex;align-items:flex-end;justify-content:space-between;margin-top:-38px;margin-bottom:10px;';
+        avatarRow.style.cssText = 'display:flex;align-items:flex-end;justify-content:space-between;margin-top:-38px;margin-bottom:10px;position:relative;z-index:2;';
         const letter = (d.username || d.handler || (authUser && authUser.email) || 'S').charAt(0).toUpperCase();
         const av = SCp.ui.avatarEl(d, 76, letter);
         av.style.border = '4px solid #1a1526';
