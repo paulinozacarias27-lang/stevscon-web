@@ -1,40 +1,140 @@
 /**
  * ====
- * STEVSCON.COM - accounts/manage/reset/acc_reset.js
- * RESET · Coordinador + cerebro (cargar AL FINAL de los files reset).
- * - Modal propio, mismo estilo morado que ACCESS.
- * - Se abre desde el link de ACCESS: SC.reset.open().
- * - AUTO-APERTURA: si llegan a la web con ?reset=1 (o #reset),
- *   abre el modal solo. Así funciona el botón del correo de EmailJS.
- * - Si la URL trae ?email=..., precarga el correo.
- * - El LINK real lo manda Firebase (sendPasswordResetEmail).
- * - mail_reset.js manda solo el aviso bonito: NUNCA bloquea.
- * - Si el correo no existe, mostramos éxito igual: nadie puede
- *   usar este formulario para espiar qué cuentas existen.
+ * STEVSCON.COM - ACCESS · Botón ENTRAR + modal + cerebro del login.
+ * (cargar DESPUÉS de los campos access_account.js y access_password.js,
+ *  y ANTES de category_acc.js)
+ *
+ * - Modal propio, estilo morado de la web.
+ * - Entra con CORREO o con @HANDLER (resuelve el handler contra
+ *   handlers/ → uid → users/{uid}/email, y luego Firebase Auth).
+ * - "¿Olvidaste tu contraseña?" abre el sistema RESET (SC.reset.open).
+ * - "Crear una" avisa a category_acc.js para abrir el modal CREATE.
+ * - Nada de contraseñas en localStorage: solo Firebase Auth.
  * ====
  */
 (function (window, document) {
     'use strict';
 
     const SC = window.StevsconCreate = window.StevsconCreate || {};
-    SC.reset = SC.reset || {};
+    SC.access = SC.access || {};
+    SC.access.fields = SC.access.fields || [];
 
     const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
     let overlay = null;
-    let viewForm = null;
-    let viewSent = null;
-    let sentTextEl = null;
     let btnEl = null;
     let labelEl = null;
     let spinnerEl = null;
     let busy = false;
     let escHandler = null;
     let lastFocus = null;
-    let knownHandle = '—';
 
     function fb() {
         return (typeof window.StevsconFirebase !== 'undefined') ? window.StevsconFirebase : null;
+    }
+
+    function db() {
+        const F = fb();
+        if (!F) return null;
+        if (F.db && typeof F.db.ref === 'function') return F.db;
+        if (F.database && typeof F.database.ref === 'function') return F.database;
+        if (typeof firebase !== 'undefined' && firebase.database) return firebase.database();
+        return null;
+    }
+
+    /* ================= ERRORES (SC.access.errors) ================= */
+
+    const AUTH_ERRORS = {
+        'auth/invalid-credential': 'Correo o contraseña incorrectos.',
+        'auth/wrong-password': 'Contraseña incorrecta.',
+        'auth/user-not-found': 'No existe una cuenta con ese correo.',
+        'auth/invalid-email': 'El formato del correo no es válido.',
+        'auth/user-disabled': 'Esta cuenta fue deshabilitada. Contacta al equipo de Stevscon.',
+        'auth/too-many-requests': 'Demasiados intentos fallidos. Espera un momento y vuelve a intentarlo.',
+        'auth/network-request-failed': 'Sin conexión. Revisa tu internet e inténtalo de nuevo.',
+        'stevscon/handler-not-found': 'No encontramos ninguna cuenta con ese @handler. Prueba con tu correo.',
+        'stevscon/no-database': 'La base de datos no está disponible. Recarga la página.'
+    };
+
+    let errorBox = null;
+    let errorText = null;
+
+    const errors = {
+        render: function () {
+            errorBox = document.createElement('div');
+            errorBox.className = 'form-errors hidden';
+            errorBox.setAttribute('role', 'alert');
+            errorText = document.createElement('p');
+            errorText.style.cssText = 'margin:0;';
+            errorBox.appendChild(errorText);
+            return errorBox;
+        },
+        show: function (msg) {
+            if (!errorBox || !errorText) return;
+            errorText.textContent = String(msg || 'Algo salió mal. Inténtalo de nuevo.');
+            errorBox.classList.remove('hidden');
+        },
+        clear: function () {
+            if (errorBox) errorBox.classList.add('hidden');
+            if (errorText) errorText.textContent = '';
+        },
+        translateAuthError: function (code) {
+            return AUTH_ERRORS[code] || 'No pudimos iniciar sesión. Inténtalo de nuevo.';
+        }
+    };
+    SC.access.errors = errors;
+
+    /* ================= REGISTRO DE CAMPOS (API) ================= */
+
+    function sorted() {
+        return SC.access.fields.slice().sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
+    }
+
+    SC.access.get = function (id) {
+        return SC.access.fields.find(function (f) { return f && f.id === id; }) || null;
+    };
+
+    SC.access.values = function () {
+        const out = {};
+        SC.access.fields.forEach(function (f) {
+            if (f && f.id) out[f.id] = (f.getValue ? f.getValue() : '');
+        });
+        return out;
+    };
+
+    SC.access.validateAll = function () {
+        const list = sorted();
+        for (let i = 0; i < list.length; i++) {
+            const f = list[i];
+            if (f && typeof f.validate === 'function') {
+                const r = f.validate();
+                if (r && !r.ok) return { ok: false, firstError: r.msg || 'Revisa los campos.' };
+            }
+        }
+        return { ok: true };
+    };
+
+    /* ================= CEREBRO: ENTRAR ================= */
+
+    // Si escribió un @handler, lo resolvemos: handlers/{h} → uid → users/{uid}/email
+    function resolveEmail(idVal) {
+        if (EMAIL_RE.test(idVal)) return Promise.resolve(idVal);
+
+        const D = db();
+        if (!D) return Promise.reject({ code: 'stevscon/no-database' });
+
+        const h = idVal.replace(/^@/, '').toLowerCase();
+        return D.ref('handlers/' + h).once('value')
+            .then(function (snap) {
+                const uid = snap ? snap.val() : null;
+                if (!uid) throw { code: 'stevscon/handler-not-found' };
+                return D.ref('users/' + uid + '/email').once('value');
+            })
+            .then(function (snap) {
+                const email = snap ? snap.val() : null;
+                if (!email) throw { code: 'stevscon/handler-not-found' };
+                return String(email);
+            });
     }
 
     function setBusy(state, text) {
@@ -43,62 +143,75 @@
         btnEl.disabled = state;
         btnEl.classList.toggle('is-busy', state);
         if (spinnerEl) spinnerEl.classList.toggle('hidden', !state);
-        if (labelEl) labelEl.textContent = text || 'Enviar enlace';
+        if (labelEl) labelEl.textContent = text || 'Entrar';
     }
 
-    // ---- El cerebro: enviar el enlace ----
-    function send() {
-        if (busy || !SC.reset.errors) return;
-        SC.reset.errors.clear();
+    function login() {
+        if (busy) return;
+        errors.clear();
 
-        const v = SC.reset.validateAll();
-        if (!v.ok) { SC.reset.errors.show(v.firstError); return; }
+        const v = SC.access.validateAll();
+        if (!v.ok) { errors.show(v.firstError); return; }
 
         const F = fb();
         if (!F || !F.auth) {
-            SC.reset.errors.show('Firebase no está disponible ahora mismo. Recarga la página.');
+            errors.show('Firebase no está disponible ahora mismo. Recarga la página.');
             return;
         }
 
-        const email = SC.reset.values()['reset-email'] || '';
+        const vals = SC.access.values();
+        const idVal = vals['access-id'] || '';
+        const pass = vals['access-password'] || '';
 
-        setBusy(true, 'Enviando...');
+        setBusy(true, 'Entrando...');
 
-        F.auth.sendPasswordResetEmail(email)
-            .then(function () { finishSent(email); })
+        resolveEmail(idVal)
+            .then(function (email) {
+                return F.auth.signInWithEmailAndPassword(email, pass);
+            })
+            .then(function () {
+                setBusy(false, 'Entrar');
+                close(); // session.js toma el header con onAuthStateChanged
+            })
             .catch(function (err) {
+                setBusy(false, 'Entrar');
                 const code = (err && err.code) || '';
-                console.error('[Stevscon Reset] Error al enviar el enlace:', err);
-                // Si el correo no existe, NO lo confirmamos: éxito igual.
-                if (code === 'auth/user-not-found' || code === 'auth/invalid-credential') {
-                    finishSent(email);
-                    return;
-                }
-                setBusy(false, 'Enviar enlace');
-                SC.reset.errors.show(SC.reset.errors.translateAuthError(code));
+                console.error('[Stevscon Access] Error al iniciar sesión:', err);
+                errors.show(errors.translateAuthError(code));
             });
     }
 
-    function finishSent(email) {
-        setBusy(false, 'Enviar enlace');
+    /* ================= MODAL ================= */
 
-        // Aviso EmailJS decorativo: si falla, no importa NADA.
-        try {
-            const r = (SC.reset.mail && typeof SC.reset.mail.sendNotice === 'function')
-                ? SC.reset.mail.sendNotice({ email: email, handle: knownHandle }) : null;
-            if (r && typeof r.catch === 'function') r.catch(function () {});
-        } catch (e) { /* el enlace de Firebase ya se envió */ }
-
-        if (viewForm) viewForm.classList.add('hidden');
-        if (sentTextEl) {
-            sentTextEl.textContent = 'Si ' + email + ' está en Stevscon, te enviamos un enlace para crear una contraseña nueva. Revisa tu bandeja (y tu spam).';
-        }
-        if (viewSent) viewSent.classList.remove('hidden');
+    function makeLink(text, onClick) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = text;
+        b.style.cssText = 'display:block;background:none;border:0;padding:0;margin:10px auto 0;font-family:Inter,sans-serif;font-size:12.5px;color:#8b5cf6;cursor:pointer;';
+        b.addEventListener('click', onClick);
+        return b;
     }
 
-    // ---- Modal ----
+    function openCreateFromLink() {
+        close();
+        let opened = false;
+        try {
+            if (SC.create && typeof SC.create.open === 'function') { SC.create.open(); opened = true; }
+        } catch (e) { /* seguimos con el plan B */ }
+        if (!opened) {
+            // Avisamos por el bus de eventos y por DOM, por si el coordinador escucha cualquiera de los dos.
+            try { if (typeof SC.emit === 'function') SC.emit('create:open'); } catch (e) {}
+            try { if (typeof SC.emit === 'function') SC.emit('open-create'); } catch (e) {}
+            try { window.dispatchEvent(new CustomEvent('stevscon:open-create')); } catch (e) {}
+        }
+    }
+
     function open() {
         if (overlay) return;
+        if (!SC.access.fields.length) {
+            console.error('[Stevscon Access] No hay campos registrados: ¿cargan access_account.js y access_password.js antes de acc_access.js?');
+            return;
+        }
         lastFocus = document.activeElement;
 
         overlay = document.createElement('div');
@@ -107,14 +220,14 @@
         const card = document.createElement('div');
         card.setAttribute('role', 'dialog');
         card.setAttribute('aria-modal', 'true');
-        card.setAttribute('aria-label', 'Recuperar contraseña');
+        card.setAttribute('aria-label', 'Iniciar sesión');
         card.style.cssText = 'width:100%;max-width:400px;background:#161221;border:1px solid rgba(167,139,250,.35);border-radius:14px;padding:26px 24px;font-family:Inter,sans-serif;color:#ede9fe;';
 
         const head = document.createElement('div');
         head.style.cssText = 'display:flex;align-items:flex-start;justify-content:space-between;gap:12px;';
 
         const title = document.createElement('h2');
-        title.textContent = 'Recuperar contraseña';
+        title.textContent = 'Iniciar sesión';
         title.style.cssText = 'margin:0;font-size:22px;font-weight:800;color:#ffff;letter-spacing:-.02em;';
 
         const closeBtn = document.createElement('button');
@@ -128,23 +241,19 @@
         head.appendChild(closeBtn);
 
         const sub = document.createElement('p');
-        sub.textContent = 'Te enviaremos un enlace para crear una contraseña nueva.';
+        sub.textContent = 'Entra con tu correo o con tu @handler.';
         sub.style.cssText = 'margin:4px 0 18px;font-size:13px;color:#b7a9e6;';
-
-        // VISTA 1: formulario
-        viewForm = document.createElement('div');
 
         const formEl = document.createElement('form');
         formEl.noValidate = true;
-        formEl.addEventListener('submit', function (e) { e.preventDefault(); send(); });
+        formEl.addEventListener('submit', function (e) { e.preventDefault(); login(); });
 
-        SC.reset.fields.slice().sort(function (a, b) { return a.order - b.order; }).forEach(function (f) {
-            formEl.appendChild(f.render());
+        sorted().forEach(function (f) {
+            try { formEl.appendChild(f.render()); }
+            catch (e) { console.error('[Stevscon Access] Error renderizando campo:', f.id, e); }
         });
 
-        if (SC.reset.errors && typeof SC.reset.errors.render === 'function') {
-            formEl.appendChild(SC.reset.errors.render());
-        }
+        formEl.appendChild(errors.render());
 
         btnEl = document.createElement('button');
         btnEl.type = 'submit';
@@ -156,123 +265,51 @@
 
         labelEl = document.createElement('span');
         labelEl.className = 'btn-create-label';
-        labelEl.textContent = 'Enviar enlace';
+        labelEl.textContent = 'Entrar';
 
         btnEl.appendChild(spinnerEl);
         btnEl.appendChild(labelEl);
         formEl.appendChild(btnEl);
-        viewForm.appendChild(formEl);
 
-        // VISTA 2: enviado
-        viewSent = document.createElement('div');
-        viewSent.className = 'hidden';
-
-        const okIcon = document.createElement('i');
-        okIcon.className = 'fa-solid fa-circle-check';
-        okIcon.style.cssText = 'display:block;text-align:center;font-size:34px;color:#4ade80;margin:6px 0 10px;';
-
-        const okTitle = document.createElement('p');
-        okTitle.textContent = 'Revisa tu correo';
-        okTitle.style.cssText = 'margin:0 0 8px;text-align:center;font-weight:800;font-size:16px;color:#ffff;';
-
-        sentTextEl = document.createElement('p');
-        sentTextEl.style.cssText = 'margin:0 0 16px;text-align:center;font-size:12.5px;line-height:1.5;color:#b7a9e6;';
-
-        const backBtn = document.createElement('button');
-        backBtn.type = 'button';
-        backBtn.className = 'btn btn-primary';
-        backBtn.textContent = 'Volver a iniciar sesión';
-        backBtn.style.cssText = 'width:100%;';
-        backBtn.addEventListener('click', function () {
+        const forgot = makeLink('¿Olvidaste tu contraseña?', function () {
             close();
-            if (SC.access && typeof SC.access.open === 'function') SC.access.open();
+            if (SC.reset && typeof SC.reset.open === 'function') SC.reset.open();
+            else console.error('[Stevscon Access] SC.reset.open no existe: ¿faltan los files de accounts/manage/reset/?');
         });
 
-        const otherLink = document.createElement('button');
-        otherLink.type = 'button';
-        otherLink.textContent = 'Usar otro correo';
-        otherLink.style.cssText = 'display:block;background:none;border:0;padding:0;margin:10px auto 0;font-family:Inter,sans-serif;font-size:12.5px;color:#8b5cf6;cursor:pointer;';
-        otherLink.addEventListener('click', function () {
-            viewSent.classList.add('hidden');
-            viewForm.classList.remove('hidden');
-        });
-
-        viewSent.appendChild(okIcon);
-        viewSent.appendChild(okTitle);
-        viewSent.appendChild(sentTextEl);
-        viewSent.appendChild(backBtn);
-        viewSent.appendChild(otherLink);
+        const toCreate = makeLink('¿No tienes cuenta? Crear una', openCreateFromLink);
 
         card.appendChild(head);
         card.appendChild(sub);
-        card.appendChild(viewForm);
-        card.appendChild(viewSent);
+        card.appendChild(formEl);
+        card.appendChild(forgot);
+        card.appendChild(toCreate);
         overlay.appendChild(card);
 
         const root = document.getElementById('modals-root') || document.body;
         root.appendChild(overlay);
 
-        // Precarga: si en ACCESS ya escribieron un correo, lo arrastramos.
-        // Si escribieron un @handler, lo guardamos para el aviso del correo.
-        try {
-            const acc = (SC.access && SC.access.get) ? SC.access.get('access-id') : null;
-            const field = (SC.reset && SC.reset.get) ? SC.reset.get('reset-email') : null;
-            const typed = (acc && acc.getValue) ? acc.getValue().trim() : '';
-            if (field && field.setValue && EMAIL_RE.test(typed)) {
-                field.setValue(typed);
-                knownHandle = '—';
-            } else if (typed) {
-                knownHandle = '@' + typed.replace(/^@/, '').toLowerCase();
-            }
-        } catch (e) { /* opcional */ }
-
         escHandler = function (e) { if (e.key === 'Escape') close(); };
         document.addEventListener('keydown', escHandler);
         overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
 
-        if (SC.reset.errors) SC.reset.errors.clear();
-        const first = viewForm.querySelector('input');
+        errors.clear();
+        const first = formEl.querySelector('input');
         if (first) setTimeout(function () { first.focus(); }, 60);
     }
 
     function close() {
         if (escHandler) { document.removeEventListener('keydown', escHandler); escHandler = null; }
         if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
-        overlay = null; viewForm = null; viewSent = null; sentTextEl = null;
-        btnEl = null; spinnerEl = null; labelEl = null;
+        overlay = null; btnEl = null; spinnerEl = null; labelEl = null;
         busy = false;
-        if (SC.reset.resetAll) SC.reset.resetAll();
-        if (SC.reset.errors && SC.reset.errors.clear) SC.reset.errors.clear();
+        errors.clear();
         if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus();
         lastFocus = null;
     }
 
-    // ---- AUTO-APERTURA: ?reset=1 / ?reset=true / #reset (+ ?email= opcional) ----
-    function checkUrlAutoOpen() {
-        try {
-            const params = new URLSearchParams(window.location.search || '');
-            const wantsReset = params.get('reset') === '1' ||
-                               params.get('reset') === 'true' ||
-                               window.location.hash === '#reset';
-            if (!wantsReset) return;
+    SC.access.open = open;
+    SC.access.close = close;
 
-            const email = params.get('email');
-            const field = (SC.reset && SC.reset.get) ? SC.reset.get('reset-email') : null;
-            if (email && field && field.setValue && EMAIL_RE.test(email)) field.setValue(email);
-
-            // Limpiamos la URL para que al refrescar no se vuelva a abrir solo
-            window.history.replaceState({}, '', window.location.pathname);
-            open();
-        } catch (e) { /* si falla, el modal se abre a mano como siempre */ }
-    }
-
-    SC.reset.open = open;
-    SC.reset.close = close;
-
-    // ---- Init ----
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', checkUrlAutoOpen);
-    } else {
-        checkUrlAutoOpen();
-    }
+    console.log('[Stevscon] acc_access.js listo.');
 })(window, document);
