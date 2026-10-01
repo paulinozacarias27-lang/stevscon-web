@@ -5,9 +5,18 @@
  *  de category_acc.js)
  *
  * - Entra con CORREO o con @HANDLER (handlers/ → uid → users/{uid}/email).
- * - NUEVO: si un error no está traducido, muestra el CÓDIGO técnico en
- *   pantalla (línea gris pequeña) para cazar bugs sin abrir consola.
- * - "¿Olvidaste tu contraseña?" abre SC.reset.open().
+ * - Si un error no está traducido, muestra el CÓDIGO técnico en pantalla
+ *   (línea gris pequeña) para cazar bugs sin abrir consola.
+ * - v14 · FIX: "¿Olvidaste tu contraseña?" y "¿No tienes cuenta? Crear una"
+ *   YA NO te sacan a la página principal. Ahora usa las puertas REALES de
+ *   cada file (verificado contra tu código):
+ *     · RESET  → SC.reset.open()  (acc_reset.js la expone) + verificación
+ *       de que el diálogo "Recuperar contraseña" existe en el DOM.
+ *     · CREATE → evento 'sc:open-create' en DOCUMENT (la única puerta que
+ *       category_acc.js expone; su openCreateModal es privada) +
+ *       verificación de que #create-modal-overlay quedó visible.
+ *   El destino se abre PRIMERO; ACCESS solo se cierra si la verificación
+ *   pasa. Si no, el panel sigue abierto y muestra el fallo en pantalla.
  * - Nada de contraseñas en localStorage: solo Firebase Auth.
  * ====
  */
@@ -213,6 +222,60 @@
             });
     }
 
+    /* ==== NAVEGACIÓN ENTRE MODALS (v14: abrir primero, cerrar después) ====
+     * Puertas REALES según tu código:
+     *  - acc_reset.js      → SC.reset.open  (función pública).
+     *  - category_acc.js   → NO expone función: escucha el evento
+     *    'sc:open-create' en DOCUMENT (su openCreateModal es privada).
+     * Después de intentar abrir, VERIFICAMOS en el DOM que de verdad se
+     * abrió. Solo entonces cerramos ACCESS.
+     */
+
+    // CREATE: overlay con id conocido; abierto = existe y sin clase 'hidden'
+    function isCreateVisible() {
+        const ov = document.getElementById('create-modal-overlay');
+        return !!(ov && !ov.classList.contains('hidden'));
+    }
+
+    // RESET: su card lleva aria-label="Recuperar contraseña"
+    function isResetVisible() {
+        return !!document.querySelector('[aria-label="Recuperar contraseña"]');
+    }
+
+    function tryOpenReset() {
+        if (SC.reset && typeof SC.reset.open === 'function') {
+            try {
+                SC.reset.open();
+                if (isResetVisible()) {
+                    console.log('[Stevscon Access] Reset abierto via SC.reset.open().');
+                    return true;
+                }
+                console.error('[Stevscon Access] SC.reset.open() corrió pero el modal no apareció (¿falta reset/output.js con el campo reset-email?).');
+            } catch (e) {
+                console.error('[Stevscon Access] SC.reset.open() existía pero lanzó error:', e);
+            }
+        } else {
+            console.error('[Stevscon Access] SC.reset.open no existe: ¿acc_reset.js está cargado en el index?');
+        }
+        return false;
+    }
+
+    function tryOpenCreate() {
+        // 1) Puerta oficial de category_acc.js: evento en DOCUMENT
+        try { document.dispatchEvent(new CustomEvent('sc:open-create')); } catch (e) {}
+        // 2) Extras inofensivos por si una versión futura expone más puertas
+        try { if (SC.create && typeof SC.create.open === 'function') SC.create.open(); } catch (e) {}
+        try { window.dispatchEvent(new CustomEvent('stevscon:open-create')); } catch (e) {}
+        try { if (typeof SC.emit === 'function') SC.emit('open-create'); } catch (e) {}
+
+        if (isCreateVisible()) {
+            console.log('[Stevscon Access] Create abierto via evento sc:open-create.');
+            return true;
+        }
+        console.error('[Stevscon Access] El evento sc:open-create no abrió CREATE (¿category_acc.js está cargado en el index?).');
+        return false;
+    }
+
     /* ==== MODAL ==== */
 
     function makeLink(text, onClick) {
@@ -222,19 +285,6 @@
         b.style.cssText = 'display:block;background:none;border:0;padding:0;margin:10px auto 0;font-family:Inter,sans-serif;font-size:12.5px;color:#8b5cf6;cursor:pointer;';
         b.addEventListener('click', onClick);
         return b;
-    }
-
-    function openCreateFromLink() {
-        close();
-        let opened = false;
-        try {
-            if (SC.create && typeof SC.create.open === 'function') { SC.create.open(); opened = true; }
-        } catch (e) { /* seguimos con el plan B */ }
-        if (!opened) {
-            try { if (typeof SC.emit === 'function') SC.emit('create:open'); } catch (e) {}
-            try { if (typeof SC.emit === 'function') SC.emit('open-create'); } catch (e) {}
-            try { window.dispatchEvent(new CustomEvent('stevscon:open-create')); } catch (e) {}
-        }
     }
 
     function open() {
@@ -302,13 +352,24 @@
         btnEl.appendChild(labelEl);
         formEl.appendChild(btnEl);
 
+        // v14: abrir destino PRIMERO, verificar, y SOLO ENTONCES cerrar ACCESS.
         const forgot = makeLink('¿Olvidaste tu contraseña?', function () {
-            close();
-            if (SC.reset && typeof SC.reset.open === 'function') SC.reset.open();
-            else console.error('[Stevscon Access] SC.reset.open no existe: ¿faltan los files de accounts/manage/reset/?');
+            errors.clear();
+            if (tryOpenReset()) { close(); return; }
+            errors.show(
+                'No se pudo abrir la recuperación de contraseña. El panel sigue abierto.',
+                'SC.reset.open falló — revisa acc_reset.js y reset/output.js en el index'
+            );
         });
 
-        const toCreate = makeLink('¿No tienes cuenta? Crear una', openCreateFromLink);
+        const toCreate = makeLink('¿No tienes cuenta? Crear una', function () {
+            errors.clear();
+            if (tryOpenCreate()) { close(); return; }
+            errors.show(
+                'No se pudo abrir Crear cuenta. El panel sigue abierto.',
+                'category_acc.js no respondió al evento sc:open-create — revisa el index'
+            );
+        });
 
         card.appendChild(head);
         card.appendChild(sub);
@@ -342,5 +403,5 @@
     SC.access.open = open;
     SC.access.close = close;
 
-    console.log('[Stevscon] acc_access.js listo (v13 con detector de errores).');
+    console.log('[Stevscon] acc_access.js listo (v14 · navegación con puertas reales: SC.reset.open + evento sc:open-create).');
 })(window, document);
