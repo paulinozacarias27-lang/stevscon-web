@@ -1,14 +1,14 @@
 /**
  * ====
  * STEVSCON.COM - accounts/manage/settings/output/ui_settings.js
- * AJUSTES · CASCARÓN (v2): engranaje + panel + helpers de controles
+ * AJUSTES · CASCARÓN (v3): engranaje al lado del avatar + tema claro real
  *
- * - Engranaje junto al avatar del header (solo con sesión).
- * - Panel estilo Discord: barra lateral + contenido por pestañas.
- * - Las pestañas se REGISTRAN desde ui_preferences/ui_privacy/ui_data.
- * - Seguridad queda como pestaña integrada "PRONTO".
- * - Expone SCSET.ui (filas, toggles, segmentados) para las otras pestañas.
- * - Cero innerHTML con datos externos (anti-XSS).
+ * v3:
+ * - Engranaje: avatar + engranaje viven en un cluster horizontal propio,
+ *   y se fuerza el contenedor del header a fila (row). Si session.js
+ *   re-pinta el header, el cluster se reconstruye solo.
+ * - Tema claro: inyecta CSS con !important que sobrescribe la paleta
+ *   oscura conocida del proyecto AUNQUE esté en estilos inline.
  * ====
  */
 (function (window, document) {
@@ -38,7 +38,7 @@
         SCSET.tabs[t.id] = t;
     };
 
-    /* ==== HELPERS DE UI (los usan las otras pestañas) ==== */
+    /* ==== HELPERS DE UI ==== */
 
     const ui = SCSET.ui = {};
 
@@ -137,7 +137,7 @@
         return c;
     };
 
-    /* ==== TOAST PROPIO (no depende del sistema de alerts) ==== */
+    /* ==== TOAST PROPIO ==== */
 
     SCSET.toast = function (msg) {
         const t = document.createElement('div');
@@ -152,25 +152,55 @@
         }, 2300);
     };
 
-    /* ==== TEMA ==== */
+    /* ==== TEMA (v3: claro real, sobrescribe la paleta oscura conocida) ==== */
+
+    const LIGHT_STYLE_ID = 'sc-theme-light';
+
+    const LIGHT_CSS = [
+        'body.theme-light{background:#f4f2fa !important;color:#1e1b2e !important}',
+        'body.theme-light .navbar{background:#ffffff !important;border-bottom-color:#e2dcf3 !important;box-shadow:none !important}',
+        'body.theme-light .navbar .brand-title{color:#1e1b2e !important}',
+
+        /* Superficies oscuras conocidas -> claras (gana a estilos inline) */
+        'body.theme-light [style*="#0d0b14"],body.theme-light [style*="#0D0B14"]{background-color:#f4f2fa !important}',
+        'body.theme-light [style*="#1a1625"],body.theme-light [style*="#1A1625"]{background-color:#ffffff !important}',
+        'body.theme-light [style*="#120f1b"],body.theme-light [style*="#120F1B"]{background-color:#ffffff !important}',
+        'body.theme-light [style*="rgba(5,4,10"]{background-color:rgba(244,242,250,.86) !important}',
+        'body.theme-light [style*="background-color: rgb"],body.theme-light [style*="background: rgb"]{background-color:#ffffff !important}',
+
+        /* Bordes */
+        'body.theme-light [style*="#2e2440"],body.theme-light [style*="#2E2440"]{border-color:#ddd5f0 !important}',
+
+        /* Textos */
+        'body.theme-light [style*="#f8fafc"],body.theme-light [style*="#F8FAFC"]{color:#1e1b2e !important}',
+        'body.theme-light [style*="#e2e8f0"]{color:#2a2740 !important}',
+        'body.theme-light [style*="#cbd5e1"]{color:#3a3654 !important}',
+        'body.theme-light [style*="#94a3b8"]{color:#5b5570 !important}',
+        'body.theme-light [style*="#64748b"]{color:#6b6480 !important}',
+        'body.theme-light [style*="#c4b5fd"]{color:#6d28d9 !important}',
+        'body.theme-light [style*="#a78bfa"]{color:#6d28d9 !important}',
+        'body.theme-light [style*="#ede9fe"]{color:#4c1d95 !important}'
+    ].join('\n');
 
     SCSET.applyTheme = function (theme) {
         const body = document.body;
         body.classList.remove('theme-dark', 'theme-light');
         body.classList.add(theme === 'light' ? 'theme-light' : 'theme-dark');
         try { localStorage.setItem('stevscon_theme', theme); } catch (e) {}
-        let st = document.getElementById('sc-theme-light');
+        let st = document.getElementById(LIGHT_STYLE_ID);
         if (theme === 'light') {
             if (!st) {
                 st = document.createElement('style');
-                st.id = 'sc-theme-light';
-                st.textContent = 'body.theme-light{background:#f4f2fa;color:#1e1b2e}body.theme-light .navbar{background:#ffffff;border-bottom:1px solid #e2dcf3}';
+                st.id = LIGHT_STYLE_ID;
                 document.head.appendChild(st);
             }
-        } else if (st) { st.parentNode.removeChild(st); }
+            st.textContent = LIGHT_CSS;
+        } else if (st && st.parentNode) {
+            st.parentNode.removeChild(st);
+        }
     };
 
-    /* ==== ENGRANAJE JUNTO AL AVATAR ==== */
+    /* ==== ENGRANAJE JUNTO AL AVATAR (v3: cluster horizontal) ==== */
 
     function findHeaderAvatar(host) {
         const els = host.querySelectorAll('img, div, span, button');
@@ -192,7 +222,7 @@
         b.dataset.scSettingsGear = '1';
         b.title = 'Configuraciones';
         b.setAttribute('aria-label', 'Configuraciones');
-        b.style.cssText = 'width:38px;height:38px;margin-left:10px;flex:none;border:1px solid #2e2440;border-radius:50%;' +
+        b.style.cssText = 'width:38px;height:38px;flex:none;border:1px solid #2e2440;border-radius:50%;' +
             'background:#1a1625;color:#94a3b8;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;' +
             'transition:transform .25s ease,color .15s ease,border-color .15s ease;box-sizing:border-box;';
         const ic = document.createElement('i');
@@ -206,23 +236,55 @@
     }
 
     function injectGear() {
+        const host = document.getElementById('user-header-actions');
+        if (!host) return;
+
+        // Sin sesión: desarmar el cluster si quedó alguno
         if (!SCSET.authed) {
-            if (gearEl && gearEl.parentNode) gearEl.parentNode.removeChild(gearEl);
+            const stale = host.querySelector('[data-sc-settings-cluster]');
+            if (stale) {
+                if (stale.firstChild) host.insertBefore(stale.firstChild, stale);
+                host.removeChild(stale);
+            }
             gearEl = null;
             return;
         }
-        if (gearEl && gearEl.isConnected) return;
-        const host = document.getElementById('user-header-actions');
-        if (!host) return;
+
+        // Forzar el contenedor del header a fila horizontal (arregla el apilado)
+        host.style.display = 'flex';
+        host.style.flexDirection = 'row';
+        host.style.flexWrap = 'nowrap';
+        host.style.alignItems = 'center';
+        host.style.justifyContent = 'flex-end';
+        host.style.gap = '10px';
+        host.style.width = 'auto';
+        host.style.maxWidth = 'none';
+        host.style.flex = '0 0 auto';
+
         const av = findHeaderAvatar(host);
         if (!av) return;
         const wrap = av.closest ? av.closest('[data-sc-status-wrap]') : null;
         const anchor = wrap || av;
-        if (anchor.nextSibling && anchor.nextSibling.dataset && anchor.nextSibling.dataset.scSettingsGear) {
-            gearEl = anchor.nextSibling; return;
+
+        let cluster = host.querySelector('[data-sc-settings-cluster]');
+
+        // session.js re-pintó el avatar y quedó fuera del cluster: reconstruir
+        if (cluster && !cluster.contains(anchor)) {
+            host.removeChild(cluster);
+            cluster = null;
+            gearEl = null;
         }
-        gearEl = makeGear();
-        anchor.parentNode.insertBefore(gearEl, anchor.nextSibling);
+
+        if (!cluster) {
+            cluster = document.createElement('span');
+            cluster.dataset.scSettingsCluster = '1';
+            cluster.style.cssText = 'display:inline-flex;align-items:center;gap:10px;flex:none;';
+            anchor.parentNode.insertBefore(cluster, anchor);
+            cluster.appendChild(anchor);
+        }
+
+        if (!gearEl || !gearEl.isConnected) gearEl = makeGear();
+        if (gearEl.parentNode !== cluster) cluster.appendChild(gearEl);
     }
 
     function watchHeader() {
@@ -385,5 +447,5 @@
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', watchHeader);
     else watchHeader();
 
-    console.log('[Stevscon] ui_settings.js listo (cascarón v2).');
+    console.log('[Stevscon] ui_settings.js listo (cascarón v3).');
 })(window, document);
