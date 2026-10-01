@@ -59,13 +59,6 @@
   <script defer src="accounts/category_acc.js?v=18"></script>
 
   <!-- 7) PROFILES · Perfiles estilo Discord (ver + editar) -->
-<!-- 8) ONLINE STATUS · estados de conexión estilo Discord -->
-  <script defer src="profiles/manage/online_status/online.js?v=1"></script>
-  <script defer src="profiles/manage/online_status/inactive.js?v=1"></script>
-  <script defer src="profiles/manage/online_status/busy.js?v=1"></script>
-  <script defer src="profiles/manage/online_status/offline.js?v=1"></script>
-  <script defer src="profiles/manage/profile_manage/edit/status_online.js?v=1"></script>
-
   <script defer src="profiles/manage/profile_manage/utils/age.js?v=8"></script>
   <script defer src="profiles/manage/profile_manage/utils/ui_profile.js?v=8"></script>
   <script defer src="profiles/manage/profile_manage/edit/banner.js?v=8"></script>
@@ -75,6 +68,14 @@
   <script defer src="profiles/manage/profile_manage/edit/gender.js?v=8"></script>
   <script defer src="profiles/account_conec.js?v=8"></script>
   <script defer src="profiles/category_prf.js?v=8"></script>
+
+  <!-- 8) ONLINE STATUS · estados de conexión estilo Discord -->
+  <!-- REGLA: SIEMPRE DESPUÉS del grupo 7 (necesita a ui_profile.js y category_prf.js cargados antes) -->
+  <script defer src="profiles/manage/online_status/online.js?v=1"></script>
+  <script defer src="profiles/manage/online_status/inactive.js?v=1"></script>
+  <script defer src="profiles/manage/online_status/busy.js?v=1"></script>
+  <script defer src="profiles/manage/online_status/offline.js?v=1"></script>
+  <script defer src="profiles/manage/profile_manage/edit/status_online.js?v=2"></script>
 
   <script defer src="profiles/media_acc.js?v=14"></script>
 

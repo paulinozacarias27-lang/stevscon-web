@@ -1,20 +1,18 @@
 /**
  * ====
  * STEVSCON.COM - profiles/manage/profile_manage/edit/status_online.js
- * ONLINE STATUS · CEREBRO (cargar DESPUÉS de los 4 files de
- * online_status/ y DESPUÉS de utils/ui_profile.js).
+ * ONLINE STATUS · CEREBRO (v2)
  *
- * - Envuelve SCp.ui.renderProfileCard: cada vez que "Ver perfil" pinta
- *   la tarjeta, le pega el BADGE de estado a la esquina del avatar.
- * - CLIC en el avatar → panel estilo Discord con animación fluida hacia
- *   arriba → clic en un estado → cambia AL INSTANTE (Firebase).
+ * v2: YA NO IMPORTA EL ORDEN DE SCRIPTS. Si ui_profile.js no existe
+ * todavía, espera y reintenta (hasta 10s) antes de engancharse a
+ * renderProfileCard. Arregla el bug del badge que no aparecía.
+ *
+ * - Envuelve SCp.ui.renderProfileCard: cada "Ver perfil" trae el BADGE.
+ * - CLIC en el avatar → panel estilo Discord con animación hacia arriba.
  * - Firebase: users/{uid}/status = { state, manual, updated }.
- *     state  → lo que todos ven.
- *     manual → lo que TÚ elegiste (se restaura al volver la actividad).
- * - onDisconnect(): si cierras la web, Firebase te pone Desconectado.
- * - offline.js dispara 'sc:status-auto' (away/back) y este file escribe.
- * - Ocupado y Desconectado elegidos a mano NUNCA se sobreescriben solos.
- * - Todo con createElement/textContent: cero innerHTML, cero XSS.
+ * - onDisconnect(): cierras la web → Desconectado automático.
+ * - Ocupado y Desconectado a mano NUNCA se sobreescriben solos.
+ * - Cero innerHTML: todo createElement/textContent (anti-XSS).
  * ====
  */
 (function (window, document) {
@@ -36,8 +34,10 @@
     let panelAnchor = null;
     let outsideHandler = null;
     let escHandler = null;
-    const badges = new Set();   // badges vivos en el DOM
-    const rows = {};            // filas del panel por id de estado
+    let hookInstalled = false;
+    let hookPoll = null;
+    const badges = new Set();
+    const rows = {};
 
     /* ==== Puentes Firebase ==== */
 
@@ -70,10 +70,9 @@
 
     function fallbackDef() { return def(cached.state) || def('offline') || (SCST.states[0] || null); }
 
-    // Lo que DEBERÍA verse según tu elección manual + la inactividad.
     function effectiveWant() {
         const m = cached.manual || 'online';
-        if (m === 'busy' || m === 'offline') return m;          // elegidos a mano: sagrados
+        if (m === 'busy' || m === 'offline') return m;
         if (SCST.auto && SCST.auto.isAway && SCST.auto.isAway()) return 'offline';
         return m;
     }
@@ -131,14 +130,14 @@
                 [{ opacity: 1, transform: 'translateY(0) scale(1)' }, { opacity: 0, transform: 'translateY(8px) scale(.97)' }],
                 { duration: 120, easing: 'ease-out' }
             );
-        } catch (e) { /* sin animación de cierre */ }
+        } catch (e) {}
         setTimeout(function () { if (p.parentNode) p.parentNode.removeChild(p); }, 130);
     }
 
     function openPanel(anchor) {
         if (panelEl) { closePanel(); return; }
         if (!SCST.states.length) {
-            console.error('[Stevscon Status] No hay estados registrados: ¿cargan online/inactive/busy/offline.js antes de status_online.js?');
+            console.error('[Stevscon Status] No hay estados registrados: ¿faltan los 4 files de online_status/?');
             return;
         }
 
@@ -198,7 +197,6 @@
         document.body.appendChild(panelEl);
         refreshPanelChecks();
 
-        // ---- Posición: anclado al avatar, sin salirse de la pantalla ----
         const r = anchor.getBoundingClientRect();
         let left = Math.max(12, Math.min(r.left, window.innerWidth - PANEL_W - 12));
         let top = r.bottom + 10;
@@ -211,15 +209,13 @@
             panelEl.style.transformOrigin = 'top left';
         }
 
-        // ---- Animación fluida hacia arriba ----
         try {
             panelEl.animate(
                 [{ opacity: 0, transform: 'translateY(14px) scale(.95)' }, { opacity: 1, transform: 'translateY(0) scale(1)' }],
                 { duration: 190, easing: 'cubic-bezier(.2,.8,.3,1.12)' }
             );
-        } catch (e) { /* navegador viejo: se muestra sin animación */ }
+        } catch (e) {}
 
-        // Cerrar: clic afuera o Escape
         outsideHandler = function (e) {
             if (!panelEl) return;
             const t = e.target;
@@ -236,7 +232,7 @@
         const d = def(id);
         if (!d || !statusRef) return;
         cached = { state: id, manual: id };
-        if (SCST.auto && SCST.auto.poke) SCST.auto.poke(); // silencioso: sin 'back' fantasma
+        if (SCST.auto && SCST.auto.poke) SCST.auto.poke();
         repaintBadges();
         statusRef.update({ state: id, manual: id, updated: TS() })
             .catch(function (err) { console.error('[Stevscon Status] No se pudo guardar el estado:', err); });
@@ -258,8 +254,6 @@
         cached = { state: v.state || 'online', manual: v.manual || v.state || 'online' };
         repaintBadges();
         if (panelEl) refreshPanelChecks();
-        // Auto-curación: si otra pestaña/connection me dejó en offline
-        // pero AQUÍ sí hay actividad, me restauro solo.
         if (statusRef && !(SCST.auto && SCST.auto.isAway && SCST.auto.isAway())) {
             const want = effectiveWant();
             if (cached.state !== want) {
@@ -270,7 +264,7 @@
 
     function onConnected(s) {
         if (!s.val() || !statusRef) return;
-        armDisconnect(); // re-armar tras cada reconexión
+        armDisconnect();
         const want = effectiveWant();
         statusRef.update({ state: want, updated: TS() }).catch(function () {});
     }
@@ -279,7 +273,7 @@
         if (!statusRef) return;
         const t = (e.detail && e.detail.type) || '';
         const m = cached.manual || 'online';
-        if (m === 'busy' || m === 'offline') return; // elegidos a mano: no se tocan
+        if (m === 'busy' || m === 'offline') return;
         if (t === 'away' && cached.state !== 'offline') {
             statusRef.update({ state: 'offline', updated: TS() }).catch(function () {});
         } else if (t === 'back' && cached.state === 'offline') {
@@ -297,7 +291,6 @@
             const v = snap.val() || {};
             const manual = v.manual || v.state || 'online';
             cached = { state: manual, manual: manual };
-            // Al entrar estás activo: restauramos tu estado elegido.
             return statusRef.update({ state: manual, manual: manual, updated: TS() });
         }).then(function () {
             armDisconnect();
@@ -340,18 +333,25 @@
                 const cs = window.getComputedStyle(el);
                 r = parseFloat(cs.borderTopLeftRadius) || 0;
             }
-            if (r >= w * 0.45) return el; // el único círculo de la tarjeta: el avatar
+            if (r >= w * 0.45) return el;
         }
         return null;
     }
 
-    function enhanceCard(box) {
-        closePanel(); // la tarjeta se repintó: el panel viejo queda huérfano
+    function enhanceCard(box, tries) {
+        closePanel();
         const av = findAvatarInCard(box);
-        if (!av || av.dataset.scStatusDone === '1') return;
+        if (!av) {
+            // La tarjeta puede pintarse async (Firebase): reintentamos un poco.
+            if ((tries || 0) < 5) {
+                setTimeout(function () {
+                    try { enhanceCard(box, (tries || 0) + 1); } catch (e) {}
+                }, 100);
+            }
+            return;
+        }
+        if (av.dataset.scStatusDone === '1') return;
 
-        // Envolver el avatar SIN romper el layout: las márgenes negativas
-        // (el -38px estilo Discord) se trasladan al wrapper.
         const wrap = document.createElement('span');
         wrap.dataset.scStatusWrap = '1';
         wrap.style.cssText = 'position:relative;display:inline-block;flex:none;';
@@ -370,9 +370,6 @@
         wrap.appendChild(badge);
         setIcon(badge, cached.state);
 
-        // Solo en TU tarjeta se puede cambiar el estado (hoy la tarjeta
-        // de "Ver perfil" siempre es tuya; cuando exista ver perfiles
-        // ajenos, aquí se compara uid y solo se muestra el badge).
         if (authUser) {
             wrap.style.cursor = 'pointer';
             wrap.setAttribute('role', 'button');
@@ -385,14 +382,13 @@
         }
 
         av.dataset.scStatusDone = '1';
+        console.log('[Stevscon Status] Badge puesto en el avatar.');
     }
 
     function installCardHook() {
-        if (!SCp.ui || typeof SCp.ui.renderProfileCard !== 'function') {
-            console.error('[Stevscon Status] ui_profile.js no expone renderProfileCard: el badge no aparecerá.');
-            return;
-        }
-        if (SCp.ui.renderProfileCard.__scStatusHook) return;
+        if (hookInstalled) return true;
+        if (!SCp.ui || typeof SCp.ui.renderProfileCard !== 'function') return false; // ui_profile.js aún no cargó
+        if (SCp.ui.renderProfileCard.__scStatusHook) { hookInstalled = true; return true; }
         const orig = SCp.ui.renderProfileCard;
         SCp.ui.renderProfileCard = function (box) {
             const r = orig.apply(this, arguments);
@@ -400,13 +396,30 @@
             return r;
         };
         SCp.ui.renderProfileCard.__scStatusHook = true;
-        console.log('[Stevscon Status] Enganchado a renderProfileCard.');
+        hookInstalled = true;
+        console.log('[Stevscon Status] Enganchado a renderProfileCard (v2).');
+        return true;
+    }
+
+    // NUEVO EN v2: en vez de rendirse si ui_profile.js no existe, ESPERA.
+    function waitForUiAndHook() {
+        if (installCardHook()) return;
+        console.log('[Stevscon Status] ui_profile.js aún no carga: esperando...');
+        let waited = 0;
+        hookPoll = setInterval(function () {
+            if (installCardHook()) { clearInterval(hookPoll); hookPoll = null; return; }
+            waited += 100;
+            if (waited >= 10000) {
+                clearInterval(hookPoll); hookPoll = null;
+                console.error('[Stevscon Status] ui_profile.js no apareció en 10s. Revisa su ruta/script en el index.');
+            }
+        }, 100);
     }
 
     /* ==== INIT ==== */
 
     function init() {
-        installCardHook();
+        waitForUiAndHook();
         const A = authObj();
         if (!A) {
             console.error('[Stevscon Status] Firebase Auth no disponible.');
@@ -421,5 +434,5 @@
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
     else init();
 
-    console.log('[Stevscon] status_online.js listo (cerebro del Online Status, v1).');
+    console.log('[Stevscon] status_online.js listo (cerebro v2, espera a ui_profile.js).');
 })(window, document);
