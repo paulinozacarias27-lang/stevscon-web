@@ -1,23 +1,21 @@
 /**
  * ====
  * STEVSCON.COM - accounts/manage/settings/output/ui_settings.js
- * AJUSTES · CASCARÓN (v6): modo claro REAL para toda la web
+ * AJUSTES · CASCARÓN (v7): blanco inline visible en modo claro
  *
  * v3: engranaje en cluster horizontal junto al avatar.
  * v4: badge "PRONTO" genérico (cualquier pestaña con badge: 'TEXTO').
  * v5: mapeo rgb() de estilos inline (textos negros + acentos morados).
+ * v6: redefinición de variables CSS de styles.css dentro de body.theme-light
+ *     (modal, navbar, category-cards, labels y toasts se pintan claros solos).
  *
- * v6 (ESTA):
- * - FIX MAESTRO: redefinición de las variables CSS de styles.css
- *   (--bg-main, --bg-card, --text-main, --border-color, etc.) dentro de
- *   body.theme-light. Todo componente que usa var() (modal, navbar,
- *   category-card, field-label, checkbox, toasts, scrollbar...) se pinta
- *   claro AUTOMÁTICAMENTE, sin editar ningún otro file.
- * - Correcciones de clases con color fijo poco legibles en claro
- *   (hints ok/error, errors/success-box, toast, strength-bar, scrim).
- * - Mapeos inline ampliados (hex + rgb normalizado) para lo generado
- *   por JS: fondos oscuros, textos, bordes, y restauración de los
- *   fondos que eran COLOR a propósito (violeta, rojo, verde, scrims).
+ * v7 (ESTA):
+ * - FIX NOMBRE/TÍTULO INVISIBLE: el blanco puro inline (#fff, white,
+ *   rgb(255,255,255)) usado por acc_access.js (título del modal) y por la
+ *   tarjeta "Mi perfil" (nombre grande) no se mapeaba -> texto blanco sobre
+ *   panel blanco. Ahora el blanco inline pasa a tinta en claro.
+ * - EXCEPCIONES: el blanco inline se CONSERVA sobre fondos sólidos de color
+ *   (botones violeta/rojo/verde, avatares de sesión), porque ahí sí es legible.
  * ====
  */
 (function (window, document) {
@@ -161,12 +159,12 @@
         }, 2300);
     };
 
-    /* ==== TEMA (v6: claro real para TODA la web) ==== */
+    /* ==== TEMA (v7: claro real + blancos inline legibles) ==== */
 
     const LIGHT_STYLE_ID = 'sc-theme-light';
 
     /*
-     * ESTRATEGIA v6 (3 capas):
+     * ESTRATEGIA v7 (3 capas):
      *
      * CAPA 1 · VARIABLES: redefinimos las variables de styles.css dentro de
      *   body.theme-light. Los componentes con var() se pintan solos.
@@ -174,9 +172,11 @@
      * CAPA 2 · CLASES con color fijo en styles.css que en claro no leían bien.
      *
      * CAPA 3 · INLINE: lo generado por JS con colores escritos a mano.
-     *   - innerHTML conserva el hex literal -> reglas por hex.
-     *   - element.style normaliza a rgb()      -> reglas por rgb.
-     *   Orden: barrido genérico de fondos primero, restauraciones después.
+     *   - Barrido de fondos -> claros, con restauración de los que eran COLOR.
+     *   - Textos de tu paleta -> tinta/grises/morados.
+     *   - NUEVO v7: blanco puro inline -> tinta (nombre de "Mi perfil",
+     *     título de ACCESS), con excepciones para conservarlo sobre fondos
+     *   sólidos de color (botones violeta/rojo/verde, avatares).
      */
     const LIGHT_CSS = [
         /* ===== CAPA 1 · VARIABLES (fix maestro) ===== */
@@ -212,27 +212,21 @@
         'body.theme-light [style*="background-color:#261f36"],body.theme-light [style*="background:#261f36"]{background-color:#ece7f8 !important}',
 
         /* 3c) RESTAURAR fondos que eran COLOR a propósito (pisan el barrido) */
-        /* violeta sólido: seg activo, toggle ON, botones primarios */
         'body.theme-light [style*="background: rgb(139"],body.theme-light [style*="background-color: rgb(139"]{background-color:#8b5cf6 !important}',
         'body.theme-light [style*="background:#8b5cf6"],body.theme-light [style*="background-color:#8b5cf6"]{background-color:#8b5cf6 !important}',
-        /* rojo peligro y verde éxito */
         'body.theme-light [style*="background: rgb(239"],body.theme-light [style*="background-color: rgb(239"]{background-color:#ef4444 !important}',
         'body.theme-light [style*="background: rgb(34"],body.theme-light [style*="background-color: rgb(34"]{background-color:#22c55e !important}',
         'body.theme-light [style*="background: rgb(74"],body.theme-light [style*="background-color: rgb(74"]{background-color:#4ade80 !important}',
-        /* pista del toggle apagado (#2e2440) y perilla (#94a3b8) como fondo */
         'body.theme-light [style*="background: rgb(46"],body.theme-light [style*="background-color: rgb(46"]{background-color:#ddd5f0 !important}',
         'body.theme-light [style*="background: rgb(148"],body.theme-light [style*="background-color: rgb(148"]{background-color:#8a7fa3 !important}',
         'body.theme-light [style*="background:#2e2440"],body.theme-light [style*="background-color:#2e2440"]{background-color:#ddd5f0 !important}',
         'body.theme-light [style*="background:#94a3b8"],body.theme-light [style*="background-color:#94a3b8"]{background-color:#8a7fa3 !important}',
-        /* tintes translúcidos (hovers, cajas de error/éxito, avisos) */
         'body.theme-light [style*="background: rgba(139"],body.theme-light [style*="background-color: rgba(139"]{background-color:rgba(139,92,246,.13) !important}',
         'body.theme-light [style*="background: rgba(239"],body.theme-light [style*="background-color: rgba(239"]{background-color:rgba(239,68,68,.1) !important}',
         'body.theme-light [style*="background: rgba(34"],body.theme-light [style*="background-color: rgba(34"]{background-color:rgba(34,197,94,.1) !important}',
         'body.theme-light [style*="background: rgba(251"],body.theme-light [style*="background-color: rgba(251"]{background-color:rgba(251,191,36,.12) !important}',
-        /* scrims de overlays: siguen oscuros pero más suaves en claro */
         'body.theme-light [style*="background: rgba(5"],body.theme-light [style*="background-color: rgba(5"]{background-color:rgba(15,12,24,.55) !important}',
         'body.theme-light [style*="background: rgba(13"],body.theme-light [style*="background-color: rgba(13"]{background-color:rgba(244,242,250,.92) !important}',
-        /* scrims negros translúcidos sobre imágenes: se mantienen */
         'body.theme-light [style*="background: rgba(0"],body.theme-light [style*="background-color: rgba(0"]{background-color:rgba(0,0,0,.45) !important}',
 
         /* 3d) TEXTOS: hex (innerHTML) y rgb (element.style), negro tinta + morados */
@@ -241,17 +235,40 @@
         'body.theme-light [style*="color:#cbd5e1"],body.theme-light [style*="color: rgb(203, 213, 225)"]{color:#3a3654 !important}',
         'body.theme-light [style*="color:#94a3b8"],body.theme-light [style*="color: rgb(148, 163, 184)"]{color:#5b5570 !important}',
         'body.theme-light [style*="color:#64748b"],body.theme-light [style*="color: rgb(100, 116, 139)"]{color:#6b6480 !important}',
-        /* MORADOS (tu firma) en tonos que sí contrastan sobre blanco */
         'body.theme-light [style*="color:#8b5cf6"],body.theme-light [style*="color: rgb(139, 92, 246)"]{color:#6d28d9 !important}',
         'body.theme-light [style*="color:#a78bfa"],body.theme-light [style*="color: rgb(167, 139, 250)"]{color:#6d28d9 !important}',
         'body.theme-light [style*="color:#c4b5fd"],body.theme-light [style*="color: rgb(196, 181, 253)"]{color:#5b21b6 !important}',
         'body.theme-light [style*="color:#ede9fe"],body.theme-light [style*="color: rgb(237, 233, 254)"]{color:#4c1d95 !important}',
-        /* avisos, errores y éxitos legibles sobre blanco */
         'body.theme-light [style*="color:#fbbf24"],body.theme-light [style*="color: rgb(251, 191, 36)"]{color:#b45309 !important}',
         'body.theme-light [style*="color:#f87171"],body.theme-light [style*="color: rgb(248, 113, 113)"]{color:#b91c1c !important}',
         'body.theme-light [style*="color:#ef4444"],body.theme-light [style*="color: rgb(239, 68, 68)"]{color:#b91c1c !important}',
         'body.theme-light [style*="color:#4ade80"],body.theme-light [style*="color: rgb(74, 222, 128)"]{color:#15803d !important}',
         'body.theme-light [style*="color:#22c55e"],body.theme-light [style*="color: rgb(34, 197, 94)"]{color:#15803d !important}',
+
+        /* 3d+) BLANCO PURO inline -> tinta (v7: nombre de "Mi perfil", título de ACCESS) */
+        'body.theme-light [style*="color: rgb(255, 255, 255)"]{color:#1e1b2e !important}',
+        'body.theme-light [style*="color: rgb(255,255,255)"]{color:#1e1b2e !important}',
+        'body.theme-light [style*="color:#fff"],body.theme-light [style*="color: #fff"]{color:#1e1b2e !important}',
+        'body.theme-light [style*="color:#FFF"],body.theme-light [style*="color: #FFF"]{color:#1e1b2e !important}',
+        'body.theme-light [style*="color:white"],body.theme-light [style*="color: white"]{color:#1e1b2e !important}',
+
+        /* 3d++) EXCEPCIONES: el blanco se conserva sobre fondos sólidos de color */
+        /* mismo elemento lleva fondo de color + texto blanco */
+        'body.theme-light [style*="background: rgb(139"][style*="color: rgb(255"],body.theme-light [style*="background-color: rgb(139"][style*="color: rgb(255"]{color:#ffff !important}',
+        'body.theme-light [style*="background: rgb(239"][style*="color: rgb(255"],body.theme-light [style*="background-color: rgb(239"][style*="color: rgb(255"]{color:#ffff !important}',
+        'body.theme-light [style*="background: rgb(34"][style*="color: rgb(255"],body.theme-light [style*="background-color: rgb(34"][style*="color: rgb(255"]{color:#ffff !important}',
+        'body.theme-light [style*="background: rgb(74"][style*="color: rgb(255"],body.theme-light [style*="background-color: rgb(74"][style*="color: rgb(255"]{color:#ffff !important}',
+        /* texto blanco dentro de un botón/bloque con fondo de color inline */
+        'body.theme-light [style*="background: rgb(139"] [style*="color: rgb(255"],body.theme-light [style*="background-color: rgb(139"] [style*="color: rgb(255"]{color:#ffff !important}',
+        'body.theme-light [style*="background: rgb(239"] [style*="color: rgb(255"],body.theme-light [style*="background-color: rgb(239"] [style*="color: rgb(255"]{color:#ffff !important}',
+        'body.theme-light [style*="background: rgb(34"] [style*="color: rgb(255"],body.theme-light [style*="background-color: rgb(34"] [style*="color: rgb(255"]{color:#ffff !important}',
+        'body.theme-light [style*="background: rgb(74"] [style*="color: rgb(255"],body.theme-light [style*="background-color: rgb(74"] [style*="color: rgb(255"]{color:#ffff !important}',
+        /* versiones hex (innerHTML) */
+        'body.theme-light [style*="background:#8b5cf6"][style*="color:#fff"],body.theme-light [style*="background-color:#8b5cf6"][style*="color:#fff"]{color:#ffff !important}',
+        'body.theme-light [style*="background:#ef4444"][style*="color:#fff"],body.theme-light [style*="background-color:#ef4444"][style*="color:#fff"]{color:#ffff !important}',
+        'body.theme-light [style*="background:#22c55e"][style*="color:#fff"],body.theme-light [style*="background-color:#22c55e"][style*="color:#fff"]{color:#ffff !important}',
+        /* avatares/iconos con fondo violeta por clase: su blanco inline no se toca */
+        'body.theme-light .session-avatar [style*="color: rgb(255"],body.theme-light .session-avatar [style*="color:#fff"],body.theme-light .category-icon [style*="color: rgb(255"],body.theme-light .category-icon [style*="color:#fff"]{color:#ffff !important}',
 
         /* 3e) BORDES: lila suave */
         'body.theme-light [style*="rgb(46, 36, 64"]{border-color:#ddd5f0 !important}',
@@ -527,5 +544,5 @@
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', watchHeader);
     else watchHeader();
 
-    console.log('[Stevscon] ui_settings.js listo (cascarón v6 · modo claro real con variables).');
+    console.log('[Stevscon] ui_settings.js listo (cascarón v7 · blancos inline legibles en claro).');
 })(window, document);
