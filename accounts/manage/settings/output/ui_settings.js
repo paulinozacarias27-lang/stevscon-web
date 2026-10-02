@@ -1,7 +1,7 @@
 /**
  * ====
  * STEVSCON.COM - accounts/manage/settings/output/ui_settings.js
- * AJUSTES · CASCARÓN (v3): engranaje al lado del avatar + tema claro real
+ * AJUSTES · CASCARÓN (v4): engranaje + tema claro real + badges genéricos
  *
  * v3:
  * - Engranaje: avatar + engranaje viven en un cluster horizontal propio,
@@ -9,6 +9,12 @@
  *   re-pinta el header, el cluster se reconstruye solo.
  * - Tema claro: inyecta CSS con !important que sobrescribe la paleta
  *   oscura conocida del proyecto AUNQUE esté en estilos inline.
+ *
+ * v4:
+ * - El badge "PRONTO" ya no es exclusivo de la pestaña seguridad:
+ *   cualquier pestaña registrada con badge: 'TEXTO' lo muestra.
+ * - El cascarón integrado de Seguridad lleva badge: 'PRONTO', y desaparece
+ *   solo cuando output/ui_security.js (Zona de Seguridad real) lo pisa.
  * ====
  */
 (function (window, document) {
@@ -71,7 +77,7 @@
         const paint = function (v) {
             b.style.background = v ? '#8b5cf6' : '#2e2440';
             knob.style.left = v ? '21px' : '3px';
-            knob.style.background = v ? '#ffffff' : '#94a3b8';
+            knob.style.background = v ? '#ffff' : '#94a3b8';
         };
         paint(on);
         b.addEventListener('click', function () {
@@ -91,10 +97,10 @@
             b.type = 'button';
             b.textContent = opt;
             b.style.cssText = 'border:0;background:transparent;color:#94a3b8;font:600 12px Inter,sans-serif;padding:7px 12px;cursor:pointer;transition:background .15s ease,color .15s ease;';
-            if (i === activeIndex) { b.style.background = '#8b5cf6'; b.style.color = '#ffffff'; }
+            if (i === activeIndex) { b.style.background = '#8b5cf6'; b.style.color = '#ffff'; }
             b.addEventListener('click', function () {
                 Array.prototype.forEach.call(wrap.children, function (c) { c.style.background = 'transparent'; c.style.color = '#94a3b8'; });
-                b.style.background = '#8b5cf6'; b.style.color = '#ffffff';
+                b.style.background = '#8b5cf6'; b.style.color = '#ffff';
                 onChange(i);
             });
             wrap.appendChild(b);
@@ -158,15 +164,15 @@
 
     const LIGHT_CSS = [
         'body.theme-light{background:#f4f2fa !important;color:#1e1b2e !important}',
-        'body.theme-light .navbar{background:#ffffff !important;border-bottom-color:#e2dcf3 !important;box-shadow:none !important}',
+        'body.theme-light .navbar{background:#ffff !important;border-bottom-color:#e2dcf3 !important;box-shadow:none !important}',
         'body.theme-light .navbar .brand-title{color:#1e1b2e !important}',
 
         /* Superficies oscuras conocidas -> claras (gana a estilos inline) */
         'body.theme-light [style*="#0d0b14"],body.theme-light [style*="#0D0B14"]{background-color:#f4f2fa !important}',
-        'body.theme-light [style*="#1a1625"],body.theme-light [style*="#1A1625"]{background-color:#ffffff !important}',
-        'body.theme-light [style*="#120f1b"],body.theme-light [style*="#120F1B"]{background-color:#ffffff !important}',
+        'body.theme-light [style*="#1a1625"],body.theme-light [style*="#1A1625"]{background-color:#ffff !important}',
+        'body.theme-light [style*="#120f1b"],body.theme-light [style*="#120F1B"]{background-color:#ffff !important}',
         'body.theme-light [style*="rgba(5,4,10"]{background-color:rgba(244,242,250,.86) !important}',
-        'body.theme-light [style*="background-color: rgb"],body.theme-light [style*="background: rgb"]{background-color:#ffffff !important}',
+        'body.theme-light [style*="background-color: rgb"],body.theme-light [style*="background: rgb"]{background-color:#ffff !important}',
 
         /* Bordes */
         'body.theme-light [style*="#2e2440"],body.theme-light [style*="#2E2440"]{border-color:#ddd5f0 !important}',
@@ -312,9 +318,9 @@
         lb.textContent = t.label;
         lb.style.flex = '1';
         b.appendChild(ic); b.appendChild(lb);
-        if (t.id === 'seguridad') {
+        if (t.badge) {
             const bd = document.createElement('span');
-            bd.textContent = 'PRONTO';
+            bd.textContent = t.badge;
             bd.style.cssText = 'font-size:9px;font-weight:800;letter-spacing:.08em;color:#fbbf24;border:1px solid rgba(251,191,36,.4);padding:2px 7px;border-radius:999px;';
             b.appendChild(bd);
         }
@@ -417,10 +423,10 @@
         setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 140);
     };
 
-    /* ==== PESTAÑA INTEGRADA: SEGURIDAD (PRONTO) ==== */
+    /* ==== PESTAÑA INTEGRADA: SEGURIDAD (cascarón, solo si ui_security.js no carga) ==== */
 
     SCSET.registerTab({
-        id: 'seguridad', label: 'Seguridad', icon: 'fa-user-shield',
+        id: 'seguridad', label: 'Seguridad', icon: 'fa-user-shield', badge: 'PRONTO',
         render: function (body) {
             const c = ui.card();
             const ic = document.createElement('i');
@@ -433,7 +439,7 @@
             d.textContent = 'Aquí vivirá la Zona de Seguridad: cambiar contraseña, cambiar correo y eliminar cuenta.';
             d.style.cssText = 'margin:0 0 10px;font-size:13px;color:#94a3b8;line-height:1.5;';
             c.appendChild(ic); c.appendChild(h); c.appendChild(d);
-            c.appendChild(ui.note('PRONTO · llega en la Fase 2 con re-autenticación de Firebase.', '#fbbf24'));
+            c.appendChild(ui.note('PRONTO · si ves esto, ui_security.js no cargó (revisa la ruta o el index).', '#fbbf24'));
             body.appendChild(c);
         }
     });
@@ -447,5 +453,5 @@
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', watchHeader);
     else watchHeader();
 
-    console.log('[Stevscon] ui_settings.js listo (cascarón v3).');
+    console.log('[Stevscon] ui_settings.js listo (cascarón v4).');
 })(window, document);
