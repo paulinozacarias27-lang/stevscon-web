@@ -1,24 +1,23 @@
 /**
  * ====
  * STEVSCON.COM - accounts/manage/settings/output/ui_settings.js
- * AJUSTES · CASCARÓN (v5): modo claro legible (textos negros + acentos morados)
+ * AJUSTES · CASCARÓN (v6): modo claro REAL para toda la web
  *
- * v3:
- * - Engranaje: avatar + engranaje viven en un cluster horizontal propio,
- *   y se fuerza el contenedor del header a fila (row). Si session.js
- *   re-pinta el header, el cluster se reconstruye solo.
+ * v3: engranaje en cluster horizontal junto al avatar.
+ * v4: badge "PRONTO" genérico (cualquier pestaña con badge: 'TEXTO').
+ * v5: mapeo rgb() de estilos inline (textos negros + acentos morados).
  *
- * v4:
- * - Badge "PRONTO" genérico: cualquier pestaña con badge: 'TEXTO' lo muestra.
- *
- * v5:
- * - FIX MODO CLARO: los navegadores normalizan los colores inline de hex a
- *   rgb(), por lo que las reglas [style*="#hex"] de texto nunca aplicaban
- *   (los fondos sí, por el barrido "background: rgb"). Ahora TODAS las
- *   reglas de texto/bordes usan rgb(), y se restauran los fondos que eran
- *   color a propósito (violeta/rojo sólido, tinte de pestaña activa, toggle).
- * - En claro: textos principales negros (#1e1b2e), secundarios grises
- *   legibles y acentos MORADOS (#5b21b6 / #6d28d9).
+ * v6 (ESTA):
+ * - FIX MAESTRO: redefinición de las variables CSS de styles.css
+ *   (--bg-main, --bg-card, --text-main, --border-color, etc.) dentro de
+ *   body.theme-light. Todo componente que usa var() (modal, navbar,
+ *   category-card, field-label, checkbox, toasts, scrollbar...) se pinta
+ *   claro AUTOMÁTICAMENTE, sin editar ningún otro file.
+ * - Correcciones de clases con color fijo poco legibles en claro
+ *   (hints ok/error, errors/success-box, toast, strength-bar, scrim).
+ * - Mapeos inline ampliados (hex + rgb normalizado) para lo generado
+ *   por JS: fondos oscuros, textos, bordes, y restauración de los
+ *   fondos que eran COLOR a propósito (violeta, rojo, verde, scrims).
  * ====
  */
 (function (window, document) {
@@ -162,67 +161,103 @@
         }, 2300);
     };
 
-    /* ==== TEMA (v5: claro legible — mapeo rgb() real de textos y fondos) ==== */
+    /* ==== TEMA (v6: claro real para TODA la web) ==== */
 
     const LIGHT_STYLE_ID = 'sc-theme-light';
 
     /*
-     * CLAVE (v5): los navegadores guardan los estilos inline normalizados,
-     * ej. color:#94a3b8 -> color: rgb(148, 163, 184). Por eso:
-     *  1) barrido de fondos rgb/rgba -> claros (como v3),
-     *  2) restauración de los fondos que eran COLOR a propósito,
-     *  3) mapeo de TEXTOS por rgb() (lo que faltaba: este era el bug),
-     *  4) bordes -> lila suave,
-     *  5) toques morados extra (título del panel, pestaña activa).
-     * El orden importa: las reglas 3-9 pisan al barrido del punto 1.
+     * ESTRATEGIA v6 (3 capas):
+     *
+     * CAPA 1 · VARIABLES: redefinimos las variables de styles.css dentro de
+     *   body.theme-light. Los componentes con var() se pintan solos.
+     *
+     * CAPA 2 · CLASES con color fijo en styles.css que en claro no leían bien.
+     *
+     * CAPA 3 · INLINE: lo generado por JS con colores escritos a mano.
+     *   - innerHTML conserva el hex literal -> reglas por hex.
+     *   - element.style normaliza a rgb()      -> reglas por rgb.
+     *   Orden: barrido genérico de fondos primero, restauraciones después.
      */
     const LIGHT_CSS = [
-        /* BASE */
+        /* ===== CAPA 1 · VARIABLES (fix maestro) ===== */
+        'body.theme-light{',
+        '  --bg-main:#f4f2fa; --bg-card:#ffffff; --bg-hover:#ece7f8; --bg-elevated:#f1edf9;',
+        '  --purple-accent:#7c3aed; --purple-dark:#6d28d9; --purple-light:#6d28d9;',
+        '  --purple-glow:rgba(139,92,246,.18);',
+        '  --text-main:#1e1b2e; --text-muted:#5b5570; --border-color:#ddd5f0;',
+        '  color-scheme:light;',
+        '}',
         'body.theme-light{background:#f4f2fa !important;color:#1e1b2e !important}',
-        'body.theme-light .navbar{background:#ffff !important;border-bottom-color:#e2dcf3 !important;box-shadow:none !important}',
-        'body.theme-light .navbar .brand-title{color:#1e1b2e !important}',
 
-        /* 1) BARRIDO: cualquier fondo oscuro conocido -> claro */
+        /* ===== CAPA 2 · CLASES con color fijo ===== */
+        'body.theme-light .navbar{background:rgba(244,242,250,.92) !important;border-bottom-color:#e2dcf3 !important;box-shadow:none !important}',
+        'body.theme-light .field-hint.hint-ok{color:#15803d !important}',
+        'body.theme-light .field-hint.hint-error{color:#b91c1c !important}',
+        'body.theme-light .success-box{color:#15803d !important;border-color:rgba(34,197,94,.45) !important}',
+        'body.theme-light .errors-box{color:#b91c1c !important;border-color:rgba(239,68,68,.45) !important}',
+        'body.theme-light .toast-success{color:#15803d !important}',
+        'body.theme-light .strength-bar{background:#ddd5f0 !important}',
+        'body.theme-light .modal-overlay{background:rgba(30,27,46,.45) !important}',
+
+        /* ===== CAPA 3 · INLINE ===== */
+
+        /* 3a) BARRIDO: todo fondo rgb/rgba oscuro conocido -> claro */
         'body.theme-light [style*="background-color: rgb"],body.theme-light [style*="background: rgb"]{background-color:#ffff !important}',
+
+        /* 3b) Fondos oscuros escritos como hex (innerHTML no normaliza) */
         'body.theme-light [style*="background-color:#0d0b14"],body.theme-light [style*="background:#0d0b14"]{background-color:#f4f2fa !important}',
         'body.theme-light [style*="background-color:#1a1625"],body.theme-light [style*="background:#1a1625"]{background-color:#ffff !important}',
         'body.theme-light [style*="background-color:#120f1b"],body.theme-light [style*="background:#120f1b"]{background-color:#ffff !important}',
+        'body.theme-light [style*="background-color:#221b33"],body.theme-light [style*="background:#221b33"]{background-color:#f1edf9 !important}',
+        'body.theme-light [style*="background-color:#261f36"],body.theme-light [style*="background:#261f36"]{background-color:#ece7f8 !important}',
 
-        /* 2) RESTAURAR fondos que eran COLOR a propósito */
-        /* violeta sólido: opción activa del seg, toggle ON, botón confirmar */
+        /* 3c) RESTAURAR fondos que eran COLOR a propósito (pisan el barrido) */
+        /* violeta sólido: seg activo, toggle ON, botones primarios */
         'body.theme-light [style*="background: rgb(139"],body.theme-light [style*="background-color: rgb(139"]{background-color:#8b5cf6 !important}',
-        /* rojo peligro: botones de la zona peligrosa */
+        'body.theme-light [style*="background:#8b5cf6"],body.theme-light [style*="background-color:#8b5cf6"]{background-color:#8b5cf6 !important}',
+        /* rojo peligro y verde éxito */
         'body.theme-light [style*="background: rgb(239"],body.theme-light [style*="background-color: rgb(239"]{background-color:#ef4444 !important}',
-        /* pista del toggle apagado (#2e2440 usado como fondo) */
+        'body.theme-light [style*="background: rgb(34"],body.theme-light [style*="background-color: rgb(34"]{background-color:#22c55e !important}',
+        'body.theme-light [style*="background: rgb(74"],body.theme-light [style*="background-color: rgb(74"]{background-color:#4ade80 !important}',
+        /* pista del toggle apagado (#2e2440) y perilla (#94a3b8) como fondo */
         'body.theme-light [style*="background: rgb(46"],body.theme-light [style*="background-color: rgb(46"]{background-color:#ddd5f0 !important}',
-        /* perilla del toggle apagado (#94a3b8 usado como fondo) */
         'body.theme-light [style*="background: rgb(148"],body.theme-light [style*="background-color: rgb(148"]{background-color:#8a7fa3 !important}',
-        /* tinte violeta translúcido: pestaña activa y hovers */
+        'body.theme-light [style*="background:#2e2440"],body.theme-light [style*="background-color:#2e2440"]{background-color:#ddd5f0 !important}',
+        'body.theme-light [style*="background:#94a3b8"],body.theme-light [style*="background-color:#94a3b8"]{background-color:#8a7fa3 !important}',
+        /* tintes translúcidos (hovers, cajas de error/éxito, avisos) */
         'body.theme-light [style*="background: rgba(139"],body.theme-light [style*="background-color: rgba(139"]{background-color:rgba(139,92,246,.13) !important}',
-        /* scrims oscuros intencionales (overlays/modales) siguen siendo oscuros */
+        'body.theme-light [style*="background: rgba(239"],body.theme-light [style*="background-color: rgba(239"]{background-color:rgba(239,68,68,.1) !important}',
+        'body.theme-light [style*="background: rgba(34"],body.theme-light [style*="background-color: rgba(34"]{background-color:rgba(34,197,94,.1) !important}',
+        'body.theme-light [style*="background: rgba(251"],body.theme-light [style*="background-color: rgba(251"]{background-color:rgba(251,191,36,.12) !important}',
+        /* scrims de overlays: siguen oscuros pero más suaves en claro */
         'body.theme-light [style*="background: rgba(5"],body.theme-light [style*="background-color: rgba(5"]{background-color:rgba(15,12,24,.55) !important}',
+        'body.theme-light [style*="background: rgba(13"],body.theme-light [style*="background-color: rgba(13"]{background-color:rgba(244,242,250,.92) !important}',
+        /* scrims negros translúcidos sobre imágenes: se mantienen */
+        'body.theme-light [style*="background: rgba(0"],body.theme-light [style*="background-color: rgba(0"]{background-color:rgba(0,0,0,.45) !important}',
 
-        /* 3) TEXTOS: negro tinta + grises legibles + morados de acento */
-        'body.theme-light [style*="color: rgb(248, 250, 252)"]{color:#1e1b2e !important}',
-        'body.theme-light [style*="color: rgb(226, 232, 240)"]{color:#2a2740 !important}',
-        'body.theme-light [style*="color: rgb(203, 213, 225)"]{color:#3a3654 !important}',
-        'body.theme-light [style*="color: rgb(148, 163, 184)"]{color:#5b5570 !important}',
-        'body.theme-light [style*="color: rgb(100, 116, 139)"]{color:#6b6480 !important}',
-        /* MORADOS (tu firma): iconos, notas, eyebrow, textos de botones violeta */
-        'body.theme-light [style*="color: rgb(139, 92, 246)"]{color:#6d28d9 !important}',
-        'body.theme-light [style*="color: rgb(167, 139, 250)"]{color:#6d28d9 !important}',
-        'body.theme-light [style*="color: rgb(196, 181, 253)"]{color:#5b21b6 !important}',
-        'body.theme-light [style*="color: rgb(237, 233, 254)"]{color:#4c1d95 !important}',
-        /* avisos y errores legibles sobre blanco */
-        'body.theme-light [style*="color: rgb(251, 191, 36)"]{color:#b45309 !important}',
-        'body.theme-light [style*="color: rgb(248, 113, 113)"]{color:#b91c1c !important}',
-        'body.theme-light [style*="color: rgb(74, 222, 128)"],body.theme-light [style*="color: rgb(34, 197, 94)"]{color:#15803d !important}',
+        /* 3d) TEXTOS: hex (innerHTML) y rgb (element.style), negro tinta + morados */
+        'body.theme-light [style*="color:#f8fafc"],body.theme-light [style*="color: rgb(248, 250, 252)"]{color:#1e1b2e !important}',
+        'body.theme-light [style*="color:#e2e8f0"],body.theme-light [style*="color: rgb(226, 232, 240)"]{color:#2a2740 !important}',
+        'body.theme-light [style*="color:#cbd5e1"],body.theme-light [style*="color: rgb(203, 213, 225)"]{color:#3a3654 !important}',
+        'body.theme-light [style*="color:#94a3b8"],body.theme-light [style*="color: rgb(148, 163, 184)"]{color:#5b5570 !important}',
+        'body.theme-light [style*="color:#64748b"],body.theme-light [style*="color: rgb(100, 116, 139)"]{color:#6b6480 !important}',
+        /* MORADOS (tu firma) en tonos que sí contrastan sobre blanco */
+        'body.theme-light [style*="color:#8b5cf6"],body.theme-light [style*="color: rgb(139, 92, 246)"]{color:#6d28d9 !important}',
+        'body.theme-light [style*="color:#a78bfa"],body.theme-light [style*="color: rgb(167, 139, 250)"]{color:#6d28d9 !important}',
+        'body.theme-light [style*="color:#c4b5fd"],body.theme-light [style*="color: rgb(196, 181, 253)"]{color:#5b21b6 !important}',
+        'body.theme-light [style*="color:#ede9fe"],body.theme-light [style*="color: rgb(237, 233, 254)"]{color:#4c1d95 !important}',
+        /* avisos, errores y éxitos legibles sobre blanco */
+        'body.theme-light [style*="color:#fbbf24"],body.theme-light [style*="color: rgb(251, 191, 36)"]{color:#b45309 !important}',
+        'body.theme-light [style*="color:#f87171"],body.theme-light [style*="color: rgb(248, 113, 113)"]{color:#b91c1c !important}',
+        'body.theme-light [style*="color:#ef4444"],body.theme-light [style*="color: rgb(239, 68, 68)"]{color:#b91c1c !important}',
+        'body.theme-light [style*="color:#4ade80"],body.theme-light [style*="color: rgb(74, 222, 128)"]{color:#15803d !important}',
+        'body.theme-light [style*="color:#22c55e"],body.theme-light [style*="color: rgb(34, 197, 94)"]{color:#15803d !important}',
 
-        /* 4) BORDES: lila suave (antes eran casi negros sobre claro) */
+        /* 3e) BORDES: lila suave */
         'body.theme-light [style*="rgb(46, 36, 64"]{border-color:#ddd5f0 !important}',
         'body.theme-light [style*="#2e2440"]{border-color:#ddd5f0 !important}',
 
-        /* 5) TOQUES MORADOS EXTRA en claro */
+        /* 3f) TOQUES MORADOS EXTRA en claro */
         'body.theme-light p[data-sc-title]{color:#5b21b6 !important}',
         'body.theme-light [data-sc-tab][style*="rgba(139"]{color:#5b21b6 !important}'
     ].join('\n');
@@ -492,5 +527,5 @@
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', watchHeader);
     else watchHeader();
 
-    console.log('[Stevscon] ui_settings.js listo (cascarón v5 · modo claro legible).');
+    console.log('[Stevscon] ui_settings.js listo (cascarón v6 · modo claro real con variables).');
 })(window, document);
