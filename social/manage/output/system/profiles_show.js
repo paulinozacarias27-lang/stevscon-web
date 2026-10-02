@@ -1,12 +1,9 @@
 /**
- * ============================================================
- * STEVSCON.COM — social/manage/output/system/profiles_show.js (v1)
- * Abre el panel de perfiles que YA EXISTE cuando alguien pulsa un
- * avatar o nombre del Social (posts, comentarios, respuestas).
- *
- * utils.js marca las cabezas de usuario con data-scsoc-profile="{uid}";
- * este file las escucha por delegación global.
- * ============================================================
+ * ====
+ * STEVSCON.COM — social/manage/output/system/profiles_show.js (v2)
+ * v2: intenta conectar con TU panel de perfiles real (StevsconProfiles)
+ * antes de recurrir al evento 'sc:open-profile'.
+ * ====
  */
 (function (window, document) {
     'use strict';
@@ -14,20 +11,12 @@
     const SCSOC = window.SCSOC = window.SCSOC || {};
     SCSOC.profiles = SCSOC.profiles || {};
 
-    /*
-     * >>> CONEXIÓN CON TU PANEL DE PERFILES <<<
-     * Si tu panel tiene una función global, actívala en la línea marcada
-     * de abajo y borra el dispatch. Ejemplo:
-     *     window.StevsconProfiles.open(uid);
-     */
     SCSOC.profiles.open = function (uid) {
         if (!uid) return;
-        /* >>> DESCOMENTA Y CONECTA AQUÍ TU PANEL:
-        if (window.StevsconProfiles && window.StevsconProfiles.open) {
-            window.StevsconProfiles.open(uid);
-            return;
-        }
-        */
+        const P = window.StevsconProfiles;
+        if (P && typeof P.open === 'function') { P.open(uid); return; }
+        if (P && P.ui && typeof P.ui.open === 'function') { P.ui.open(uid); return; }
+        if (P && typeof P.openProfile === 'function') { P.openProfile(uid); return; }
         const ev = new CustomEvent('sc:open-profile', { detail: { uid: uid, handled: false } });
         document.dispatchEvent(ev);
         if (!ev.detail.handled) {
@@ -42,5 +31,5 @@
         SCSOC.profiles.open(t.dataset.scsocProfile);
     });
 
-    console.log('[Stevscon] profiles_show.js listo (v1) — avatar/nombre del Social abre el panel de perfiles.');
+    console.log('[Stevscon] profiles_show.js listo (v2) — avatar/nombre del Social abre el panel de perfiles.');
 })(window, document);
