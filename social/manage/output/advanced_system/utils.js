@@ -1,18 +1,15 @@
 /**
- * ============================================================
- * STEVSCON.COM — social/manage/output/advanced_system/utils.js (v1)
+ * ====
+ * STEVSCON.COM — social/manage/output/advanced_system/utils.js (v2)
  * AYUDANTE SUPREMO del Social. Debe ser el PRIMER file del social
  * en cargarse en el index (después de numbers.js).
  *
- * Expone el namespace global `SCSOC`:
- *   CONFIG (rutas Firebase + límites) · IDs de 16 dígitos ·
- *   escape anti-XSS · texto con pings @ · "hace 5 min" ·
- *   avatares Base64/GIF + circulito de status · nombre + verificado ·
- *   cache LIVE de usuarios · staff (owner + elegidos) ·
- *   hooks (los demás files se enganchan solos) · negación a visitantes.
- * ============================================================
- */
-(function (window, document) {
+ * v2: arregla avatar y status del Social:
+ *  - adaptUser ahora lee avatarUrl (como lo guarda Profiles) y
+ *    users/{uid}/status.state (objeto de status_online.js).
+ *  - avatarEl acepta Base64 (data:image) Y URLs http(s), con fallback.
+ * ==== */
+ (function (window, document) {
     'use strict';
 
     const SCSOC = window.SCSOC = window.SCSOC || {};
@@ -33,7 +30,7 @@
         MAX_COMMENT: 2000,
         MAX_RESPONSE: 1000,
         FEED_SIZE: 50,
-        DEPTH_MAX: 3                      // comentario -> resp -> resp (máx 3)
+        DEPTH_MAX: 3                    // comentario -> resp -> resp (máx 3)
     };
 
     const db = SCSOC.db = function () { return firebase.database(); };
@@ -100,21 +97,31 @@
         return s;
     };
 
-    /* ==== AVATAR (Base64/GIF) + circulito de status ==== */
+    /* ==== AVATAR (Base64/GIF o URL http) + circulito de status ==== */
+    const AVATAR_OK = /^(data:image\/|https?:\/\/)/i;
     const STATUS_COLORS = { online: '#22c55e', inactive: '#f59e0b', busy: '#ef4444', offline: '#6b7280' };
+
+    function letterEl(size, name) {
+        const f = SCSOC.el('span', 'width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center;' +
+            'background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;font-weight:800;user-select:none;' +
+            'font-size:' + Math.round(size * 0.42) + 'px;font-family:Inter,sans-serif;');
+        f.textContent = (name ? String(name).trim().charAt(0).toUpperCase() : '?');
+        return f;
+    }
+
     SCSOC.avatarEl = function (u, size, status) {
         size = size || 40;
         const wrap = SCSOC.el('span', 'position:relative;display:inline-flex;width:' + size + 'px;height:' + size + 'px;flex:none;');
-        if (u && u._avatar && /^data:image/i.test(u._avatar)) {
+        if (u && u._avatar && AVATAR_OK.test(u._avatar)) {
             const img = SCSOC.el('img', 'width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;background:var(--bg-hover,#221b33);');
             img.src = u._avatar; img.alt = 'Avatar'; img.draggable = false;
+            img.referrerPolicy = 'no-referrer';
+            img.onerror = function () {
+                if (img.parentNode) img.parentNode.replaceChild(letterEl(size, u && u._name), img);
+            };
             wrap.appendChild(img);
         } else {
-            const f = SCSOC.el('span', 'width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center;' +
-                'background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;font-weight:800;user-select:none;' +
-                'font-size:' + Math.round(size * 0.42) + 'px;font-family:Inter,sans-serif;');
-            f.textContent = (u && u._name ? u._name.trim().charAt(0).toUpperCase() : '?');
-            wrap.appendChild(f);
+            wrap.appendChild(letterEl(size, u && u._name));
         }
         const c = STATUS_COLORS[status];
         if (c) {
@@ -126,18 +133,35 @@
     };
 
     /* ==== CACHE LIVE DE USUARIOS ====
-     * ADAPTADOR: si tu nodo users/{uid} guarda estos datos en otra ruta,
-     * cambia SOLO la función de abajo y todo el social se entera. */
+     * ADAPTADOR v2: entiende cómo guarda Profiles (avatarUrl) y cómo
+     * guarda status_online.js (users/{uid}/status = {state, manual, updated}).
+     * Si mañana cambias de ruta, ajusta SOLO esta función. */
     const _ucache = {};
     function adaptUser(raw) {
         raw = raw || {};
         const p = raw.profile || {};
+        const m = raw.media || {};
+
+        const avatar = raw.avatar || raw.avatarUrl || p.avatar || p.avatarUrl ||
+            m.avatar || m.avatarUrl || '';
+
+        let status = '';
+        const st = raw.status;
+        if (st && typeof st === 'object') status = st.state || '';
+        else if (typeof st === 'string') status = st;
+        if (!status) {
+            const on = raw.online;
+            if (on && typeof on === 'object') status = on.state || '';
+            else if (typeof on === 'string') status = on;
+        }
+        if (!status) status = raw.presence || '';
+
         return {
-            _name: raw.name || raw.displayName || raw.username || p.name || 'Usuario',
-            _handler: String(raw.handler || raw.tag || p.handler || '').toLowerCase().replace(/^@/, ''),
-            _avatar: raw.avatar || p.avatar || (raw.media && raw.media.avatar) || '',
+            _name: raw.name || raw.displayName || raw.username || p.name || p.username || 'Usuario',
+            _handler: String(raw.handler || raw.tag || p.handler || p.tag || '').toLowerCase().replace(/^@/, ''),
+            _avatar: String(avatar),
             _verified: !!(raw.verified || p.verified),
-            _status: raw.status || (raw.online && raw.online.state) || raw.presence || ''
+            _status: status
         };
     }
     SCSOC.users = {
@@ -267,5 +291,5 @@
         full: function (n) { return String(n || 0); }
     };
 
-    console.log('[Stevscon] utils.js listo (v1) — ayudante supremo del Social montado.');
+    console.log('[Stevscon] utils.js listo (v2) — avatares URL/Base64 + status real del Social montados.');
 })(window, document);
