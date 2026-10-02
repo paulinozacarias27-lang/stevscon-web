@@ -1,20 +1,24 @@
 /**
  * ====
  * STEVSCON.COM - accounts/manage/settings/output/ui_settings.js
- * AJUSTES · CASCARÓN (v4): engranaje + tema claro real + badges genéricos
+ * AJUSTES · CASCARÓN (v5): modo claro legible (textos negros + acentos morados)
  *
  * v3:
  * - Engranaje: avatar + engranaje viven en un cluster horizontal propio,
  *   y se fuerza el contenedor del header a fila (row). Si session.js
  *   re-pinta el header, el cluster se reconstruye solo.
- * - Tema claro: inyecta CSS con !important que sobrescribe la paleta
- *   oscura conocida del proyecto AUNQUE esté en estilos inline.
  *
  * v4:
- * - El badge "PRONTO" ya no es exclusivo de la pestaña seguridad:
- *   cualquier pestaña registrada con badge: 'TEXTO' lo muestra.
- * - El cascarón integrado de Seguridad lleva badge: 'PRONTO', y desaparece
- *   solo cuando output/ui_security.js (Zona de Seguridad real) lo pisa.
+ * - Badge "PRONTO" genérico: cualquier pestaña con badge: 'TEXTO' lo muestra.
+ *
+ * v5:
+ * - FIX MODO CLARO: los navegadores normalizan los colores inline de hex a
+ *   rgb(), por lo que las reglas [style*="#hex"] de texto nunca aplicaban
+ *   (los fondos sí, por el barrido "background: rgb"). Ahora TODAS las
+ *   reglas de texto/bordes usan rgb(), y se restauran los fondos que eran
+ *   color a propósito (violeta/rojo sólido, tinte de pestaña activa, toggle).
+ * - En claro: textos principales negros (#1e1b2e), secundarios grises
+ *   legibles y acentos MORADOS (#5b21b6 / #6d28d9).
  * ====
  */
 (function (window, document) {
@@ -158,34 +162,69 @@
         }, 2300);
     };
 
-    /* ==== TEMA (v3: claro real, sobrescribe la paleta oscura conocida) ==== */
+    /* ==== TEMA (v5: claro legible — mapeo rgb() real de textos y fondos) ==== */
 
     const LIGHT_STYLE_ID = 'sc-theme-light';
 
+    /*
+     * CLAVE (v5): los navegadores guardan los estilos inline normalizados,
+     * ej. color:#94a3b8 -> color: rgb(148, 163, 184). Por eso:
+     *  1) barrido de fondos rgb/rgba -> claros (como v3),
+     *  2) restauración de los fondos que eran COLOR a propósito,
+     *  3) mapeo de TEXTOS por rgb() (lo que faltaba: este era el bug),
+     *  4) bordes -> lila suave,
+     *  5) toques morados extra (título del panel, pestaña activa).
+     * El orden importa: las reglas 3-9 pisan al barrido del punto 1.
+     */
     const LIGHT_CSS = [
+        /* BASE */
         'body.theme-light{background:#f4f2fa !important;color:#1e1b2e !important}',
         'body.theme-light .navbar{background:#ffff !important;border-bottom-color:#e2dcf3 !important;box-shadow:none !important}',
         'body.theme-light .navbar .brand-title{color:#1e1b2e !important}',
 
-        /* Superficies oscuras conocidas -> claras (gana a estilos inline) */
-        'body.theme-light [style*="#0d0b14"],body.theme-light [style*="#0D0B14"]{background-color:#f4f2fa !important}',
-        'body.theme-light [style*="#1a1625"],body.theme-light [style*="#1A1625"]{background-color:#ffff !important}',
-        'body.theme-light [style*="#120f1b"],body.theme-light [style*="#120F1B"]{background-color:#ffff !important}',
-        'body.theme-light [style*="rgba(5,4,10"]{background-color:rgba(244,242,250,.86) !important}',
+        /* 1) BARRIDO: cualquier fondo oscuro conocido -> claro */
         'body.theme-light [style*="background-color: rgb"],body.theme-light [style*="background: rgb"]{background-color:#ffff !important}',
+        'body.theme-light [style*="background-color:#0d0b14"],body.theme-light [style*="background:#0d0b14"]{background-color:#f4f2fa !important}',
+        'body.theme-light [style*="background-color:#1a1625"],body.theme-light [style*="background:#1a1625"]{background-color:#ffff !important}',
+        'body.theme-light [style*="background-color:#120f1b"],body.theme-light [style*="background:#120f1b"]{background-color:#ffff !important}',
 
-        /* Bordes */
-        'body.theme-light [style*="#2e2440"],body.theme-light [style*="#2E2440"]{border-color:#ddd5f0 !important}',
+        /* 2) RESTAURAR fondos que eran COLOR a propósito */
+        /* violeta sólido: opción activa del seg, toggle ON, botón confirmar */
+        'body.theme-light [style*="background: rgb(139"],body.theme-light [style*="background-color: rgb(139"]{background-color:#8b5cf6 !important}',
+        /* rojo peligro: botones de la zona peligrosa */
+        'body.theme-light [style*="background: rgb(239"],body.theme-light [style*="background-color: rgb(239"]{background-color:#ef4444 !important}',
+        /* pista del toggle apagado (#2e2440 usado como fondo) */
+        'body.theme-light [style*="background: rgb(46"],body.theme-light [style*="background-color: rgb(46"]{background-color:#ddd5f0 !important}',
+        /* perilla del toggle apagado (#94a3b8 usado como fondo) */
+        'body.theme-light [style*="background: rgb(148"],body.theme-light [style*="background-color: rgb(148"]{background-color:#8a7fa3 !important}',
+        /* tinte violeta translúcido: pestaña activa y hovers */
+        'body.theme-light [style*="background: rgba(139"],body.theme-light [style*="background-color: rgba(139"]{background-color:rgba(139,92,246,.13) !important}',
+        /* scrims oscuros intencionales (overlays/modales) siguen siendo oscuros */
+        'body.theme-light [style*="background: rgba(5"],body.theme-light [style*="background-color: rgba(5"]{background-color:rgba(15,12,24,.55) !important}',
 
-        /* Textos */
-        'body.theme-light [style*="#f8fafc"],body.theme-light [style*="#F8FAFC"]{color:#1e1b2e !important}',
-        'body.theme-light [style*="#e2e8f0"]{color:#2a2740 !important}',
-        'body.theme-light [style*="#cbd5e1"]{color:#3a3654 !important}',
-        'body.theme-light [style*="#94a3b8"]{color:#5b5570 !important}',
-        'body.theme-light [style*="#64748b"]{color:#6b6480 !important}',
-        'body.theme-light [style*="#c4b5fd"]{color:#6d28d9 !important}',
-        'body.theme-light [style*="#a78bfa"]{color:#6d28d9 !important}',
-        'body.theme-light [style*="#ede9fe"]{color:#4c1d95 !important}'
+        /* 3) TEXTOS: negro tinta + grises legibles + morados de acento */
+        'body.theme-light [style*="color: rgb(248, 250, 252)"]{color:#1e1b2e !important}',
+        'body.theme-light [style*="color: rgb(226, 232, 240)"]{color:#2a2740 !important}',
+        'body.theme-light [style*="color: rgb(203, 213, 225)"]{color:#3a3654 !important}',
+        'body.theme-light [style*="color: rgb(148, 163, 184)"]{color:#5b5570 !important}',
+        'body.theme-light [style*="color: rgb(100, 116, 139)"]{color:#6b6480 !important}',
+        /* MORADOS (tu firma): iconos, notas, eyebrow, textos de botones violeta */
+        'body.theme-light [style*="color: rgb(139, 92, 246)"]{color:#6d28d9 !important}',
+        'body.theme-light [style*="color: rgb(167, 139, 250)"]{color:#6d28d9 !important}',
+        'body.theme-light [style*="color: rgb(196, 181, 253)"]{color:#5b21b6 !important}',
+        'body.theme-light [style*="color: rgb(237, 233, 254)"]{color:#4c1d95 !important}',
+        /* avisos y errores legibles sobre blanco */
+        'body.theme-light [style*="color: rgb(251, 191, 36)"]{color:#b45309 !important}',
+        'body.theme-light [style*="color: rgb(248, 113, 113)"]{color:#b91c1c !important}',
+        'body.theme-light [style*="color: rgb(74, 222, 128)"],body.theme-light [style*="color: rgb(34, 197, 94)"]{color:#15803d !important}',
+
+        /* 4) BORDES: lila suave (antes eran casi negros sobre claro) */
+        'body.theme-light [style*="rgb(46, 36, 64"]{border-color:#ddd5f0 !important}',
+        'body.theme-light [style*="#2e2440"]{border-color:#ddd5f0 !important}',
+
+        /* 5) TOQUES MORADOS EXTRA en claro */
+        'body.theme-light p[data-sc-title]{color:#5b21b6 !important}',
+        'body.theme-light [data-sc-tab][style*="rgba(139"]{color:#5b21b6 !important}'
     ].join('\n');
 
     SCSET.applyTheme = function (theme) {
@@ -206,7 +245,7 @@
         }
     };
 
-    /* ==== ENGRANAJE JUNTO AL AVATAR (v3: cluster horizontal) ==== */
+    /* ==== ENGRANAJE JUNTO AL AVATAR (cluster horizontal) ==== */
 
     function findHeaderAvatar(host) {
         const els = host.querySelectorAll('img, div, span, button');
@@ -453,5 +492,5 @@
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', watchHeader);
     else watchHeader();
 
-    console.log('[Stevscon] ui_settings.js listo (cascarón v4).');
+    console.log('[Stevscon] ui_settings.js listo (cascarón v5 · modo claro legible).');
 })(window, document);
