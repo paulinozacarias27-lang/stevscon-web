@@ -1,15 +1,17 @@
 /**
  * ====
- * STEVSCON.COM — social/manage/output/system/profiles_show.js (v3)
- * PANEL DE PERFIL del Social (por fin funcional):
+ * STEVSCON.COM — social/manage/output/system/profiles_show.js (v4)
+ * PANEL DE PERFIL del Social — ahora con la información COMPLETA:
+ *  - v4 FIX: Profiles guarda los campos editables en users/{uid}/profile
+ *    (avatarUrl, bannerUrl, description, gender...), y los de cuenta
+ *    (username, handler, rank, userId) en la raíz. Antes le pasábamos el
+ *    nodo crudo a renderProfileCard y por eso salía avatar "S", sin
+ *    descripción y sin género. Ahora se APLANA: raíz + profile/ encima.
  *  - Clic en cualquier avatar/nombre del Social (data-scsoc-profile)
- *    -> modal estilo Discord con TU tarjeta real de Profiles
- *       (StevsconProfiles.ui.renderProfileCard) + estado en vivo.
- *  - Si los files de Profiles no cargaron, usa tarjeta de respaldo propia.
- *  - Perfil ajeno: el badge de estado se neutraliza (NO cambia tu estado).
- *  - TU perfil: clic en el avatar -> panel de estado (como Discord).
- *  - Cierra con X, clic afuera o Escape (sin robarle el Escape al Social).
- *  - Cero innerHTML con datos de usuario: textContent siempre (anti-XSS).
+ *    -> modal con TU tarjeta real (StevsconProfiles.ui.renderProfileCard).
+ *  - Estado en vivo (users/{uid}/status) + respaldo si Profiles no cargó.
+ *  - Perfil ajeno: badge de estado neutralizado (NO cambia tu estado).
+ *  - textContent siempre, cero innerHTML con datos de usuario (anti-XSS).
  * ====
  */
 (function (window, document) {
@@ -33,7 +35,26 @@
         return !!(a && a.uid === uid);
     }
 
-    /* ==== lectura de campos (tolerante a cómo guarde Profiles) ==== */
+    /* ==== NUEVO v4: aplanar users/{uid} para la tarjeta ====
+     * users/{uid} = { username, handler, rank, userId, status, profile: {...} }
+     * La tarjeta quiere TODO plano. Base: raíz · Encima: profile/ (lo que
+     * editas en Perfiles manda, igual que en la página de Perfiles). */
+    function flattenProfile(raw) {
+        if (!raw || typeof raw !== 'object') return null;
+        const p = (raw.profile && typeof raw.profile === 'object') ? raw.profile : {};
+        const out = {};
+        let k;
+        for (k in raw) {
+            if (k === 'profile' || k === 'status' || k === 'settings') continue;
+            if (raw[k] !== null && raw[k] !== undefined) out[k] = raw[k];
+        }
+        for (k in p) {
+            if (p[k] !== null && p[k] !== undefined) out[k] = p[k];
+        }
+        return out;
+    }
+
+    /* ==== lectura de campos (tolerante, para la tarjeta de respaldo) ==== */
     function nameFor(d) { const p = d.profile || {}; return d.name || d.displayName || d.username || p.name || p.username || 'Usuario'; }
     function handlerFor(d) { const p = d.profile || {}; return String(d.handler || d.tag || p.handler || '').toLowerCase().replace(/^@/, ''); }
     function avatarUrlFor(d) {
@@ -116,6 +137,12 @@
         hd.textContent = handlerFor(d) ? '@' + handlerFor(d) : 'Sin handler aún';
         inner.appendChild(hd);
 
+        if (d.rank && d.rank !== 'USER') {
+            const bg = SCSOC.el('span', 'display:inline-block;margin-left:8px;padding:3px 10px;border-radius:999px;background:rgba(167,139,250,.16);border:1px solid rgba(167,139,250,.5);color:#c4b5fd;font-size:10.5px;font-weight:800;letter-spacing:.14em;');
+            bg.textContent = String(d.rank);
+            nm.appendChild(bg);
+        }
+
         if (d.userId) {
             const idRow = SCSOC.el('div', 'display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12.5px;color:#8f7fc0;');
             const l1 = SCSOC.el('span', 'font-weight:700;'); l1.textContent = 'ID';
@@ -166,7 +193,8 @@
         fixTimers = [];
         while (cardHost.firstChild) cardHost.removeChild(cardHost.firstChild);
 
-        if (!raw) {
+        const data = flattenProfile(raw);
+        if (!data) {
             const p = SCSOC.el('p', 'color:#8f7fc0;font:600 13px Inter,sans-serif;text-align:center;padding:18px 0;');
             p.textContent = 'Cargando perfil...';
             cardHost.appendChild(p);
@@ -175,7 +203,7 @@
 
         if (SCp.ui && typeof SCp.ui.renderProfileCard === 'function') {
             try {
-                SCp.ui.renderProfileCard(cardHost, raw, isSelf(currentUid) ? firebase.auth().currentUser : null, {});
+                SCp.ui.renderProfileCard(cardHost, data, isSelf(currentUid) ? firebase.auth().currentUser : null, {});
                 if (!isSelf(currentUid)) {
                     neutralizeForeign();
                     fixTimers.push(setTimeout(neutralizeForeign, 250));
@@ -186,7 +214,7 @@
                 console.error('[SCSOC profiles_show] Falló la tarjeta de Profiles, uso respaldo:', e);
             }
         }
-        fallbackCard(raw);
+        fallbackCard(data);
     }
 
     /* ==== ciclo de vida del modal ==== */
@@ -287,5 +315,5 @@
         open(t.dataset.scsocProfile);
     });
 
-    console.log('[Stevscon] profiles_show.js listo (v3) — panel de perfil del Social conectado a TU tarjeta de Profiles.');
+    console.log('[Stevscon] profiles_show.js listo (v4) — tarjeta con la información COMPLETA de Profiles.');
 })(window, document);
