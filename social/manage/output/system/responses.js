@@ -1,6 +1,6 @@
 /**
  * ====
- * STEVSCON.COM — social/manage/output/system/responses.js (v2)
+ * STEVSCON.COM — social/manage/output/system/responses.js (v3)
  * HILOS estilo Discord, SIEMPRE en tiempo real.
  *  Nodo: social/responses/{commentId}/{responseId} (plano + campo depth)
  *  - comentario -> respuesta(1) -> respuesta(2) -> respuesta(3) = MÁXIMO
@@ -8,6 +8,9 @@
  *    se manda "@handler" al usuario que está siendo respondido.
  *  - v2 FIX: create usa users.once() (antes get() dejaba el callback
  *    suscrito y las respuestas se DUPLICABAN con cada cambio de status).
+ *  - v3 FIX: el botón "Responder" de los COMENTARIOS (creado por
+ *    comments.js) llega sin listener -> se cablea aquí al composer.
+ *    Antes el click no hacía NADA.
  * ==== */
 (function (window, document) {
     'use strict';
@@ -186,7 +189,19 @@
             ta.value = handler ? '@' + handler + ' ' : '';
             ta.focus();
         };
+
+        /* ==== v3 FIX: cablear el "Responder" del COMENTARIO ====
+         * comments.js crea el botón y lo entrega como ctx.replyBtn,
+         * pero nadie le había puesto listener. Sin esto, el click
+         * cae al vacío. Se abre el composer en nivel 1. */
+        if (ctx.replyBtn && !ctx.replyBtn.dataset.scsocReplyBound) {
+            ctx.replyBtn.dataset.scsocReplyBound = '1';
+            ctx.replyBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                SCSOC.requireLogin(function () { ctx.openReply(1, ''); });
+            });
+        }
     });
 
-    console.log('[Stevscon] responses.js listo (v2) — hilos de 3 niveles + PING @, sin duplicados.');
+    console.log('[Stevscon] responses.js listo (v3) — Responder cableado, hilos de 3 niveles + PING @.');
 })(window, document);
