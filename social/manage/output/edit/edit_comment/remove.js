@@ -1,11 +1,13 @@
 /**
  * ====
- * STEVSCON.COM — social/manage/output/edit/edit_comment/remove.js (v1)
+ * STEVSCON.COM — social/manage/output/edit/edit_comment/remove.js (v2)
  * ELIMINAR COMENTARIOS Y RESPUESTAS:
  *  - El AUTOR borra lo suyo, SIEMPRE.
  *  - El OWNER y el STAFF (social/staff) borran LO QUE SEA (regla #15).
- *  - Usuarios normales: solo sus propios comentarios/respuestas.
  *  - Comentarios: hook 'commentMenu' · Respuestas: hook 'responseMenu'
+ *  - v2 FIX: los contadores del POST bajan al eliminar (respuestas
+ *    descontaban solo a nivel comentario) y el hilo de un comentario
+ *    borrado se limpia en vez de quedar huérfano.
  * ==== 
  */
 (function (window, document) {
@@ -37,18 +39,18 @@
                     pop = document.createElement('div');
                     pop.style.cssText = POP_CSS;
                     ses.items.forEach(function (it) {
-                        const b = document.createElement('button');
-                        b.type = 'button';
-                        b.style.cssText = 'display:flex;align-items:center;gap:9px;width:100%;border:0;background:transparent;color:' + (it.danger ? '#f87171' : 'var(--text-main,#f8fafc)') + ';font:700 12.5px Inter,sans-serif;padding:9px 10px;border-radius:8px;cursor:pointer;text-align:left;';
-                        b.addEventListener('mouseenter', function () { b.style.background = 'var(--bg-hover,#261f36)'; });
-                        b.addEventListener('mouseleave', function () { b.style.background = 'transparent'; });
-                        b.addEventListener('click', function (e) { e.stopPropagation(); closePop(); it.fn(); });
-                        const ic = document.createElement('i');
-                        ic.className = 'fa-solid ' + (it.icon || 'fa-circle');
-                        const sp = document.createElement('span');
-                        sp.textContent = it.label;
-                        b.appendChild(ic); b.appendChild(sp);
-                        pop.appendChild(b);
+                    const b = document.createElement('button');
+                    b.type = 'button';
+                    b.style.cssText = 'display:flex;align-items:center;gap:9px;width:100%;border:0;background:transparent;color:' + (it.danger ? '#f87171' : 'var(--text-main,#f8fafc)') + ';font:700 12.5px Inter,sans-serif;padding:9px 10px;border-radius:8px;cursor:pointer;text-align:left;';
+                    b.addEventListener('mouseenter', function () { b.style.background = 'var(--bg-hover,#261f36)'; });
+                    b.addEventListener('mouseleave', function () { b.style.background = 'transparent'; });
+                    b.addEventListener('click', function (e) { e.stopPropagation(); closePop(); it.fn(); });
+                    const ic = document.createElement('i');
+                    ic.className = 'fa-solid ' + (it.icon || 'fa-circle');
+                    const sp = document.createElement('span');
+                    sp.textContent = it.label;
+                    b.appendChild(ic); b.appendChild(sp);
+                    pop.appendChild(b);
                     });
                     document.body.appendChild(pop);
                     const r = ses.anchor.getBoundingClientRect();
@@ -59,8 +61,8 @@
                     if (y + h > window.innerHeight - 8) y = Math.max(8, r.top - h - 6);
                     pop.style.left = x + 'px'; pop.style.top = y + 'px';
                     setTimeout(function () {
-                        document.addEventListener('click', outside, true);
-                        document.addEventListener('keydown', esc, true);
+                    document.addEventListener('click', outside, true);
+                    document.addEventListener('keydown', esc, true);
                     }, 0);
                 }, 0);
             }
@@ -142,23 +144,35 @@
             fn: function () {
                 SCSOC.requireLogin(function (me) {
                     const go = function () {
-                        SCSOC.confirmModal('Eliminar ' + (isComment ? 'comentario' : 'respuesta'), 'Esto no se puede deshacer. ¿Seguro?', function () {
-                            const ref = isComment
-                                ? SCSOC.db().ref(SCSOC.CONFIG.COMMENTS).child(ctx.postId).child(data.id)
-                                : SCSOC.db().ref(SCSOC.CONFIG.RESPONSES).child(ctx.commentId).child(data.id);
-                            ref.remove().then(function () {
-                                if (isComment) SCSOC.counters.bump('post', ctx.postId, 'comments', -1);
-                                else SCSOC.counters.bump('comment', ctx.commentId, 'responses', -1);
-                                SCSOC.toast('Eliminado ✓');
-                            }).catch(function () { SCSOC.toast('No se pudo eliminar.'); });
-                        });
+                    SCSOC.confirmModal('Eliminar ' + (isComment ? 'comentario' : 'respuesta'), 'Esto no se puede deshacer. ¿Seguro?', function () {
+                    const ref = isComment
+                    ? SCSOC.db().ref(SCSOC.CONFIG.COMMENTS).child(ctx.postId).child(data.id)
+                    : SCSOC.db().ref(SCSOC.CONFIG.RESPONSES).child(ctx.commentId).child(data.id);
+                    ref.remove().then(function () {
+                    if (isComment) {
+                    SCSOC.counters.bump('post', ctx.postId, 'comments', -1);
+                    /* v2: las respuestas del comentario borrado dejan de
+                     * contar en el post y su hilo no queda huérfano */
+                    SCSOC.counters.ref('comment', data.id, 'responses').once('value', function (s) {
+                    const n = Number(s.val()) || 0;
+                    if (n > 0) SCSOC.counters.bump('post', ctx.postId, 'responses', -n);
+                    });
+                    SCSOC.db().ref(SCSOC.CONFIG.RESPONSES).child(data.id).remove()
+                    .catch(function () { /* visitantes sin permiso de hilo: no pasa nada */ });
+                    } else {
+                    SCSOC.counters.bump('comment', ctx.commentId, 'responses', -1);
+                    SCSOC.counters.bump('post', ctx.postId, 'responses', -1);
+                    }
+                    SCSOC.toast('Eliminado ✓');
+                    }).catch(function () { SCSOC.toast('No se pudo eliminar.'); });
+                    });
                     };
                     /* ¿tu propio comentario/respuesta? -> libre */
                     if (data.authorUid === me.uid) { go(); return; }
                     /* ¿owner o staff? -> puede eliminar LO QUE SEA (regla #15) */
                     SCSOC.staff.role(function (r) {
-                        if (r) go();
-                        else SCSOC.toast('Solo el autor o el staff puede eliminar esto.');
+                    if (r) go();
+                    else SCSOC.toast('Solo el autor o el staff puede eliminar esto.');
                     });
                 });
             }
@@ -173,5 +187,5 @@
         try { firebase.auth().onAuthStateChanged(function (u) { if (u) SCSOC.staff.role(function () {}); }); } catch (e) {}
     });
 
-    console.log('[Stevscon] edit_comment/remove.js listo (v1) — autor borra lo suyo; owner/staff borran todo.');
+    console.log('[Stevscon] edit_comment/remove.js listo (v2) — autor borra lo suyo; owner/staff borran todo; contadores cuadrados.');
 })(window, document);

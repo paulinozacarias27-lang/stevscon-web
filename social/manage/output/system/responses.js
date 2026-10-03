@@ -1,6 +1,6 @@
 /**
  * ====
- * STEVSCON.COM — social/manage/output/system/responses.js (v3)
+ * STEVSCON.COM — social/manage/output/system/responses.js (v4)
  * HILOS estilo Discord, SIEMPRE en tiempo real.
  *  Nodo: social/responses/{commentId}/{responseId} (plano + campo depth)
  *  - comentario -> respuesta(1) -> respuesta(2) -> respuesta(3) = MÁXIMO
@@ -10,7 +10,8 @@
  *    suscrito y las respuestas se DUPLICABAN con cada cambio de status).
  *  - v3 FIX: el botón "Responder" de los COMENTARIOS (creado por
  *    comments.js) llega sin listener -> se cablea aquí al composer.
- *    Antes el click no hacía NADA.
+ *  - v4 FIX: las RESPUESTAS ahora tienen sus 3 puntitos (⋯) para
+ *    Editar/Eliminar vía el hook 'responseMenu' (edit.js + remove.js).
  * ==== */
 (function (window, document) {
     'use strict';
@@ -50,8 +51,20 @@
 
         const head = SCSOC.el('div', 'display:flex;align-items:flex-start;gap:8px;');
         head.appendChild(SCSOC.userHead(r.authorUid, 26, { nameSize: 12.5, handlerSize: 11, badgeSize: 12 }));
-        const timeEl = SCSOC.el('span', 'color:var(--text-muted,#94a3b8);font:500 10.5px Inter,sans-serif;white-space:nowrap;margin-left:auto;');
-        head.appendChild(timeEl);
+        const right = SCSOC.el('span', 'flex:none;display:inline-flex;align-items:center;gap:6px;margin-left:auto;');
+        const timeEl = SCSOC.el('span', 'color:var(--text-muted,#94a3b8);font:500 10.5px Inter,sans-serif;white-space:nowrap;');
+        right.appendChild(timeEl);
+        /* v4: 3 puntitos (⋯) — edit.js y remove.js registran 'responseMenu' */
+        if ((SCSOC.hooks.responseMenu || []).length) {
+            const dots = SCSOC.el('button', 'border:0;background:transparent;color:var(--text-muted,#94a3b8);cursor:pointer;font-size:12px;padding:2px 5px;border-radius:7px;');
+            dots.innerHTML = '<i class="fa-solid fa-ellipsis"></i>';
+            dots.addEventListener('click', function (e) {
+                e.stopPropagation();
+                SCSOC.runHooks('responseMenu', { postId: postId, commentId: commentId, response: live, el: el, dots: dots });
+            });
+            right.appendChild(dots);
+        }
+        head.appendChild(right);
         el.appendChild(head);
 
         const pingEl = SCSOC.el('div', 'color:var(--purple-accent,#8b5cf6);font:700 10.5px Inter,sans-serif;margin:3px 0 0 34px;display:none;');
@@ -190,10 +203,7 @@
             ta.focus();
         };
 
-        /* ==== v3 FIX: cablear el "Responder" del COMENTARIO ====
-         * comments.js crea el botón y lo entrega como ctx.replyBtn,
-         * pero nadie le había puesto listener. Sin esto, el click
-         * cae al vacío. Se abre el composer en nivel 1. */
+        /* ==== v3 FIX: cablear el "Responder" del COMENTARIO ==== */
         if (ctx.replyBtn && !ctx.replyBtn.dataset.scsocReplyBound) {
             ctx.replyBtn.dataset.scsocReplyBound = '1';
             ctx.replyBtn.addEventListener('click', function (e) {
@@ -203,5 +213,5 @@
         }
     });
 
-    console.log('[Stevscon] responses.js listo (v3) — Responder cableado, hilos de 3 niveles + PING @.');
+    console.log('[Stevscon] responses.js listo (v4) — hilos de 3 niveles, PING @ y menú ⋯ en respuestas.');
 })(window, document);
