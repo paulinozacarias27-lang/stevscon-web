@@ -1,23 +1,28 @@
 <!DOCTYPE html>
 <!--
-  ============================================================
-  STEVSCON.COM — social/social.html (v2)
+  ====
+  STEVSCON.COM — social/social.html (v3)
   Página HTML propia de la categoría Social.
   URL: https://www.stevscon.com/social/social.html
 
   CÓMO FUNCIONA (sin sistemas inventados):
   - Este file NO dibuja nada del Social por sí mismo.
-  - Carga tu stack real y le pasa el mando a category_posts.js,
-    que monta TODO (composer de staff + feed) dentro de su página.
+  - Carga tu stack real y le pasa el mando a category_posts.js
+    (que vive en social/manage/posts/, igual que en tu index),
+    el cual monta TODO: composer de staff + feed en tiempo real.
   - Al entrar, el Social se abre solo (SCSOC.pages.open()).
   - "Volver" y Escape te regresan al inicio (la URL cambia de
     /social/social.html -> /), como una web de varios HTML.
   - Deep links:  /social/social.html#post/{postId}
                  /social/social.html#u/{handler}
 
-  IMPORTANTE: aquí NO se carga category_social.js — esa pestaña es
-  la PUERTA desde la web principal hacia este HTML (patch aparte).
-  ============================================================
+  FIREBASE: no se pega NADA de config aquí — carga tu firebase_data.js
+  de la raíz (el MISMO que usa el index). Si ese file solo expone el
+  config sin inicializar, este HTML lo inicializa solo.
+
+  NOTA: aquí NO se carga category_social.js — esa pestaña es la PUERTA
+  desde la web principal hacia este HTML (patch aparte en ese file).
+  ====
 -->
 <html lang="es">
 <head>
@@ -47,7 +52,7 @@
     #sc-boot .sc-boot-hint{color:var(--text-muted);font-size:13px;font-weight:600}
     .sc-boot-spin{width:20px;height:20px;border-radius:50%;border:2.5px solid var(--bg-hover);border-top-color:var(--purple-accent);animation:sc-boot-spin .7s linear infinite}
     @keyframes sc-boot-spin{to{transform:rotate(360deg)}}
-    #sc-boot .sc-boot-error{display:none;max-width:520px;margin:0 20px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.08);color:#f87171;border-radius:12px;padding:14px 16px;font-size:13px;font-weight:600;line-height:1.6}
+    #sc-boot .sc-boot-error{display:none;max-width:540px;margin:0 20px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.08);color:#f87171;border-radius:12px;padding:14px 16px;font-size:13px;font-weight:600;line-height:1.6}
 
     /* ---- Destello del post llegado por deep link ---- */
     .scsoc-post-flash{animation:scsocFlash 1.1s ease-in-out 2}
@@ -64,26 +69,26 @@
     <div class="sc-boot-error" id="sc-boot-error"></div>
 </div>
 
-<!-- ====== FIREBASE (compat, el mismo de tu sistema) ====== -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-app.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-auth.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-database.min.js"></script>
+<!-- ==== FIREBASE · SDK compat 9.23.0, LOS MISMOS de tu index ==== -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+
+<!-- ==== CONFIG · tu firebase_data.js de la raíz (el MISMO del index). Cero pegar configs. ==== -->
+<script src="/firebase_data.js?v=13"></script>
 <script>
-    /* >>> PEGA AQUÍ TU CONFIG <<< — el MISMO firebaseConfig de tu index principal */
-    window.StevsconFirebaseConfig = {
-        apiKey: "PEGA_AQUI_TU_API_KEY",
-        authDomain: "stevscon-protocole-base.firebaseapp.com",
-        databaseURL: "https://stevscon-protocole-base-default-rtdb.firebaseio.com",
-        projectId: "stevscon-protocole-base",
-        appId: "PEGA_AQUI_TU_APP_ID"
-    };
-    try { firebase.initializeApp(window.StevsconFirebaseConfig); }
-    catch (e) { console.warn('[Social] Firebase no inicializado:', e && e.message); }
+    /* Defensa: si firebase_data.js solo expone el config (window.StevsconFirebase)
+       y no llama a initializeApp, lo inicializamos aquí. Si ya inicializó, no se toca. */
+    try {
+        if (typeof firebase !== 'undefined' && !firebase.apps.length &&
+            window.StevsconFirebase && window.StevsconFirebase.apiKey) {
+            firebase.initializeApp(window.StevsconFirebase);
+        }
+    } catch (e) { console.warn('[Social] Firebase config:', e && e.message); }
 </script>
 
-<!-- ====== TU STACK REAL (mismas rutas y orden que tu index; las rutas son ABSOLUTAS
-     para que los deep links no las rompan. Si en tu index alguna ruta es distinta,
-     copia la de allá) ====== -->
+<!-- ==== TU STACK REAL (mismas rutas ABSOLUTAS, orden y versiones que tu index) ==== -->
 <script src="/social/manage/output/system/numbers.js?v=2"></script>
 <script src="/social/manage/output/advanced_system/utils.js?v=5"></script>
 <script src="/social/manage/output/advanced_system/verified.js?v=2"></script>
@@ -98,19 +103,19 @@
 <script src="/social/manage/output/system/profiles_show.js?v=6"></script>
 <script src="/social/manage/output/advanced_system/admin_post.js?v=4"></script>
 <!-- EL MOTOR: category_posts.js monta la página Social completa.
-     Ruta corregida: tus files viven en /social/manage/, no en /social/manage/posts/ -->
-<script src="/social/manage/category_posts.js"></script>
+     Ruta REAL (según tu árbol y tu index): social/manage/posts/ -->
+<script src="/social/manage/posts/category_posts.js?v=2"></script>
 
 <script>
 (function () {
     'use strict';
-    /* ============================================================
+    /* ====
        Arranque de social.html:
        1) Espera al motor (category_posts.js + admin_post.js)
        2) Abre el Social solo -> SCSOC.pages.open()
        3) sc:social-closed -> regreso al inicio (web de varios HTML)
        4) Deep links: #post/{id} y #u/{handler}
-       ============================================================ */
+       ==== */
     var boot = document.getElementById('sc-boot');
 
     function coreReady() {
@@ -121,9 +126,10 @@
     function fail() {
         var box = document.getElementById('sc-boot-error');
         if (box) {
-            box.textContent = 'El Social no pudo arrancar. Revisa que estos files existan y estén en este orden: ' +
+            box.textContent = 'El Social no pudo arrancar. Revisa que existan y se carguen EN ORDEN: ' +
                 'numbers.js, utils.js, verified.js, likes.js, comments.js, responses.js, edit (post y comment), ' +
-                'profiles_show.js, admin_post.js y category_posts.js.';
+                'profiles_show.js, admin_post.js y social/manage/posts/category_posts.js. ' +
+                'Pulsa F12 > Console/Network para ver qué file falló (404).';
             box.style.display = 'block';
         }
         var spin = boot.querySelector('.sc-boot-spin');
