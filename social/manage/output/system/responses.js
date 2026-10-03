@@ -6,11 +6,9 @@
  *  - comentario -> respuesta(1) -> respuesta(2) -> respuesta(3) = MÁXIMO
  *  - Si alguien quiere responder una respuesta de nivel 3, se hace PING:
  *    se manda "@handler" al usuario que está siendo respondido.
- *  v2: FIX — el botón "Responder" del COMENTARIO ya abre el composer
- *      (antes no tenía listener) + las respuestas ahora tienen su ⋯
- *      propio que dispara el hook 'responseMenu' (edit_comment lo usa).
- * ====
- */
+ *  - v2 FIX: create usa users.once() (antes get() dejaba el callback
+ *    suscrito y las respuestas se DUPLICABAN con cada cambio de status).
+ * ==== */
 (function (window, document) {
     'use strict';
 
@@ -19,10 +17,11 @@
 
     const R = SCSOC.responses = {};
 
-    /* ==== crear respuesta ==== */
+    /* ==== crear respuesta (v2: una lectura, una escritura) ==== */
     R.create = function (commentId, postId, text, depth, replyTo) {
         SCSOC.requireLogin(function (auth) {
-            SCSOC.users.get(auth.uid, function (u) {
+            const userOnce = SCSOC.users.once || SCSOC.users.get;
+            userOnce(auth.uid, function (u) {
                 const id = SCSOC.ids.make();
                 SCSOC.db().ref(CONFIG.RESPONSES).child(commentId).child(id).set({
                     id: id,
@@ -50,15 +49,6 @@
         head.appendChild(SCSOC.userHead(r.authorUid, 26, { nameSize: 12.5, handlerSize: 11, badgeSize: 12 }));
         const timeEl = SCSOC.el('span', 'color:var(--text-muted,#94a3b8);font:500 10.5px Inter,sans-serif;white-space:nowrap;margin-left:auto;');
         head.appendChild(timeEl);
-        if (SCSOC.hooks.responseMenu && SCSOC.hooks.responseMenu.length) {
-            const dots = SCSOC.el('button', 'border:0;background:transparent;color:var(--text-muted,#94a3b8);cursor:pointer;font-size:12px;padding:2px 5px;border-radius:7px;flex:none;');
-            dots.innerHTML = '<i class="fa-solid fa-ellipsis"></i>';
-            dots.addEventListener('click', function (e) {
-                e.stopPropagation();
-                SCSOC.runHooks('responseMenu', { postId: postId, commentId: commentId, response: live, el: el, dots: dots });
-            });
-            head.appendChild(dots);
-        }
         el.appendChild(head);
 
         const pingEl = SCSOC.el('div', 'color:var(--purple-accent,#8b5cf6);font:700 10.5px Inter,sans-serif;margin:3px 0 0 34px;display:none;');
@@ -193,21 +183,10 @@
             box.dataset.depth = String(CONFIG.DEPTH_MAX);
             box.dataset.replyTo = handler || '';
             box.dataset.ping = handler ? '@' + handler : '';
-            ta.placeholder = 'Ping a @' + (handler || '') + '...';
             ta.value = handler ? '@' + handler + ' ' : '';
             ta.focus();
         };
-
-        /* ==== FIX v2: el "Responder" del COMENTARIO abre el composer ====
-         * comments.js crea el botón pero nunca le puso listener. */
-        if (ctx.replyBtn && !ctx.replyBtn.dataset.scsocReplyBound) {
-            ctx.replyBtn.dataset.scsocReplyBound = '1';
-            ctx.replyBtn.addEventListener('click', function (e) {
-                e.stopPropagation();
-                SCSOC.requireLogin(function () { ctx.openReply(1, ''); });
-            });
-        }
     });
 
-    console.log('[Stevscon] responses.js listo (v2) — hilos de 3 niveles + PING @ + ⋯ en respuestas.');
+    console.log('[Stevscon] responses.js listo (v2) — hilos de 3 niveles + PING @, sin duplicados.');
 })(window, document);

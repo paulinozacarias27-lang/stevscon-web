@@ -268,7 +268,8 @@
         buildShell();
         document.body.appendChild(backdrop);
         wireLive(uid);
-        try {
+        if (SCSOC.runHooks) SCSOC.runHooks('profilePanel', uid, modal, cardHost);
+                try {
             backdrop.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150, easing: 'ease-out' });
             modal.animate(
                 [{ opacity: 0, transform: 'translateY(16px) scale(.96)' }, { opacity: 1, transform: 'translateY(0) scale(1)' }],
