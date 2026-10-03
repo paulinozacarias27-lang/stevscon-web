@@ -1,6 +1,6 @@
 /**
  * ====
- * STEVSCON.COM — social/manage/output/advanced_system/utils.js (v2)
+ * STEVSCON.COM — social/manage/output/advanced_system/utils.js (v3)
  * AYUDANTE SUPREMO del Social. Debe ser el PRIMER file del social
  * en cargarse en el index (después de numbers.js).
  *
@@ -12,8 +12,14 @@
  *   staff (owner + elegidos) · hooks (los demás files se enganchan
  *   solos) · negación a visitantes.
  * v2: SCSOC.users.once() — lecturas de UNA sola vez para crear
- *   posts/comentarios/respuestas sin dejar listeners vivos
- *   (la vacuna anti-duplicados que usan admin_post v3 y responses v4).
+ *   posts/comentarios/respuestas sin dejar listeners vivos.
+ * v3: AVATARES REALES — ahora lee profile/avatarUrl (la ruta que
+ *   ESCRIBE Profiles; antes mirábamos profile.avatar y por eso
+ *   salía solo la LETRA del nombre). Acepta Base64/GIF y URLs
+ *   http(s), y usa los presets de Profiles (StevsconProfiles.ui)
+ *   para que el avatar se vea IGUAL que en la página de Perfiles.
+ *   Además _status entiende el objeto { state:'online' } que guarda
+ *   Profiles (los circulitos de estado vuelven a salir).
  * ====
  */
 (function (window, document) {
@@ -104,22 +110,45 @@
         return s;
     };
 
-    /* ==== AVATAR (Base64/GIF) + circulito de status ==== */
+    /* ==== AVATAR (v3): imagen propia (Base64/GIF o URL http) + presets
+     * de Profiles + letra inicial de respaldo + circulito de status ==== */
     const STATUS_COLORS = { online: '#22c55e', inactive: '#f59e0b', busy: '#ef4444', offline: '#6b7280' };
+
+    function initialOf(u) {
+        return (u && u._name ? String(u._name).trim().charAt(0).toUpperCase() : '') || '?';
+    }
+
+    function innerAvatar(u, size) {
+        const av = (u && u._avatar) || '';
+        /* 1) Imagen propia: Base64/GIF o URL http(s). Antes solo se
+         *    aceptaba data:image -> muchas caían a la letra por error. */
+        if (av && /^(data:image|https?:\/\/)/i.test(av)) {
+            const img = SCSOC.el('img', 'width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;background:var(--bg-hover,#221b33);');
+            img.src = av; img.alt = 'Avatar'; img.draggable = false;
+            return img;
+        }
+        /* 2) Preset de Profiles (el MISMO look que la página de Perfiles) */
+        const preset = (u && u._avatarPreset) || '';
+        if (preset && window.StevsconProfiles && window.StevsconProfiles.ui &&
+            typeof window.StevsconProfiles.ui.avatarEl === 'function') {
+            try {
+                const el = window.StevsconProfiles.ui.avatarEl(
+                    { avatarUrl: '', avatarPreset: preset }, size, initialOf(u));
+                if (el) return el;
+            } catch (e) { /* cae al fallback de letra */ }
+        }
+        /* 3) Letra inicial (igual que siempre) */
+        const f = SCSOC.el('span', 'width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center;' +
+            'background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;font-weight:800;user-select:none;' +
+            'font-size:' + Math.round(size * 0.42) + 'px;font-family:Inter,sans-serif;');
+        f.textContent = initialOf(u);
+        return f;
+    }
+
     SCSOC.avatarEl = function (u, size, status) {
         size = size || 40;
         const wrap = SCSOC.el('span', 'position:relative;display:inline-flex;width:' + size + 'px;height:' + size + 'px;flex:none;');
-        if (u && u._avatar && /^data:image/i.test(u._avatar)) {
-            const img = SCSOC.el('img', 'width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;background:var(--bg-hover,#221b33);');
-            img.src = u._avatar; img.alt = 'Avatar'; img.draggable = false;
-            wrap.appendChild(img);
-        } else {
-            const f = SCSOC.el('span', 'width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center;' +
-                'background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;font-weight:800;user-select:none;' +
-                'font-size:' + Math.round(size * 0.42) + 'px;font-family:Inter,sans-serif;');
-            f.textContent = (u && u._name ? u._name.trim().charAt(0).toUpperCase() : '?');
-            wrap.appendChild(f);
-        }
+        wrap.appendChild(innerAvatar(u, size));
         const c = STATUS_COLORS[status];
         if (c) {
             const d = Math.max(10, Math.round(size * 0.3));
@@ -130,20 +159,38 @@
     };
 
     /* ==== CACHE LIVE DE USUARIOS ====
-     * ADAPTADOR: si tu nodo users/{uid} guarda estos datos en otra ruta,
-     * cambia SOLO la función de abajo y todo el social se entera. */
+     * ADAPTADOR (v3): alineado a como escribe Profiles — campos de
+     * cuenta (username, handler) en la RAÍZ de users/{uid} y campos
+     * editables (avatarUrl, bannerUrl, description, gender...) en
+     * users/{uid}/profile. Si un día cambias rutas, toca SOLO aquí. */
     const _ucache = {};
+
+    function presenceOf(raw) {
+        return (raw && raw.online && raw.online.state) || (raw && raw.presence) || '';
+    }
+    function statusOf(raw) {
+        const st = raw && raw.status;
+        if (st && typeof st === 'object') return String(st.state || '') || presenceOf(raw);
+        if (typeof st === 'string' && st) return st;
+        return presenceOf(raw);
+    }
+
     function adaptUser(raw) {
         raw = raw || {};
         const p = raw.profile || {};
         return {
-            _name: raw.name || raw.displayName || raw.username || p.name || 'Usuario',
+            _name: raw.name || raw.displayName || raw.username || p.name || p.username || 'Usuario',
             _handler: String(raw.handler || raw.tag || p.handler || '').toLowerCase().replace(/^@/, ''),
-            _avatar: raw.avatar || p.avatar || (raw.media && raw.media.avatar) || '',
+            /* v3: el avatar vive en profile/avatarUrl (y puede ser URL http,
+             * no solo Base64). profile/avatar era una ruta que NADIE escribe. */
+            _avatar: raw.avatarUrl || raw.avatar || p.avatarUrl || p.avatar ||
+                (raw.media && (raw.media.avatar || raw.media.avatarUrl)) || '',
+            _avatarPreset: raw.avatarPreset || p.avatarPreset || '',
             _verified: !!(raw.verified || p.verified),
-            _status: raw.status || (raw.online && raw.online.state) || raw.presence || ''
+            _status: statusOf(raw)
         };
     }
+
     SCSOC.users = {
         /* get: suscripción VIVA (avatar, nombre, status en pantalla) */
         get: function (uid, cb) {
@@ -284,5 +331,5 @@
         full: function (n) { return String(n || 0); }
     };
 
-    console.log('[Stevscon] utils.js listo (v2) — ayudante supremo del Social montado (con users.once).');
+    console.log('[Stevscon] utils.js listo (v3) — ayudante supremo con avatares REALES (avatarUrl + presets) y users.once.');
 })(window, document);

@@ -1,6 +1,6 @@
 /**
  * ====
- * STEVSCON.COM — social/manage/output/advanced_system/admin_post.js (v3)
+ * STEVSCON.COM — social/manage/output/advanced_system/admin_post.js (v4)
  * SISTEMA DE POSTEO — solo el STAFF publica (owner + elegidos).
  *  - Composer con contador "0 / 15.000" y categoría
  *  - Feed en TIEMPO REAL (nada de refrescar)
@@ -8,8 +8,16 @@
  *  - v3 FIX: el 💬 del post ahora muestra COMENTARIOS + RESPUESTAS
  *    (antes solo contaba comentarios directos y las respuestas no
  *    sumaban nunca).
+ *  - v4 FIX (composer que no aparecía en social.html): mountCompose
+ *    preguntaba "¿soy staff?" ANTES de que Firebase Auth restaurara
+ *    la sesión guardada -> currentUser era null -> el composer nunca
+ *    se montaba al entrar directo a /social/social.html. Ahora es
+ *    REACTIVO: espera a que Auth resuelva y se monta solo cuando hay
+ *    sesión + staff (y se quita si se cierra sesión). En la web
+ *    principal no cambia NADA.
  *  - likes.js / comments.js / responses.js se enganchan SOLOS vía hooks
- * ==== */
+ * ====
+ */
 (function (window, document) {
     'use strict';
 
@@ -22,6 +30,13 @@
 
     /* ==== ¿puede postear? (solo staff) ==== */
     P.canPost = function (cb) { SCSOC.staff.role(function (r) { if (cb) cb(!!r, r); }); };
+
+    /* ==== v4: WATCHER DE SESIÓN — dispara con el usuario (o null) en
+     * cuanto Auth resuelve la sesión guardada, y OTRA VEZ en cada
+     * login/logout. Devuelve la función para apagarlo. ==== */
+    function watchAuth(cb) {
+        return firebase.auth().onAuthStateChanged(function (u) { cb(u || null); });
+    }
 
     /* ==== PUBLICAR (v2: a prueba de duplicados) ==== */
     const _lastPub = { uid: '', text: '', at: 0 };
@@ -67,16 +82,21 @@
         });
     };
 
-    /* ==== COMPOSER (invisible para quien no es staff) ==== */
+    /* ==== COMPOSER (v4: reactivo a la sesión; invisible para quien no es staff) ==== */
     P.mountCompose = function (host) {
-        host.innerHTML = '';
-        P.canPost(function (can) {
-            if (!can) return;
+        /* Si este host ya tenía un watcher vivo, se apaga PRIMERO
+         * (re-montar sin apagar = composers duplicados). */
+        if (host.__scsocComposeOff) { try { host.__scsocComposeOff(); } catch (e) {} host.__scsocComposeOff = null; }
+
+        function clear() { while (host.firstChild) host.removeChild(host.firstChild); }
+
+        /* La caja del composer — la misma de siempre, pero solo se
+         * construye cuando YA sabemos que hay sesión y es staff. */
+        function buildBox(authUser) {
             const box = SCSOC.el('div', 'background:' + CARD_BG + ';border:1px solid ' + BORDER + ';border-radius:14px;padding:16px 18px;margin-bottom:18px;box-sizing:border-box;font-family:Inter,sans-serif;');
             const row = SCSOC.el('div', 'display:flex;gap:12px;align-items:flex-start;');
             const avSlot = SCSOC.el('span', 'flex:none;');
-            const auth = firebase.auth().currentUser;
-            if (auth) SCSOC.users.get(auth.uid, function (u) {
+            SCSOC.users.get(authUser.uid, function (u) {
                 avSlot.innerHTML = '';
                 avSlot.appendChild(SCSOC.avatarEl(u, 42, u ? u._status : ''));
             });
@@ -116,8 +136,22 @@
             col.appendChild(ta); col.appendChild(foot);
             row.appendChild(avSlot); row.appendChild(col);
             box.appendChild(row);
-            host.appendChild(box);
-        });
+            return box;
+        }
+
+        function evaluate(u) {
+            if (!u) { clear(); return; }                  /* visitante -> nada */
+            P.canPost(function (can) {
+                const live = firebase.auth().currentUser;
+                if (!live || live.uid !== u.uid) return;  /* la sesión cambió mientras leíamos */
+                if (!can) { clear(); return; }            /* logeado pero no staff */
+                clear();
+                try { host.appendChild(buildBox(live)); }
+                catch (e) { console.error('[Stevscon] admin_post: fallo el composer ->', e); }
+            });
+        }
+
+        host.__scsocComposeOff = watchAuth(evaluate);
     };
 
     /* ==== TARJETA DE POST ==== */
@@ -254,5 +288,5 @@
         return host.__scsocFeedOff;
     };
 
-    console.log('[Stevscon] admin_post.js listo (v3) — posteo del staff en tiempo real, 💬 = comentarios + respuestas.');
+    console.log('[Stevscon] admin_post.js listo (v4) — composer reactivo a la sesión + feed en tiempo real.');
 })(window, document);
