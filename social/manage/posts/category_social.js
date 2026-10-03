@@ -104,10 +104,8 @@
         b.appendChild(icon);
         b.appendChild(label);
         b.addEventListener('click', function () {
-            const S = window.SCSOC;
-            if (S && S.pages && typeof S.pages.open === 'function') { S.pages.open(); return; }
-            showToast('No pudimos abrir Social: falta category_posts.js. Revisa el index.', 'error');
-        });
+            location.href = '/social/social.html';
+    });
         document.body.appendChild(b);
     }
 

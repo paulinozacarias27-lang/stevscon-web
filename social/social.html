@@ -1,24 +1,22 @@
 <!DOCTYPE html>
 <!--
   ============================================================
-  STEVSCON.COM — social/social.html
-  Este file vive en la RAÍZ de la categoría Social.
+  STEVSCON.COM — social/social.html (v2)
+  Página HTML propia de la categoría Social.
   URL: https://www.stevscon.com/social/social.html
 
-  ANTES DE SUBIR:
-  1) Pega tu firebaseConfig real (el MISMO del index principal) donde
-     está marcado más abajo con  >>> PEGA AQUÍ TU CONFIG <<<
-  2) git push y entra al social.
+  CÓMO FUNCIONA (sin sistemas inventados):
+  - Este file NO dibuja nada del Social por sí mismo.
+  - Carga tu stack real y le pasa el mando a category_posts.js,
+    que monta TODO (composer de staff + feed) dentro de su página.
+  - Al entrar, el Social se abre solo (SCSOC.pages.open()).
+  - "Volver" y Escape te regresan al inicio (la URL cambia de
+    /social/social.html -> /), como una web de varios HTML.
+  - Deep links:  /social/social.html#post/{postId}
+                 /social/social.html#u/{handler}
 
-  RUTAS QUE ENTIENDE (router integrado):
-    /social/                    → feed general
-    /social/post/{postId}       → abre y ilumina ese post
-    /social/u/{handler|uid}     → abre ese perfil (profiles_show.js)
-    /social/c/{categoría}       → feed filtrado por categoría
-    También acepta hash:  /social/#/post/{id}
-
-  NOTA: los <script> del sistema usan rutas ABSOLUTAS (/social/manage/...)
-  a propósito — así los deep links como /social/post/123 no rompen las rutas.
+  IMPORTANTE: aquí NO se carga category_social.js — esa pestaña es
+  la PUERTA desde la web principal hacia este HTML (patch aparte).
   ============================================================
 -->
 <html lang="es">
@@ -26,247 +24,52 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#0d0b14">
-<meta name="description" content="El Social de Stevscon: posts oficiales del staff, comentarios y reacciones en tiempo real.">
 <title>Social — Stevscon</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
+    /* Mismas variables que usa tu sistema (category_posts.js las hereda de aquí) */
     :root{
-        --bg:#0d0b14; --card:#151020; --hover:#221b33; --line:#2a2139;
-        --text:#f8fafc; --muted:#94a3b8; --accent:#8b5cf6; --accent-strong:#7c3aed;
-        --radius:14px; --radius-btn:10px;
+        --bg-main:#0d0b14; --border-color:#2e2440; --bg-hover:#261f36;
+        --purple-accent:#8b5cf6; --purple-dark:#6d28d9; --purple-glow:rgba(139,92,246,.35);
+        --text-main:#f8fafc; --text-muted:#94a3b8;
     }
     *{box-sizing:border-box}
     html,body{margin:0;padding:0}
-    body{background:var(--bg);color:var(--text);font:400 15px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
-    a{color:inherit;text-decoration:none}
-    button{font-family:inherit}
-    :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
-    @media (prefers-reduced-motion: reduce){ *{animation:none!important;transition:none!important} }
+    body{background:var(--bg-main);color:var(--text-main);font-family:Inter,system-ui,sans-serif;min-height:100vh}
 
-    /* ===== topbar ===== */
-    .sc-topbar{position:sticky;top:0;z-index:50;background:rgba(13,11,20,.94);border-bottom:1px solid var(--line)}
-    .sc-topbar-in{max-width:1100px;margin:0 auto;padding:0 20px;height:60px;display:flex;align-items:center;gap:26px}
-    .sc-logo{font-weight:800;font-size:19px;letter-spacing:-.02em}
-    .sc-logo span{color:var(--accent)}
-    .sc-nav{display:flex;gap:18px;font-size:14px;font-weight:600;color:var(--muted)}
-    .sc-nav a{padding:17px 2px 15px;border-bottom:2px solid transparent}
-    .sc-nav a.active{color:var(--text);border-bottom-color:var(--accent)}
-    .sc-nav a:hover{color:var(--text)}
-    .sc-auth{margin-left:auto;display:flex;align-items:center}
-    .sc-btn{background:var(--accent);color:#fff;border:1px solid var(--accent);font:600 13.5px Inter,sans-serif;padding:8px 18px;border-radius:var(--radius-btn);cursor:pointer;display:inline-block}
-    .sc-btn:hover{background:var(--accent-strong)}
-    .sc-chip{display:flex;align-items:center;gap:9px;font-size:13.5px}
-    .sc-chip img{width:30px;height:30px;border-radius:50%;object-fit:cover}
-    .sc-mini-av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--accent);color:#fff;font-weight:800;font-size:13px}
-    .sc-chip b{font-size:13px;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    /* ---- Pantalla de arranque (se ve un segundo mientras carga el motor) ---- */
+    #sc-boot{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:var(--bg-main);z-index:100}
+    #sc-boot .sc-boot-logo{font-size:26px;font-weight:800;letter-spacing:-.02em}
+    #sc-boot .sc-boot-logo span{color:var(--purple-accent)}
+    #sc-boot .sc-boot-hint{color:var(--text-muted);font-size:13px;font-weight:600}
+    .sc-boot-spin{width:20px;height:20px;border-radius:50%;border:2.5px solid var(--bg-hover);border-top-color:var(--purple-accent);animation:sc-boot-spin .7s linear infinite}
+    @keyframes sc-boot-spin{to{transform:rotate(360deg)}}
+    #sc-boot .sc-boot-error{display:none;max-width:520px;margin:0 20px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.08);color:#f87171;border-radius:12px;padding:14px 16px;font-size:13px;font-weight:600;line-height:1.6}
 
-    /* ===== aviso de vista previa (se borra solo en producción) ===== */
-    .sc-demo-banner{max-width:1060px;margin:18px auto -6px;padding:10px 16px;border:1px solid var(--accent);border-radius:var(--radius-btn);background:rgba(139,92,246,.09);font-size:13px;font-weight:500}
-    .sc-demo-banner b{color:var(--accent)}
-
-    /* ===== layout ===== */
-    .sc-shell{max-width:1100px;margin:26px auto 40px;padding:0 20px;display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:26px;align-items:start}
-    @media (max-width:940px){ .sc-shell{grid-template-columns:1fr} .sc-rail{display:none} }
-
-    /* ===== tabs de categorías ===== */
-    .sc-tabs{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;scrollbar-width:none}
-    .sc-tabs::-webkit-scrollbar{display:none}
-    .sc-tab{flex:none;background:transparent;border:1px solid var(--line);color:var(--muted);font:600 13px Inter,sans-serif;padding:7px 16px;border-radius:999px;cursor:pointer;transition:color .15s,border-color .15s,background .15s}
-    .sc-tab:hover{color:var(--text);border-color:var(--accent)}
-    .sc-tab.active{background:var(--accent);border-color:var(--accent);color:#fff}
-
-    /* ===== compositor ===== */
-    .sc-composer-slot{margin-bottom:18px}
-    .sc-composer-demo{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-    .sc-composer-demo .fake-input{flex:1;min-width:180px;color:var(--muted);font-size:14px;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:9px 16px}
-    .sc-tag-staff{font:700 10px Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);padding:3px 9px;border-radius:999px}
-
-    /* ===== feed ===== */
-    .sc-feed{display:flex;flex-direction:column;gap:14px}
-    .sc-post{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px}
-    .sc-post-head{display:flex;align-items:center;gap:12px;margin-bottom:10px}
-    .sc-av{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;flex:none;font-size:17px;user-select:none}
-    .sc-post-who{display:flex;flex-direction:column;min-width:0}
-    .sc-post-who b{font-size:14.5px;display:flex;align-items:center;gap:6px}
-    .sc-post-who b svg{flex:none}
-    .sc-post-who span{color:var(--muted);font-size:12.5px}
-    .sc-post-text{margin:0 0 12px;font-size:14.5px;line-height:1.6;color:var(--text);white-space:pre-wrap;overflow-wrap:anywhere}
-    .sc-post-actions{display:flex;align-items:center;gap:14px;border-top:1px solid var(--line);padding-top:10px}
-    .sc-act{display:inline-flex;align-items:center;gap:7px;background:none;border:0;color:var(--muted);font:600 13px Inter,sans-serif;cursor:pointer;padding:4px 8px;border-radius:8px}
-    .sc-act:hover{color:var(--accent);background:var(--hover)}
-    .sc-act.liked{color:#f43f5e}
-    .sc-post-foot{margin-left:auto}
-
-    /* resaltado del post llegado por deep link */
-    .sc-highlight{border-color:var(--accent);animation:scPulse 1.2s ease-in-out 2}
-    @keyframes scPulse{50%{box-shadow:0 0 0 3px rgba(139,92,246,.25)}}
-
-    /* ===== rail derecho ===== */
-    .sc-rail{display:flex;flex-direction:column;gap:16px;position:sticky;top:80px}
-    .sc-rail-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px}
-    .sc-rail-card h3{margin:0 0 12px;font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
-    .sc-rail-card p{margin:0 0 10px;font-size:13.5px;line-height:1.6;color:var(--muted)}
-    .sc-rail-card p:last-child{margin-bottom:0}
-    .sc-vf-row{display:flex;align-items:center;gap:10px;font-size:13.5px;padding:8px 0;border-top:1px solid var(--line)}
-    .sc-vf-row:first-of-type{border-top:0;padding-top:0}
-    .sc-vf-dot{width:12px;height:12px;border-radius:50%;flex:none}
-    .sc-vf-row b{color:var(--text);font-weight:600}
-    .sc-vf-row span{color:var(--muted)}
-    .sc-link{font:500 12.5px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted);padding:7px 0;border-top:1px solid var(--line);display:block}
-    .sc-link:first-of-type{border-top:0}
-    .sc-link:hover{color:var(--accent)}
-
-    /* ===== footer ===== */
-    .sc-footer{border-top:1px solid var(--line);padding:22px 20px 30px;text-align:center;color:var(--muted);font-size:12.5px}
-    .sc-footer b{color:var(--text)}
-
-    /* ===== toast ===== */
-    .sc-toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:4000;background:var(--card);border:1px solid var(--accent);color:var(--text);font:600 13px Inter,sans-serif;padding:10px 18px;border-radius:999px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+    /* ---- Destello del post llegado por deep link ---- */
+    .scsoc-post-flash{animation:scsocFlash 1.1s ease-in-out 2}
+    @keyframes scsocFlash{50%{box-shadow:0 0 0 3px var(--purple-glow)}}
 </style>
 </head>
 <body>
 
-<header class="sc-topbar">
-    <div class="sc-topbar-in">
-        <a class="sc-logo" href="/">Stevscon<span>.</span></a>
-        <nav class="sc-nav" aria-label="Navegación principal">
-            <a href="/">Inicio</a>
-            <a href="/social/" class="active" aria-current="page">Social</a>
-            <a href="/" id="sc-nav-profile">Perfil</a>
-        </nav>
-        <div class="sc-auth" id="sc-auth-slot"></div>
-    </div>
-</header>
-
-<div class="sc-demo-banner" id="sc-demo-banner">
-    <b>Vista previa</b> — cuando este file esté con tu firebaseConfig y tus files JS, este aviso desaparece solo y arranca el Social real.
+<!-- Arranque: se apaga solo cuando el Social abre -->
+<div id="sc-boot" aria-live="polite">
+    <div class="sc-boot-logo">Stevscon<span>.</span></div>
+    <span class="sc-boot-spin"></span>
+    <div class="sc-boot-hint">Abriendo el Social…</div>
+    <div class="sc-boot-error" id="sc-boot-error"></div>
 </div>
 
-<main class="sc-shell">
-    <!-- ============ COLUMNA PRINCIPAL ============ -->
-    <section>
-        <div class="sc-tabs" id="sc-tabs" role="tablist" aria-label="Categorías del Social"></div>
-
-        <!-- Aquí se monta el compositor de admin_post.js (solo staff) -->
-        <div class="sc-composer-slot" id="sc-composer-slot" aria-label="Compositor de publicaciones">
-            <div class="sc-composer-demo sc-demo-only">
-                <span class="sc-av" style="background:#8b5cf6">S</span>
-                <span class="fake-input">¿Qué hay de nuevo en Stevscon?</span>
-                <span class="sc-tag-staff">Staff</span>
-            </div>
-        </div>
-
-        <!-- Aquí vive el feed (demo ahora; el sistema real lo llena) -->
-        <div class="sc-feed" id="sc-feed" aria-live="polite">
-
-            <article class="sc-post sc-demo-only" data-demo-cat="Anuncios">
-                <div class="sc-post-head">
-                    <span class="sc-av" style="background:#8b5cf6">S</span>
-                    <div class="sc-post-who">
-                        <b>Stevscon <svg width="15" height="15" viewBox="0 0 24 24" aria-label="Verificado"><circle cx="12" cy="12" r="10.5" fill="#38bdf8"/><path d="m7.3 12.6 3 3 6.4-6.8" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></b>
-                        <span>@stevscon · hace 5 min</span>
-                    </div>
-                    <span class="sc-tag-staff sc-post-foot">Staff</span>
-                </div>
-                <p class="sc-post-text">Ya está aquí el Social de Stevscon. Los posts los escribe el staff y todo lo que ven aquí es oficial: reacciones en tiempo real, comentarios y respuestas hasta 3 niveles. Bienvenidos.</p>
-                <div class="sc-post-actions">
-                    <button class="sc-act sc-like" type="button" aria-label="Me gusta"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg><span class="n">24</span></button>
-                    <button class="sc-act sc-comment" type="button" aria-label="Comentarios"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg><span class="n">8</span></button>
-                </div>
-            </article>
-
-            <article class="sc-post sc-demo-only" data-demo-cat="General">
-                <div class="sc-post-head">
-                    <span class="sc-av" style="background:#0d9488">K</span>
-                    <div class="sc-post-who">
-                        <b>Karla <svg width="15" height="15" viewBox="0 0 24 24" aria-label="Verificación de Oro"><circle cx="12" cy="12" r="10.5" fill="#f59e0b"/><path d="m7.3 12.6 3 3 6.4-6.8" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></b>
-                        <span>@modkarla · hace 32 min</span>
-                    </div>
-                    <span class="sc-tag-staff sc-post-foot">Staff</span>
-                </div>
-                <p class="sc-post-text">Recordatorio de moderación: todos pueden comentar y reaccionar, pero el respeto no se negocia. Si ves algo fuera de lugar, avísale a cualquier mod.</p>
-                <div class="sc-post-actions">
-                    <button class="sc-act sc-like" type="button" aria-label="Me gusta"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg><span class="n">12</span></button>
-                    <button class="sc-act sc-comment" type="button" aria-label="Comentarios"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg><span class="n">3</span></button>
-                </div>
-            </article>
-
-            <article class="sc-post sc-demo-only" data-demo-cat="Anuncios">
-                <div class="sc-post-head">
-                    <span class="sc-av" style="background:#8b5cf6">S</span>
-                    <div class="sc-post-who">
-                        <b>Stevscon <svg width="15" height="15" viewBox="0 0 24 24" aria-label="Verificado"><circle cx="12" cy="12" r="10.5" fill="#38bdf8"/><path d="m7.3 12.6 3 3 6.4-6.8" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></b>
-                        <span>@stevscon · hace 2 h</span>
-                    </div>
-                    <span class="sc-tag-staff sc-post-foot">Staff</span>
-                </div>
-                <p class="sc-post-text">Nuevo sello de Oro para los perfiles reconocidos. Si creas contenido de Stevscon y quieres el tuyo, revisa tu perfil y habla con el staff.</p>
-                <div class="sc-post-actions">
-                    <button class="sc-act sc-like" type="button" aria-label="Me gusta"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg><span class="n">31</span></button>
-                    <button class="sc-act sc-comment" type="button" aria-label="Comentarios"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg><span class="n">15</span></button>
-                </div>
-            </article>
-
-            <article class="sc-post sc-demo-only" data-demo-cat="General">
-                <div class="sc-post-head">
-                    <span class="sc-av" style="background:#3b82f6">D</span>
-                    <div class="sc-post-who">
-                        <b>Dev <svg width="15" height="15" viewBox="0 0 24 24" aria-label="Verificación de Developer"><circle cx="12" cy="12" r="10.5" fill="#3b82f6"/><path d="m7.3 12.6 3 3 6.4-6.8" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></b>
-                        <span>@stevdev · hace 3 h</span>
-                    </div>
-                    <span class="sc-tag-staff sc-post-foot">Staff</span>
-                </div>
-                <p class="sc-post-text">El bug que duplicaba posts al cambiar de pestaña quedó eliminado. Gracias por los reportes, sigan avisando.</p>
-                <div class="sc-post-actions">
-                    <button class="sc-act sc-like" type="button" aria-label="Me gusta"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg><span class="n">9</span></button>
-                    <button class="sc-act sc-comment" type="button" aria-label="Comentarios"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg><span class="n">2</span></button>
-                </div>
-            </article>
-
-        </div>
-    </section>
-
-    <!-- ============ RAIL DERECHO ============ -->
-    <aside class="sc-rail">
-        <div class="sc-rail-card">
-            <h3>El Social de Stevscon</h3>
-            <p>Los posts los publica solo el staff, así que todo lo que ves aquí es oficial.</p>
-            <p>Todos pueden leer, reaccionar y comentar. Las respuestas llegan a 3 niveles y de ahí en adelante, ping @handler.</p>
-        </div>
-        <div class="sc-rail-card">
-            <h3>Verificaciones</h3>
-            <div class="sc-vf-row"><span class="sc-vf-dot" style="background:#38bdf8"></span><b>Clásico</b><span>— el sello oficial</span></div>
-            <div class="sc-vf-row"><span class="sc-vf-dot" style="background:#ef4444"></span><b>CC</b><span>— creadores de contenido</span></div>
-            <div class="sc-vf-row"><span class="sc-vf-dot" style="background:#22c55e"></span><b>Mods</b><span>— moderación</span></div>
-            <div class="sc-vf-row"><span class="sc-vf-dot" style="background:#3b82f6"></span><b>Developers</b><span>— equipo técnico</span></div>
-            <div class="sc-vf-row"><span class="sc-vf-dot" style="background:#f59e0b"></span><b>Oro</b><span>— reconocidos</span></div>
-        </div>
-        <div class="sc-rail-card">
-            <h3>Rutas del Social</h3>
-            <p>Cada post, perfil y categoría tiene su propia ruta — compártela y se abre directo.</p>
-            <a class="sc-link" href="/social/">/social/</a>
-            <a class="sc-link" href="/social/">/social/post/{postId}</a>
-            <a class="sc-link" href="/social/">/social/u/{handler}</a>
-            <a class="sc-link" href="/social/">/social/c/{categoría}</a>
-        </div>
-    </aside>
-</main>
-
-<footer class="sc-footer">
-    <b>Stevscon.com</b> · Social — posts del staff, comentarios de todos. © 2026
-</footer>
-
-<!-- ====== FIREBASE (compat, igual que tu sistema) ====== -->
+<!-- ====== FIREBASE (compat, el mismo de tu sistema) ====== -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-app.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-auth.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-database.min.js"></script>
 <script>
-    /* ============================================================
-       >>> PEGA AQUÍ TU CONFIG <<<
-       Copia el MISMO objeto firebaseConfig de tu index principal.
-       ============================================================ */
+    /* >>> PEGA AQUÍ TU CONFIG <<< — el MISMO firebaseConfig de tu index principal */
     window.StevsconFirebaseConfig = {
         apiKey: "PEGA_AQUI_TU_API_KEY",
         authDomain: "stevscon-protocole-base.firebaseapp.com",
@@ -278,8 +81,9 @@
     catch (e) { console.warn('[Social] Firebase no inicializado:', e && e.message); }
 </script>
 
-<!-- ====== SISTEMA SOCIAL STEVSCON (mismo orden que el index principal,
-     pero con rutas ABSOLUTAS para que los deep links no rompan) ====== -->
+<!-- ====== TU STACK REAL (mismas rutas y orden que tu index; las rutas son ABSOLUTAS
+     para que los deep links no las rompan. Si en tu index alguna ruta es distinta,
+     copia la de allá) ====== -->
 <script src="/social/manage/output/system/numbers.js?v=2"></script>
 <script src="/social/manage/output/advanced_system/utils.js?v=5"></script>
 <script src="/social/manage/output/advanced_system/verified.js?v=2"></script>
@@ -293,235 +97,94 @@
 <script src="/social/manage/output/edit/edit_comment/remove.js?v=3"></script>
 <script src="/social/manage/output/system/profiles_show.js?v=6"></script>
 <script src="/social/manage/output/advanced_system/admin_post.js?v=4"></script>
-<!-- Coordinadores: pestaña de entrada + página del feed -->
-<script defer src="/social/manage/posts/category_social.js?v=2"></script>
-<script defer src="/social/manage/posts/category_posts.js?v=2"></script>
+<!-- EL MOTOR: category_posts.js monta la página Social completa.
+     Ruta corregida: tus files viven en /social/manage/, no en /social/manage/posts/ -->
+<script src="/social/manage/category_posts.js"></script>
 
 <script>
 (function () {
     'use strict';
     /* ============================================================
-       STEVSCON — social/social.html · ARRANQUE + RUTAS
-       Rutas: /social/post/{id} · /social/u/{handler} · /social/c/{cat}
-       Fallback con hash: /social/#/post/{id}
+       Arranque de social.html:
+       1) Espera al motor (category_posts.js + admin_post.js)
+       2) Abre el Social solo -> SCSOC.pages.open()
+       3) sc:social-closed -> regreso al inicio (web de varios HTML)
+       4) Deep links: #post/{id} y #u/{handler}
        ============================================================ */
+    var boot = document.getElementById('sc-boot');
 
-    function notify(msg) {
-        if (window.SCSOC && SCSOC.toast) return SCSOC.toast(msg);
-        var t = document.createElement('div');
-        t.className = 'sc-toast';
-        t.textContent = msg;
-        document.body.appendChild(t);
-        setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 2300);
+    function coreReady() {
+        return !!(window.SCSOC && window.SCSOC.pages && typeof window.SCSOC.pages.open === 'function' &&
+                  window.SCSOC.posts && typeof window.SCSOC.posts.mountFeed === 'function');
     }
 
-    /* ---------- sesión en la topbar ---------- */
-    function wireAuth() {
-        if (!window.firebase || !firebase.auth) return;
-        try {
-            firebase.auth().onAuthStateChanged(function (u) {
-                var slot = document.getElementById('sc-auth-slot');
-                if (!slot) return;
-                if (!u) {
-                    slot.innerHTML = '<a class="sc-btn" href="/">Entrar</a>';
-                    return;
-                }
-                function paint(d) {
-                    slot.innerHTML = '';
-                    var name = (d && d._name) || u.email || 'Cuenta';
-                    var av = (d && d._avatar) || '';
-                    var chip = document.createElement('span');
-                    chip.className = 'sc-chip';
-                    if (/^data:image/i.test(av)) {
-                        var i = document.createElement('img');
-                        i.src = av; i.alt = '';
-                        chip.appendChild(i);
-                    } else {
-                        var a = document.createElement('span');
-                        a.className = 'sc-mini-av';
-                        a.textContent = (name.charAt(0) || '?').toUpperCase();
-                        chip.appendChild(a);
-                    }
-                    var b = document.createElement('b');
-                    b.textContent = name;
-                    chip.appendChild(b);
-                    slot.appendChild(chip);
-                    if (d && d._handler) {
-                        var p = document.getElementById('sc-nav-profile');
-                        if (p) p.setAttribute('href', '/social/u/' + d._handler);
-                    }
-                }
-                if (window.SCSOC && SCSOC.users) SCSOC.users.get(u.uid, paint);
-                else paint(null);
-            });
-        } catch (e) { console.warn('[Social] auth:', e && e.message); }
-    }
-
-    /* ---------- tabs de categorías ---------- */
-    var tabsEl = document.getElementById('sc-tabs');
-    function buildTabs(list) {
-        tabsEl.innerHTML = '';
-        list.forEach(function (c, i) {
-            var b = document.createElement('button');
-            b.type = 'button';
-            b.className = 'sc-tab' + (i === 0 ? ' active' : '');
-            b.setAttribute('data-cat', c);
-            b.setAttribute('role', 'tab');
-            b.textContent = c;
-            tabsEl.appendChild(b);
-        });
-    }
-    buildTabs(['Todo', 'General', 'Anuncios', 'Actualizaciones', 'Comunidad']);
-
-    function setActiveTab(cat) {
-        var tabs = tabsEl.querySelectorAll('.sc-tab');
-        for (var i = 0; i < tabs.length; i++) {
-            var on = tabs[i].getAttribute('data-cat').toLowerCase() === String(cat).toLowerCase();
-            tabs[i].classList[on ? 'add' : 'remove']('active');
+    function fail() {
+        var box = document.getElementById('sc-boot-error');
+        if (box) {
+            box.textContent = 'El Social no pudo arrancar. Revisa que estos files existan y estén en este orden: ' +
+                'numbers.js, utils.js, verified.js, likes.js, comments.js, responses.js, edit (post y comment), ' +
+                'profiles_show.js, admin_post.js y category_posts.js.';
+            box.style.display = 'block';
         }
+        var spin = boot.querySelector('.sc-boot-spin');
+        var hint = boot.querySelector('.sc-boot-hint');
+        if (spin) spin.style.display = 'none';
+        if (hint) hint.textContent = 'Algo falló:';
     }
-    function applyDemoFilter(cat) {
-        var cards = document.querySelectorAll('#sc-feed .sc-demo-only[data-demo-cat]');
-        for (var i = 0; i < cards.length; i++) {
-            var show = (cat === 'Todo') || (cards[i].getAttribute('data-demo-cat').toLowerCase() === String(cat).toLowerCase());
-            cards[i].style.display = show ? '' : 'none';
-        }
-    }
-    tabsEl.addEventListener('click', function (e) {
-        var t = e.target.closest('.sc-tab');
-        if (!t) return;
-        var cat = t.getAttribute('data-cat');
-        setActiveTab(cat);
-        applyDemoFilter(cat);
-        try { document.dispatchEvent(new CustomEvent('sc:set-category', { detail: { category: cat } })); } catch (err) {}
-    });
 
-    /* ---------- acciones del feed de demostración ---------- */
-    document.getElementById('sc-feed').addEventListener('click', function (e) {
-        var like = e.target.closest('.sc-like');
-        if (like) {
-            var n = like.querySelector('.n');
-            var on = like.classList.toggle('liked');
-            n.textContent = Math.max(0, (parseInt(n.textContent, 10) || 0) + (on ? 1 : -1));
+    /* 1) + 2) esperar al motor y abrir */
+    var tries = 0;
+    (function waitCore() {
+        if (coreReady()) {
+            try { window.SCSOC.pages.open(); }
+            catch (e) { console.error('[Social] open():', e); fail(); return; }
+            if (boot) boot.style.display = 'none';
+            route();
             return;
         }
-        var c = e.target.closest('.sc-comment');
-        if (c) notify('Vista de ejemplo — los comentarios reales llegan con el sistema montado.');
-    });
+        if (++tries > 75) return fail();   /* 15 s y nada -> error visible */
+        setTimeout(waitCore, 200);
+    })();
 
-    /* ---------- ROUTER: /social/... y #/... ---------- */
-    function segmentsFrom(p) {
-        var seg = String(p || '').split('/').filter(Boolean).map(decodeURIComponent);
-        if (seg[0] === 'social') seg = seg.slice(1);
-        return seg;
-    }
-    function routeFromSegments(seg) {
-        if (seg[0] === 'post' && seg[1]) return { type: 'post', id: seg[1] };
-        if (seg[0] === 'u' && seg[1]) return { type: 'user', q: seg[1].toLowerCase() };
-        if (seg[0] === 'c' && seg[1]) return { type: 'cat', name: seg[1] };
-        return null;
-    }
-    function boot() {
-        var r = routeFromSegments(segmentsFrom(location.pathname));
-        if (!r && location.hash && location.hash.indexOf('#/') === 0) {
-            r = routeFromSegments(segmentsFrom(location.hash.slice(1)));
-        }
-        if (!r) return;
-        whenReady(function () {
-            if (r.type === 'post') openPost(r.id);
-            else if (r.type === 'user') resolveUser(r.q, openProfile);
-            else if (r.type === 'cat') setCategory(r.name);
-        });
+    /* 3) Volver / Escape cierran la capa -> URL cambia de vuelta al inicio */
+    document.addEventListener('sc:social-closed', function () { location.href = '/'; });
+
+    /* 4) Deep links */
+    function route() {
+        var h = (location.hash || '').replace(/^#\/?/, '');
+        if (h.indexOf('post/') === 0) return openPost(h.slice(5));
+        if (h.indexOf('u/') === 0) return openUser(h.slice(2).toLowerCase());
     }
 
-    function whenReady(cb) {
-        var n = 0;
-        (function tick() {
-            if (window.SCSOC && window.SCSOC.posts) return cb();
-            if (++n > 120) return cb();          /* 12 s y sigue igual → modo degradado */
-            setTimeout(tick, 100);
-        })();
-    }
-
-    /* abre el post y lo ilumina (busca mientras el feed carga) */
     function openPost(id) {
-        var tries = 0;
+        if (!id) return;
+        var n = 0;
         (function find() {
             var el = document.querySelector('[data-scsoc-post="' + id + '"], [data-post-id="' + id + '"]');
             if (el) {
                 el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                el.classList.add('sc-highlight');
-                setTimeout(function () { el.classList.remove('sc-highlight'); }, 2600);
+                el.classList.add('scsoc-post-flash');
+                setTimeout(function () { el.classList.remove('scsoc-post-flash'); }, 2600);
                 return;
             }
-            if (++tries < 30) return setTimeout(find, 500);
-            notify('Ese post no existe o fue eliminado');
+            if (++n < 40) setTimeout(find, 400);   /* el feed carga en tiempo real */
         })();
     }
 
-    /* handler -> uid usando el nodo handlers/{handler} y abre el perfil */
-    function resolveUser(q, cb) {
-        var h = String(q || '').toLowerCase();
-        try {
-            if (window.firebase && firebase.database) {
-                firebase.database().ref('handlers/' + h).once('value').then(function (s) {
-                    cb(s.val() || q);
-                }).catch(function () { cb(q); });
-                return;
-            }
-        } catch (e) {}
-        cb(q);
-    }
-    function openProfile(uid) {
-        /* dispara el flujo existente de profiles_show.js (data-scsoc-profile) */
-        var probe = document.createElement('span');
-        probe.style.display = 'none';
-        probe.setAttribute('data-scsoc-profile', uid);
-        document.body.appendChild(probe);
-        probe.click();
-        setTimeout(function () { if (probe.parentNode) probe.parentNode.removeChild(probe); }, 400);
+    function openUser(q) {
+        if (!q || !window.firebase || !firebase.database) return;
+        firebase.database().ref('handlers/' + q).once('value').then(function (s) {
+            var uid = s.val() || q;
+            var probe = document.createElement('span');
+            probe.style.display = 'none';
+            probe.setAttribute('data-scsoc-profile', uid);
+            document.body.appendChild(probe);
+            probe.click();
+            setTimeout(function () { if (probe.parentNode) probe.parentNode.removeChild(probe); }, 400);
+        }).catch(function () {});
     }
 
-    function setCategory(name) {
-        var tabs = tabsEl.querySelectorAll('.sc-tab');
-        for (var i = 0; i < tabs.length; i++) {
-            if (tabs[i].getAttribute('data-cat').toLowerCase() === name.toLowerCase()) {
-                tabs[i].click();
-                return;
-            }
-        }
-        notify('Esa categoría no existe (aún)');
-    }
-
-    /* ---------- MODO REAL: se activa solo cuando el sistema responde ---------- */
-    function systemReady() { return !!(window.SCSOC && window.SCSOC.posts && window.SCSOC.posts.publish); }
-    function enterRealMode() {
-        if (enterRealMode.done) return;
-        enterRealMode.done = true;
-        var demos = document.querySelectorAll('.sc-demo-only');
-        for (var i = 0; i < demos.length; i++) demos[i].parentNode.removeChild(demos[i]);
-        var b = document.getElementById('sc-demo-banner');
-        if (b) b.parentNode.removeChild(b);
-        var cats = ['Todo'];
-        try { (window.SCSOC.categories ? SCSOC.categories() : []).forEach(function (c) { cats.push(c); }); } catch (e) {}
-        buildTabs(cats);
-    }
-    var checks = 0;
-    (function watchReal() {
-        if (systemReady()) return enterRealMode();
-        if (++checks > 60) return;            /* 30 s sin sistema → se queda la vista previa */
-        setTimeout(watchReal, 500);
-    })();
-
-    /* ---------- entrada desde 404.html (deep links en GitHub Pages) ---------- */
-    try {
-        var back = sessionStorage.getItem('sc-404');
-        if (back) { sessionStorage.removeItem('sc-404'); history.replaceState(null, '', back); }
-    } catch (e) {}
-
-    wireAuth();
-    boot();
-    window.addEventListener('hashchange', boot);
+    window.addEventListener('hashchange', route);
 })();
 </script>
 </body>
