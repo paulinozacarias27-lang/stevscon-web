@@ -1,20 +1,21 @@
 /**
  * ====
- * STEVSCON.COM — social/manage/output/advanced_system/utils.js (v4)
+ * STEVSCON.COM — social/manage/output/advanced_system/utils.js (v2)
  * AYUDANTE SUPREMO del Social. Debe ser el PRIMER file del social
  * en cargarse en el index (después de numbers.js).
  *
- * v4: NUEVO SCSOC.users.once() — lectura UNA sola vez. get() queda
- *     solo para quien quiere datos EN VIVO (userHead). Antes publish
- *     y create usaban get() y sus callbacks quedaban pegados a
- *     users/{uid} para siempre: cada cambio de status/perfil
- *     re-disparaba el callback y DUPLICABA posts/comentarios.
- * v3: userHead monta un hueco único que verified.js llena en vivo
- *     (insignia al lado del nombre, 5 tipos, tiempo real).
- * v2: adaptUser lee avatarUrl (como guarda Profiles) y users/{uid}/
- *     status.state (objeto de status_online.js); avatarEl acepta
- *     Base64 Y URLs http(s).
- * ==== */
+ * Expone el namespace global `SCSOC`:
+ *   CONFIG (rutas Firebase + límites) · IDs de 16 dígitos ·
+ *   escape anti-XSS · texto con pings @ · "hace 5 min" ·
+ *   avatares Base64/GIF + circulito de status · nombre + verificado ·
+ *   cache LIVE de usuarios (get vivo + once de una lectura) ·
+ *   staff (owner + elegidos) · hooks (los demás files se enganchan
+ *   solos) · negación a visitantes.
+ * v2: SCSOC.users.once() — lecturas de UNA sola vez para crear
+ *   posts/comentarios/respuestas sin dejar listeners vivos
+ *   (la vacuna anti-duplicados que usan admin_post v3 y responses v4).
+ * ====
+ */
 (function (window, document) {
     'use strict';
 
@@ -92,7 +93,7 @@
         return frag;
     };
 
-    /* ==== INSIGNIA VERIFICADO (respaldo morado si verified.js no cargó) ==== */
+    /* ==== INSIGNIA VERIFICADO (estilo X, morado Stevscon) ==== */
     SCSOC.verifiedBadge = function (px) {
         const s = SCSOC.el('span', 'display:inline-flex;flex:none;');
         s.title = 'Verificado';
@@ -103,31 +104,21 @@
         return s;
     };
 
-    /* ==== AVATAR (Base64/GIF o URL http) + circulito de status ==== */
-    const AVATAR_OK = /^(data:image\/|https?:\/\/)/i;
+    /* ==== AVATAR (Base64/GIF) + circulito de status ==== */
     const STATUS_COLORS = { online: '#22c55e', inactive: '#f59e0b', busy: '#ef4444', offline: '#6b7280' };
-
-    function letterEl(size, name) {
-        const f = SCSOC.el('span', 'width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center;' +
-            'background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;font-weight:800;user-select:none;' +
-            'font-size:' + Math.round(size * 0.42) + 'px;font-family:Inter,sans-serif;');
-        f.textContent = (name ? String(name).trim().charAt(0).toUpperCase() : '?');
-        return f;
-    }
-
     SCSOC.avatarEl = function (u, size, status) {
         size = size || 40;
         const wrap = SCSOC.el('span', 'position:relative;display:inline-flex;width:' + size + 'px;height:' + size + 'px;flex:none;');
-        if (u && u._avatar && AVATAR_OK.test(u._avatar)) {
+        if (u && u._avatar && /^data:image/i.test(u._avatar)) {
             const img = SCSOC.el('img', 'width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;background:var(--bg-hover,#221b33);');
             img.src = u._avatar; img.alt = 'Avatar'; img.draggable = false;
-            img.referrerPolicy = 'no-referrer';
-            img.onerror = function () {
-                if (img.parentNode) img.parentNode.replaceChild(letterEl(size, u && u._name), img);
-            };
             wrap.appendChild(img);
         } else {
-            wrap.appendChild(letterEl(size, u && u._name));
+            const f = SCSOC.el('span', 'width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center;' +
+                'background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;font-weight:800;user-select:none;' +
+                'font-size:' + Math.round(size * 0.42) + 'px;font-family:Inter,sans-serif;');
+            f.textContent = (u && u._name ? u._name.trim().charAt(0).toUpperCase() : '?');
+            wrap.appendChild(f);
         }
         const c = STATUS_COLORS[status];
         if (c) {
@@ -139,39 +130,22 @@
     };
 
     /* ==== CACHE LIVE DE USUARIOS ====
-     * ADAPTADOR: entiende cómo guarda Profiles (avatarUrl) y cómo
-     * guarda status_online.js (users/{uid}/status = {state, manual, updated}). */
+     * ADAPTADOR: si tu nodo users/{uid} guarda estos datos en otra ruta,
+     * cambia SOLO la función de abajo y todo el social se entera. */
     const _ucache = {};
     function adaptUser(raw) {
         raw = raw || {};
         const p = raw.profile || {};
-        const m = raw.media || {};
-
-        const avatar = raw.avatar || raw.avatarUrl || p.avatar || p.avatarUrl ||
-            m.avatar || m.avatarUrl || '';
-
-        let status = '';
-        const st = raw.status;
-        if (st && typeof st === 'object') status = st.state || '';
-        else if (typeof st === 'string') status = st;
-        if (!status) {
-            const on = raw.online;
-            if (on && typeof on === 'object') status = on.state || '';
-            else if (typeof on === 'string') status = on;
-        }
-        if (!status) status = raw.presence || '';
-
         return {
-            _name: raw.name || raw.displayName || raw.username || p.name || p.username || 'Usuario',
-            _handler: String(raw.handler || raw.tag || p.handler || p.tag || '').toLowerCase().replace(/^@/, ''),
-            _avatar: String(avatar),
+            _name: raw.name || raw.displayName || raw.username || p.name || 'Usuario',
+            _handler: String(raw.handler || raw.tag || p.handler || '').toLowerCase().replace(/^@/, ''),
+            _avatar: raw.avatar || p.avatar || (raw.media && raw.media.avatar) || '',
             _verified: !!(raw.verified || p.verified),
-            _status: status
+            _status: raw.status || (raw.online && raw.online.state) || raw.presence || ''
         };
     }
     SCSOC.users = {
-        /* get = SUSCRIPCIÓN EN VIVO (solo para UI que se refresca:
-         * userHead, avatares del composer). NUNCA para escribir datos. */
+        /* get: suscripción VIVA (avatar, nombre, status en pantalla) */
         get: function (uid, cb) {
             if (!uid) { if (cb) cb(null); return null; }
             const c = _ucache[uid] || (_ucache[uid] = { cbs: [], ready: false, data: null, on: false });
@@ -185,30 +159,22 @@
             });
             return null;
         },
-        /* NUEVO v4: lectura de UNA sola vez (NO queda suscrito).
-         * Para publish / create / cualquier escritura a Firebase.
-         * 1 llamada = 1 callback = 1 escritura. Sin fantasmas. */
+        /* once: UNA sola lectura (crear posts/comentarios/respuestas
+         * sin dejar listeners vivos = cero duplicados) */
         once: function (uid, cb) {
             if (!uid) { if (cb) cb(null); return; }
             const c = _ucache[uid];
             if (c && c.ready) { if (cb) cb(c.data); return; }
-            SCSOC.db().ref(CONFIG.USERS).child(uid).once('value').then(function (s) {
+            SCSOC.db().ref(CONFIG.USERS).child(uid).once('value', function (s) {
                 const d = adaptUser(s.val());
-                if (!_ucache[uid]) {
-                    _ucache[uid] = { cbs: [], ready: true, data: d, on: false };
-                } else {
-                    _ucache[uid].data = d;
-                    _ucache[uid].ready = true;
-                }
+                if (c) { c.data = d; c.ready = true; }
                 if (cb) cb(d);
-            }).catch(function () { if (cb) cb(null); });
+            }, function () { if (cb) cb(null); });
         }
     };
 
     /* ==== CABEZA DE USUARIO: avatar + nombre + verificado + @handler ====
-     * Cliqueable: lleva data-scsoc-profile -> profiles_show.js abre el panel.
-     * v3: el hueco de la insignia lo llena verified.js EN VIVO desde
-     * social/verified/{uid} (5 tipos). Sin verified.js, usa el respaldo. */
+     * Cliqueable: lleva data-scsoc-profile -> profiles_show.js abre el panel. */
     SCSOC.userHead = function (uid, size, opts) {
         opts = opts || {};
         const head = SCSOC.el('span', 'display:inline-flex;align-items:center;gap:10px;min-width:0;flex:1;cursor:pointer;');
@@ -216,10 +182,6 @@
         const avSlot = SCSOC.el('span', 'display:inline-flex;flex:none;');
         const line = SCSOC.el('span', 'display:inline-flex;align-items:center;gap:6px;min-width:0;flex-wrap:wrap;');
         head.appendChild(avSlot); head.appendChild(line);
-
-        const hasVerified = !!(SCSOC.verified && typeof SCSOC.verified.mount === 'function');
-        const vSlot = hasVerified ? SCSOC.verified.mount(uid, line, opts.badgeSize || 15) : null;
-
         SCSOC.users.get(uid, function (u) {
             avSlot.innerHTML = '';
             avSlot.appendChild(SCSOC.avatarEl(u, size, u ? u._status : ''));
@@ -227,8 +189,7 @@
             const nm = SCSOC.el('b', 'color:var(--text-main,#f8fafc);font-size:' + (opts.nameSize || 14.5) + 'px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px;');
             nm.textContent = u ? u._name : 'Usuario';
             line.appendChild(nm);
-            if (vSlot) line.appendChild(vSlot);
-            else if (u && u._verified) line.appendChild(SCSOC.verifiedBadge(opts.badgeSize || 15));
+            if (u && u._verified) line.appendChild(SCSOC.verifiedBadge(opts.badgeSize || 15));
             if (u && u._handler) {
                 const h = SCSOC.el('span', 'color:var(--text-muted,#94a3b8);font-size:' + (opts.handlerSize || 12) + 'px;white-space:nowrap;');
                 h.textContent = '@' + u._handler;
@@ -259,7 +220,9 @@
     };
     SCSOC.isStaff = function (cb) { SCSOC.staff.role(function (r) { if (cb) cb(!!r); }); };
 
-    /* ==== VISITANTES: negación (se conecta con errors.js) ==== */
+    /* ==== VISITANTES: negación (se conecta con errors.js) ====
+     * errors.js puede escuchar 'sc:social-deny' y mostrar SU panel;
+     * si hace SCSOC.denySilent = true, el toast de respaldo se apaga. */
     SCSOC.toast = function (msg) {
         const t = SCSOC.el('div');
         t.textContent = msg;
@@ -321,5 +284,5 @@
         full: function (n) { return String(n || 0); }
     };
 
-    console.log('[Stevscon] utils.js listo (v4) — ayudante supremo + users.once() anti-duplicados.');
+    console.log('[Stevscon] utils.js listo (v2) — ayudante supremo del Social montado (con users.once).');
 })(window, document);
