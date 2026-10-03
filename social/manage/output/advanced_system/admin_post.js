@@ -1,18 +1,13 @@
 /**
  * ====
- * STEVSCON.COM — social/manage/output/advanced_system/admin_post.js (v2)
+ * STEVSCON.COM — social/manage/output/advanced_system/admin_post.js (v3)
  * SISTEMA DE POSTEO — solo el STAFF publica (owner + elegidos).
  *  - Composer con contador "0 / 15.000" y categoría
  *  - Feed en TIEMPO REAL (nada de refrescar)
- *  - v2 FIX ANTI-DUPLICADOS:
- *      1) publish usa SCSOC.users.once() (antes get() dejaba el
- *         callback pegado a users/{uid} y cada cambio de status/
- *         perfil lo re-disparaba -> post duplicado con ID nuevo).
- *      2) Candado anti-repetición: mismo autor + mismo texto en
- *         menos de 10s = bloqueado.
- *      3) Feed con UNA sola instancia de listeners por host y
- *         dedupe DOBLE (mapa por clave + atributo en el DOM).
- *      4) Las tarjetas liberan su listener de contadores al borrarse.
+ *  - v2 FIX ANTI-DUPLICADOS: users.once() + candados + dedupe doble.
+ *  - v3 FIX: el 💬 del post ahora muestra COMENTARIOS + RESPUESTAS
+ *    (antes solo contaba comentarios directos y las respuestas no
+ *    sumaban nunca).
  *  - likes.js / comments.js / responses.js se enganchan SOLOS vía hooks
  * ==== */
 (function (window, document) {
@@ -47,11 +42,7 @@
                 return;
             }
 
-            /* Candado 2 (LA RAÍZ del bug): lectura de UNA sola vez.
-             * Antes: users.get() dejaba este callback suscrito a
-             * users/{uid} para siempre y cada cambio de status
-             * (cambio de pestaña, inactivo, editar perfil...) lo
-             * volvía a disparar -> mismo post, ID nuevo, duplicado. */
+            /* Candado 2 (LA RAÍZ del bug): lectura de UNA sola vez. */
             const userOnce = SCSOC.users.once || SCSOC.users.get;
             userOnce(auth.uid, function (u) {
                 const id = SCSOC.ids.make();
@@ -187,11 +178,13 @@
             txt.appendChild(SCSOC.richText(p.text));
         }
 
-        /* contadores en vivo */
+        /* contadores en vivo (v3: 💬 = comentarios + respuestas) */
         const offCnt = SCSOC.counters.watch('post', post.id, function (v) {
+            const total = (Number(v.comments) || 0) + (Number(v.responses) || 0);
             likeCnt.textContent = SCSOC.nums.fmt(v.likes);
-            comCnt.textContent = SCSOC.nums.fmt(v.comments);
+            comCnt.textContent = SCSOC.nums.fmt(total);
             likeBtn.title = SCSOC.nums.full(Number(v.likes) || 0) + ' me gusta';
+            comBtn.title = SCSOC.nums.full(total) + ' comentarios';
         });
 
         paint(post);
@@ -261,5 +254,5 @@
         return host.__scsocFeedOff;
     };
 
-    console.log('[Stevscon] admin_post.js listo (v2) — posteo del staff ANTI-DUPLICADOS en tiempo real.');
+    console.log('[Stevscon] admin_post.js listo (v3) — posteo del staff en tiempo real, 💬 = comentarios + respuestas.');
 })(window, document);
