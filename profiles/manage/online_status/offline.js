@@ -44,7 +44,7 @@
 
     /* ==== DETECTOR DE INACTIVIDAD (5 minutos) ==== */
     SCST.auto = SCST.auto || (function () {
-        const LIMIT_MS = 5 * 60 * 1000; // 5 minutos sin actividad
+        const LIMIT_MS = 15 * 60 * 1000; // 15 minutos sin actividad
         const EVENTS = ['pointermove', 'pointerdown', 'keydown', 'wheel', 'touchstart', 'scroll'];
         let last = Date.now();
         let away = false;

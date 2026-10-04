@@ -70,10 +70,10 @@
 
     function fallbackDef() { return def(cached.state) || def('offline') || (SCST.states[0] || null); }
 
-    function effectiveWant() {
+   function effectiveWant() {
         const m = cached.manual || 'online';
         if (m === 'busy' || m === 'offline') return m;
-        if (SCST.auto && SCST.auto.isAway && SCST.auto.isAway()) return 'offline';
+        if (SCST.auto && SCST.auto.isAway && SCST.auto.isAway()) return 'inactive';
         return m;
     }
 
@@ -269,14 +269,14 @@
         statusRef.update({ state: want, updated: TS() }).catch(function () {});
     }
 
-    function onAuto(e) {
+   function onAuto(e) {
         if (!statusRef) return;
         const t = (e.detail && e.detail.type) || '';
         const m = cached.manual || 'online';
-        if (m === 'busy' || m === 'offline') return;
-        if (t === 'away' && cached.state !== 'offline') {
-            statusRef.update({ state: 'offline', updated: TS() }).catch(function () {});
-        } else if (t === 'back' && cached.state === 'offline') {
+        if (m === 'busy' || m === 'offline') return;   // manual NUNCA se sobreescribe
+        if (t === 'away' && cached.state !== 'inactive') {
+            statusRef.update({ state: 'inactive', updated: TS() }).catch(function () {});
+        } else if (t === 'back' && (cached.state === 'inactive' || cached.state === 'offline')) {
             statusRef.update({ state: m, updated: TS() }).catch(function () {});
         }
     }
@@ -411,7 +411,7 @@
             waited += 100;
             if (waited >= 10000) {
                 clearInterval(hookPoll); hookPoll = null;
-                console.error('[Stevscon Status] ui_profile.js no apareció en 10s. Revisa su ruta/script en el index.');
+                console.log('[Stevscon Status] Sin tarjeta de Profiles aquí (normal en social.html). Solo mantengo tu estado en vivo.');
             }
         }, 100);
     }

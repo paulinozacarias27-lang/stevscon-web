@@ -121,12 +121,11 @@
         return slot;
     }
 
-    /* ==== PANEL DE PERFIL: insignia junto al nombre + barra staff abajo ==== */
-    function ensureSlotAfterName(cardHost, slot) {
+   function ensureSlotAfterName(cardHost, slot) {
         if (!cardHost || !slot || slot.isConnected) return;
         const nameEl = cardHost.querySelector('h3');   // el nombre grande de la tarjeta
-        if (!nameEl || !nameEl.parentNode) return;
-        nameEl.parentNode.insertBefore(slot, nameEl.nextSibling);
+        if (!nameEl) return;
+        nameEl.appendChild(slot);   // DENTRO del h3 -> queda AL LADO del nombre, en la misma línea
     }
 
     SCSOC.onHook('profilePanel', function (uid, modal, cardHost) {

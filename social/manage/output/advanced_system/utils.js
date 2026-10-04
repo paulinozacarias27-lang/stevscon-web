@@ -220,8 +220,10 @@
         }
     };
 
-    /* ==== CABEZA DE USUARIO: avatar + nombre + verificado + @handler ====
-     * Cliqueable: lleva data-scsoc-profile -> profiles_show.js abre el panel. */
+   /* ==== CABEZA DE USUARIO: avatar + nombre + verificado + @handler ====
+     * Cliqueable: lleva data-scsoc-profile -> profiles_show.js abre el panel.
+     * v4: la INSIGNIA REAL vive en social/verified/{uid} (verified.js).
+     * Se monta el hueco SIEMPRE y verified.js la pone/quita EN VIVO. */
     SCSOC.userHead = function (uid, size, opts) {
         opts = opts || {};
         const head = SCSOC.el('span', 'display:inline-flex;align-items:center;gap:10px;min-width:0;flex:1;cursor:pointer;');
@@ -236,7 +238,13 @@
             const nm = SCSOC.el('b', 'color:var(--text-main,#f8fafc);font-size:' + (opts.nameSize || 14.5) + 'px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px;');
             nm.textContent = u ? u._name : 'Usuario';
             line.appendChild(nm);
-            if (u && u._verified) line.appendChild(SCSOC.verifiedBadge(opts.badgeSize || 15));
+            /* Insignia de social/verified (los 5 tipos, en tiempo real).
+             * Respaldo: la vieja users/{uid}/verified por si verified.js no cargó. */
+            if (SCSOC.verified && typeof SCSOC.verified.mount === 'function') {
+                SCSOC.verified.mount(uid, line, opts.badgeSize || 15);
+            } else if (u && u._verified) {
+                line.appendChild(SCSOC.verifiedBadge(opts.badgeSize || 15));
+            }
             if (u && u._handler) {
                 const h = SCSOC.el('span', 'color:var(--text-muted,#94a3b8);font-size:' + (opts.handlerSize || 12) + 'px;white-space:nowrap;');
                 h.textContent = '@' + u._handler;
