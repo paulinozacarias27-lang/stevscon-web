@@ -92,6 +92,15 @@
     } catch (e) { console.warn('[Social] Firebase config:', e && e.message); }
 </script>
 
+<!-- output primero (UI), buttons después (Firebase), coordinador AL FINAL -->
+  <script defer src="accounts/manage/settings/output/ui_settings.js?v=7"></script>
+  <script defer src="accounts/manage/settings/output/ui_preferences.js?v=1"></script>
+  <script defer src="accounts/manage/settings/output/ui_privacy.js?v=1"></script>
+  <script defer src="accounts/manage/settings/output/ui_data.js?v=2"></script>
+  <script defer src="accounts/manage/settings/buttons/set_preferences.js?v=1"></script>
+  <script defer src="accounts/manage/settings/buttons/set_privacy.js?v=1"></script>
+  <script defer src="accounts/manage/settings/buttons/set_data.js?v=1"></script>
+
 <!-- ==== TU STACK REAL (mismas rutas ABSOLUTAS, orden y versiones que tu index) ==== -->
 <script src="/social/manage/output/system/numbers.js?v=2"></script>
 <script src="/social/manage/output/advanced_system/utils.js?v=6"></script>
