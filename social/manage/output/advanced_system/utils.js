@@ -219,36 +219,50 @@
             }, function () { if (cb) cb(null); });
         }
     };
-
-   /* ==== CABEZA DE USUARIO: avatar + nombre + verificado + @handler ====
+/* ==== CABEZA DE USUARIO: avatar + nombre + verificado + @handler ====
      * Cliqueable: lleva data-scsoc-profile -> profiles_show.js abre el panel.
-     * v4: la INSIGNIA REAL vive en social/verified/{uid} (verified.js).
-     * Se monta el hueco SIEMPRE y verified.js la pone/quita EN VIVO. */
+     * v5: CONSTRUCCIÓN FIJA — nombre, hueco de insignia y @handler se crean
+     * UNA sola vez; los repintados de users/{uid} (status, avatar...) solo
+     * actualizan textos. La insignia vive en su propio slot con watcher
+     * propio -> NUNCA la borra un repintado y sale AL INSTANTE aunque el
+     * card sea recién creado. */
     SCSOC.userHead = function (uid, size, opts) {
         opts = opts || {};
         const head = SCSOC.el('span', 'display:inline-flex;align-items:center;gap:10px;min-width:0;flex:1;cursor:pointer;');
         head.dataset.scsocProfile = uid;
+
         const avSlot = SCSOC.el('span', 'display:inline-flex;flex:none;');
         const line = SCSOC.el('span', 'display:inline-flex;align-items:center;gap:6px;min-width:0;flex-wrap:wrap;');
         head.appendChild(avSlot); head.appendChild(line);
+
+        const nm = SCSOC.el('b', 'color:var(--text-main,#f8fafc);font-size:' + (opts.nameSize || 14.5) + 'px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px;');
+        nm.textContent = 'Usuario';
+        line.appendChild(nm);
+
+        /* HUECO de la insignia — se crea UNA vez. verified.js lo llena
+         * en vivo (social/verified/{uid}). Si verified.js no cargó,
+         * respaldo: la vieja users/{uid}/verified. */
+        const slot = SCSOC.el('span', 'display:inline-flex;flex:none;align-items:center;');
+        line.appendChild(slot);
+        let paintedFallback = false;
+        if (SCSOC.verified && typeof SCSOC.verified.mount === 'function') {
+            SCSOC.verified.mount(uid, slot, opts.badgeSize || 15);
+        }
+
+        const h = SCSOC.el('span', 'color:var(--text-muted,#94a3b8);font-size:' + (opts.handlerSize || 12) + 'px;white-space:nowrap;');
+        line.appendChild(h);
+
         SCSOC.users.get(uid, function (u) {
             avSlot.innerHTML = '';
             avSlot.appendChild(SCSOC.avatarEl(u, size, u ? u._status : ''));
-            line.innerHTML = '';
-            const nm = SCSOC.el('b', 'color:var(--text-main,#f8fafc);font-size:' + (opts.nameSize || 14.5) + 'px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px;');
             nm.textContent = u ? u._name : 'Usuario';
-            line.appendChild(nm);
-            /* Insignia de social/verified (los 5 tipos, en tiempo real).
-             * Respaldo: la vieja users/{uid}/verified por si verified.js no cargó. */
-            if (SCSOC.verified && typeof SCSOC.verified.mount === 'function') {
-                SCSOC.verified.mount(uid, line, opts.badgeSize || 15);
-            } else if (u && u._verified) {
-                line.appendChild(SCSOC.verifiedBadge(opts.badgeSize || 15));
-            }
-            if (u && u._handler) {
-                const h = SCSOC.el('span', 'color:var(--text-muted,#94a3b8);font-size:' + (opts.handlerSize || 12) + 'px;white-space:nowrap;');
-                h.textContent = '@' + u._handler;
-                line.appendChild(h);
+            const hd = (u && u._handler) ? '@' + u._handler : '';
+            h.textContent = hd;
+            h.style.display = hd ? '' : 'none';
+            if (!SCSOC.verified || typeof SCSOC.verified.mount !== 'function') {
+                const want = !!(u && u._verified);
+                if (want && !paintedFallback) { slot.appendChild(SCSOC.verifiedBadge(opts.badgeSize || 15)); paintedFallback = true; }
+                else if (!want && paintedFallback) { while (slot.firstChild) slot.removeChild(slot.firstChild); paintedFallback = false; }
             }
         });
         return head;

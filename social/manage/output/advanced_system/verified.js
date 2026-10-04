@@ -114,9 +114,8 @@
         line.appendChild(slot);
         watch(uid, function (type) {
             while (slot.firstChild) slot.removeChild(slot.firstChild);
-            if (!slot.isConnected) return;
             const b = type ? badgeEl(type, px) : null;
-            if (b) slot.appendChild(b);
+            if (b) slot.appendChild(b);   /* pinta siempre: nunca se come la insignia */
         });
         return slot;
     }

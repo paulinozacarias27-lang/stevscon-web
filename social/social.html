@@ -110,8 +110,8 @@
 
 <!-- ==== TU STACK REAL (mismas rutas ABSOLUTAS, orden y versiones que tu index) ==== -->
 <script src="/social/manage/output/system/numbers.js?v=2"></script>
-<script src="/social/manage/output/advanced_system/utils.js?v=6"></script>
-<script src="/social/manage/output/advanced_system/verified.js?v=2"></script>
+<script src="/social/manage/output/advanced_system/utils.js?v=7"></script>
+<script src="/social/manage/output/advanced_system/verified.js?v=3"></script>
 <script src="/social/manage/output/system/likes.js?v=2"></script>
 <script src="/social/manage/output/system/comments.js?v=2"></script>
 <script src="/social/manage/output/system/responses.js?v=5"></script>
@@ -131,11 +131,14 @@
 (function () {
     'use strict';
     /* ====
-       Arranque de social.html:
+       Arranque de social.html (v2 — TODO listo antes de mostrar):
        1) Espera al motor (category_posts.js + admin_post.js)
-       2) Abre el Social solo -> SCSOC.pages.open()
-       3) sc:social-closed -> regreso al inicio (web de varios HTML)
-       4) Deep links: #post/{id} y #u/{handler}
+       2) Espera a que Auth resuelva la sesión (o invitado)
+       3) Abre el Social (SCSOC.pages.open()) MANTENIENDO la pantalla
+          de carga hasta que el feed pinte su primer post (o el vacío)
+          -> NUNCA se ve el Social a medio armar. Cero refresh.
+       4) sc:social-closed -> regreso al inicio (web de varios HTML)
+       5) Deep links: #post/{id} y #u/{handler}
        ==== */
     var boot = document.getElementById('sc-boot');
 
@@ -159,24 +162,65 @@
         if (hint) hint.textContent = 'Algo falló:';
     }
 
-    /* 1) + 2) esperar al motor y abrir */
-    var tries = 0;
-    (function waitCore() {
-        if (coreReady()) {
+    /* Auth resuelto (sesión guardada o invitado) con tope de 3.5s */
+    function warmAuth(cb) {
+        try {
+            var a = firebase.auth();
+            if (a.currentUser) { cb(a.currentUser); return; }
+            var done = false;
+            var off = a.onAuthStateChanged(function (u) {
+                if (done) return;
+                done = true;
+                try { if (off) off(); } catch (e) {}
+                cb(u || null);
+            });
+            setTimeout(function () {
+                if (!done) { done = true; try { if (off) off(); } catch (e) {} cb(null); }
+            }, 3500);
+        } catch (e) { cb(null); }
+    }
+
+    /* Espera (con tope de 6s) al primer post pintado o al estado vacío */
+    function waitFirstPaint(cb) {
+        var n = 0;
+        (function look() {
+            var any = document.querySelector('[data-scsoc-post]') ||
+                (document.body.textContent || '').indexOf('No hay publicaciones todavía.') !== -1;
+            if (any || n >= 30) return cb();   /* 30 x 200ms = 6s tope */
+            n++; setTimeout(look, 200);
+        })();
+    }
+
+    function hideBoot() {
+        if (!boot) return;
+        boot.style.transition = 'opacity .25s ease';
+        boot.style.opacity = '0';
+        setTimeout(function () { boot.style.display = 'none'; }, 260);
+    }
+
+    function bootFlow() {
+        warmAuth(function (u) {
+            /* Calienta TU nodo: avatar/status listos al primer frame */
+            if (u && window.SCSOC && SCSOC.users && SCSOC.users.get) {
+                try { SCSOC.users.get(u.uid, function () {}); } catch (e) {}
+            }
             try { window.SCSOC.pages.open(); }
             catch (e) { console.error('[Social] open():', e); fail(); return; }
-            if (boot) boot.style.display = 'none';
-            route();
-            return;
-        }
+            waitFirstPaint(function () { hideBoot(); route(); });
+        });
+    }
+
+    var tries = 0;
+    (function waitCore() {
+        if (coreReady()) { bootFlow(); return; }
         if (++tries > 75) return fail();   /* 15 s y nada -> error visible */
         setTimeout(waitCore, 200);
     })();
 
-    /* 3) Volver / Escape cierran la capa -> URL cambia de vuelta al inicio */
+    /* Volver / Escape cierran la capa -> URL cambia de vuelta al inicio */
     document.addEventListener('sc:social-closed', function () { location.href = '/'; });
 
-    /* 4) Deep links */
+    /* Deep links */
     function route() {
         var h = (location.hash || '').replace(/^#\/?/, '');
         if (h.indexOf('post/') === 0) return openPost(h.slice(5));
