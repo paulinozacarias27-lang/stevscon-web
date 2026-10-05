@@ -1,22 +1,18 @@
 /**
  * ====
- * STEVSCON.COM — social/manage/output/advanced_system/admin_post.js (v4)
+ * STEVSCON.COM — social/manage/output/advanced_system/admin_post.js (v6)
  * SISTEMA DE POSTEO — solo el STAFF publica (owner + elegidos).
  *  - Composer con contador "0 / 15.000" y categoría
  *  - Feed en TIEMPO REAL (nada de refrescar)
  *  - v2 FIX ANTI-DUPLICADOS: users.once() + candados + dedupe doble.
- *  - v3 FIX: el 💬 del post ahora muestra COMENTARIOS + RESPUESTAS
- *    (antes solo contaba comentarios directos y las respuestas no
- *    sumaban nunca).
- *  - v4 FIX (composer que no aparecía en social.html): mountCompose
- *    preguntaba "¿soy staff?" ANTES de que Firebase Auth restaurara
- *    la sesión guardada -> currentUser era null -> el composer nunca
- *    se montaba al entrar directo a /social/social.html. Ahora es
- *    REACTIVO: espera a que Auth resuelva y se monta solo cuando hay
- *    sesión + staff (y se quita si se cierra sesión). En la web
- *    principal no cambia NADA.
- *  - likes.js / comments.js / responses.js se enganchan SOLOS vía hooks
- * ====
+ *  - v3 FIX: el 💬 del post ahora muestra COMENTARIOS + RESPUESTAS.
+ *  - v4 FIX: composer reactivo a la sesión (espera a Auth).
+ *  - v6 MULTIMEDIA: publish() acepta un array `media` (dataURLs) que
+ *    vive DENTRO del nodo del post (social/posts/{id}/media). El
+ *    botón 🖼️ y las previsualizaciones los pone post_media.js vía el
+ *    hook 'composer' — si ese file no carga, todo sigue funcionando
+ *    igual que v5 (llamadas protegidas con if).
+ * ==== 
  */
 (function (window, document) {
     'use strict';
@@ -31,23 +27,23 @@
     /* ==== ¿puede postear? (solo staff) ==== */
     P.canPost = function (cb) { SCSOC.staff.role(function (r) { if (cb) cb(!!r, r); }); };
 
-    /* ==== v4: WATCHER DE SESIÓN — dispara con el usuario (o null) en
-     * cuanto Auth resuelve la sesión guardada, y OTRA VEZ en cada
-     * login/logout. Devuelve la función para apagarlo. ==== */
+    /* ==== v4: WATCHER DE SESIÓN ==== */
     function watchAuth(cb) {
         return firebase.auth().onAuthStateChanged(function (u) { cb(u || null); });
     }
 
-    /* ==== PUBLICAR (v2: a prueba de duplicados) ==== */
+    /* ==== PUBLICAR (v2: a prueba de duplicados · v6: con multimedia) ==== */
     const _lastPub = { uid: '', text: '', at: 0 };
 
-    P.publish = function (text, category, cb) {
+    P.publish = function (text, category, media, cb) {
+        if (typeof media === 'function') { cb = media; media = null; }
         const auth = firebase.auth().currentUser;
         if (!auth) { SCSOC.deny(); return; }
         SCSOC.staff.role(function (role) {
             if (!role) { SCSOC.toast('Solo el staff puede publicar.'); if (cb) cb(new Error('no-staff')); return; }
             text = String(text || '').trim();
-            if (!text) { SCSOC.toast('Escribe algo antes de publicar.'); if (cb) cb(new Error('empty')); return; }
+            const hasMedia = !!(media && media.length);
+            if (!text && !hasMedia) { SCSOC.toast('Escribe algo antes de publicar.'); if (cb) cb(new Error('empty')); return; }
             if (text.length > CONFIG.MAX_POST) { SCSOC.toast('Muy largo: máx ' + SCSOC.nums.full(CONFIG.MAX_POST) + ' caracteres.'); if (cb) cb(new Error('too-long')); return; }
 
             /* Candado 1: mismo autor + mismo texto en <10s = bloqueado */
@@ -72,6 +68,8 @@
                     editedAt: null,
                     pinned: false
                 };
+                /* v6: la multimedia viaja DENTRO del post (1 write, cero reglas) */
+                post.media = hasMedia ? media : null;
                 _lastPub.uid = auth.uid;
                 _lastPub.text = text;
                 _lastPub.at = Date.now();
@@ -82,16 +80,12 @@
         });
     };
 
-    /* ==== COMPOSER (v4: reactivo a la sesión; invisible para quien no es staff) ==== */
+    /* ==== COMPOSER (v4 reactivo a la sesión · v6: hook 'composer') ==== */
     P.mountCompose = function (host) {
-        /* Si este host ya tenía un watcher vivo, se apaga PRIMERO
-         * (re-montar sin apagar = composers duplicados). */
         if (host.__scsocComposeOff) { try { host.__scsocComposeOff(); } catch (e) {} host.__scsocComposeOff = null; }
 
         function clear() { while (host.firstChild) host.removeChild(host.firstChild); }
 
-        /* La caja del composer — la misma de siempre, pero solo se
-         * construye cuando YA sabemos que hay sesión y es staff. */
         function buildBox(authUser) {
             const box = SCSOC.el('div', 'background:' + CARD_BG + ';border:1px solid ' + BORDER + ';border-radius:14px;padding:16px 18px;margin-bottom:18px;box-sizing:border-box;font-family:Inter,sans-serif;');
             const row = SCSOC.el('div', 'display:flex;gap:12px;align-items:flex-start;');
@@ -123,16 +117,21 @@
             btn.textContent = 'Publicar';
             btn.addEventListener('click', function () {
                 btn.disabled = true; btn.style.opacity = '.6';
-                P.publish(ta.value, sel.value, function (err) {
+                /* v6: multimedia del composer (post_media.js la guarda) */
+                const media = (SCSOC.postMedia && SCSOC.postMedia.composerGet) ? SCSOC.postMedia.composerGet(box) : null;
+                P.publish(ta.value, sel.value, media, function (err) {
                     btn.disabled = false; btn.style.opacity = '1';
-                    if (err) return;
+                    if (err) { SCSOC.toast('No se pudo publicar (¿multimedia muy pesada para la BD?).'); return; }
                     ta.value = '';
+                    if (SCSOC.postMedia && SCSOC.postMedia.composerClear) SCSOC.postMedia.composerClear(box);
                     paintCnt();
                     SCSOC.toast('Publicado ✓');
                 });
             });
             left.appendChild(sel); left.appendChild(cnt);
             foot.appendChild(left); foot.appendChild(btn);
+            /* v6: post_media.js agrega aquí el botón 🖼️ + previews */
+            SCSOC.runHooks('composer', { box: box, ta: ta, sel: sel, btn: btn, left: left, foot: foot, col: col });
             col.appendChild(ta); col.appendChild(foot);
             row.appendChild(avSlot); row.appendChild(col);
             box.appendChild(row);
@@ -140,11 +139,11 @@
         }
 
         function evaluate(u) {
-            if (!u) { clear(); return; }                  /* visitante -> nada */
+            if (!u) { clear(); return; }
             P.canPost(function (can) {
                 const live = firebase.auth().currentUser;
-                if (!live || live.uid !== u.uid) return;  /* la sesión cambió mientras leíamos */
-                if (!can) { clear(); return; }            /* logeado pero no staff */
+                if (!live || live.uid !== u.uid) return;
+                if (!can) { clear(); return; }
                 clear();
                 try { host.appendChild(buildBox(live)); }
                 catch (e) { console.error('[Stevscon] admin_post: fallo el composer ->', e); }
@@ -154,12 +153,12 @@
         host.__scsocComposeOff = watchAuth(evaluate);
     };
 
-    /* ==== TARJETA DE POST ==== */
+    /* ==== TARJETA DE POST (v6: host de galería multimedia) ==== */
     P.renderCard = function (post, fbKey) {
-        const k = fbKey || post.id;          // clave Firebase = identidad única
+        const k = fbKey || post.id;
         let live = post;
         const card = SCSOC.el('article', 'background:' + CARD_BG + ';border:1px solid ' + BORDER + ';border-radius:14px;padding:16px 18px 12px;margin-bottom:14px;box-sizing:border-box;font-family:Inter,sans-serif;');
-        card.dataset.scsocPost = k;          // huella en el DOM (dedupe extra)
+        card.dataset.scsocPost = k;
 
         /* cabeza */
         const head = SCSOC.el('div', 'display:flex;align-items:flex-start;gap:12px;');
@@ -178,9 +177,13 @@
         head.appendChild(dots);
         card.appendChild(head);
 
-        /* texto (pre-wrap + pings, SIEMPRE textContent: anti-XSS) */
+        /* texto */
         const txt = SCSOC.el('div', 'color:var(--text-main,#f8fafc);font:400 14.5px/1.6 Inter,sans-serif;white-space:pre-wrap;word-break:break-word;margin:10px 0 4px 54px;');
         card.appendChild(txt);
+
+        /* v6: galería multimedia (post_media.js la pinta; invisible si no hay) */
+        const mHost = SCSOC.el('div', 'display:none;margin:10px 0 2px 54px;');
+        card.appendChild(mHost);
 
         /* barra de acciones */
         const bar = SCSOC.el('div', 'display:flex;align-items:center;gap:22px;margin:8px 0 0 54px;');
@@ -199,7 +202,7 @@
         bar.appendChild(likeBtn); bar.appendChild(comBtn);
         card.appendChild(bar);
 
-        /* host de comentarios (comments.js lo llena al abrirlo) */
+        /* host de comentarios */
         const cHost = SCSOC.el('div', 'display:none;margin-top:10px;');
         card.appendChild(cHost);
 
@@ -210,6 +213,7 @@
             catEl.textContent = p.category ? '· ' + p.category : '';
             txt.innerHTML = '';
             txt.appendChild(SCSOC.richText(p.text));
+            if (SCSOC.postMedia) SCSOC.postMedia.paint(mHost, p.media);   /* v6 */
         }
 
         /* contadores en vivo (v3: 💬 = comentarios + respuestas) */
@@ -223,9 +227,9 @@
 
         paint(post);
 
-        /* ctx para los hooks (likes.js, comments.js) */
+        /* ctx para los hooks */
         const ctx = {
-            el: card, postId: post.id, commentsHost: cHost, _open: false,
+            el: card, postId: post.id, commentsHost: cHost, mediaHost: mHost, _open: false,
             openComments: function () { SCSOC.comments.mount(cHost, ctx.postId); ctx._open = true; },
             closeComments: function () { SCSOC.comments.unmount(ctx.postId); cHost.style.display = 'none'; ctx._open = false; },
             isOpen: function () { return !!ctx._open; }
@@ -241,8 +245,6 @@
 
     /* ==== FEED EN TIEMPO REAL (v2: UNA instancia por host, dedupe doble) ==== */
     P.mountFeed = function (host) {
-        /* Si por lo que fuera hubiera listeners viejos vivos en este
-         * host, se desactivan PRIMERO. Listeners apilados = duplicados. */
         if (host.__scsocFeedOff) { try { host.__scsocFeedOff(); } catch (e) {} host.__scsocFeedOff = null; }
 
         host.innerHTML = '';
@@ -257,7 +259,6 @@
             const k = s.key;
             if (!p || !k) return;
             if (empty.parentNode) host.removeChild(empty);
-            /* Doble candado: por mapa Y por DOM */
             if (cards[k]) return;
             if (host.querySelector('[data-scsoc-post="' + k + '"]')) return;
             const c = P.renderCard(p, k);
@@ -288,5 +289,5 @@
         return host.__scsocFeedOff;
     };
 
-    console.log('[Stevscon] admin_post.js listo (v4) — composer reactivo a la sesión + feed en tiempo real.');
+    console.log('[Stevscon] admin_post.js listo (v6) — composer reactivo + feed en tiempo real + soporte multimedia.');
 })(window, document);
