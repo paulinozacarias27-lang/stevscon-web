@@ -1,12 +1,17 @@
 /**
- * ============================================================
- * STEVSCON.COM — social/manage/output/system/comments.js (v1)
+ * ====
+ * STEVSCON.COM — social/manage/output/system/comments.js (v2)
  * Comentarios en TIEMPO REAL por post.
  *  Nodo: social/comments/{postId}/{commentId}
  *  - El botón 💬 de cada post abre/cierra la sección (listener en vivo)
  *  - Usuarios: comentan y (en la tanda de edit_comment) borran los suyos
  *  - Enter envía · Shift+Enter salto de línea
- * ============================================================
+ *  - v2 FIX ANTI-DUPLICADOS (el mismo parche de responses v2 y
+ *    admin_post v2): C.create usaba users.get() (suscripción VIVA),
+ *    y cada latido del status re-disparaba el callback -> comentario
+ *    nuevo en la BD. Ahora usa users.once() (UNA lectura) + candado
+ *    anti-doble-envío + dedupe extra por DOM en child_added.
+ * ====
  */
 (function (window, document) {
     'use strict';
@@ -17,10 +22,27 @@
     const C = SCSOC.comments = {};
     const open = {}; // postId -> unmount
 
-    /* ==== crear comentario ==== */
+    /* Candado anti-doble-envío (igual que el de admin_post.js) */
+    const _lastCmt = { uid: '', text: '', at: 0 };
+
+    /* ==== crear comentario (v2: una lectura, una escritura) ==== */
     C.create = function (postId, text) {
         SCSOC.requireLogin(function (auth) {
-            SCSOC.users.get(auth.uid, function (u) {
+            text = String(text || '').trim();
+            if (!text) return;
+            /* Candado 1: mismo autor + mismo texto en <10s = bloqueado */
+            if (_lastCmt.uid === auth.uid && _lastCmt.text === text && (Date.now() - _lastCmt.at) < 10000) {
+                SCSOC.toast('Ese comentario ya se envió hace un momento.');
+                return;
+            }
+            /* Candado 2 (LA RAÍZ del bug): lectura de UNA sola vez.
+             * users.get() dejaba el callback vivo y cada cambio de
+             * status re-creaba el comentario. once() muere al leer. */
+            const userOnce = SCSOC.users.once || SCSOC.users.get;
+            userOnce(auth.uid, function (u) {
+                _lastCmt.uid = auth.uid;
+                _lastCmt.text = text;
+                _lastCmt.at = Date.now();
                 const id = SCSOC.ids.make();
                 SCSOC.db().ref(CONFIG.COMMENTS).child(postId).child(id).set({
                     id: id,
@@ -40,6 +62,7 @@
     C.render = function (parent, postId, c) {
         let live = c;
         const el = SCSOC.el('div', 'background:var(--bg-main,#0d0b14);border:1px solid var(--border-color,#2e2440);border-radius:12px;padding:12px 14px;box-sizing:border-box;');
+        el.dataset.scsocComment = c.id;   /* huella en el DOM (dedupe extra) */
 
         const head = SCSOC.el('div', 'display:flex;align-items:flex-start;gap:10px;');
         head.appendChild(SCSOC.userHead(c.authorUid, 32, { nameSize: 13.5, handlerSize: 11.5, badgeSize: 13 }));
@@ -154,6 +177,8 @@
         const onAdd = function (s) {
             const c = s.val();
             if (!c || !c.id || cards[c.id]) return;
+            /* Doble candado: por mapa Y por DOM (como el feed de posts) */
+            if (list.querySelector('[data-scsoc-comment="' + c.id + '"]')) return;
             cards[c.id] = C.render(list, postId, c);
         };
         const onCh = function (s) {
@@ -195,5 +220,5 @@
         });
     });
 
-    console.log('[Stevscon] comments.js listo (v1) — comentarios en tiempo real.');
+    console.log('[Stevscon] comments.js listo (v2) — anti-duplicados: users.once + candado + dedupe por DOM.');
 })(window, document);
