@@ -156,11 +156,12 @@
             inner.appendChild(idRow);
         }
 
-        inner.appendChild(sectionLabel('DESCRIPCIÓN'));
-        const desc = document.createElement('p');
-        desc.textContent = d.description || 'Sin descripción aún.';
-        desc.style.cssText = 'margin:4px 0 0;font-size:13.5px;line-height:1.55;color:' + (d.description ? '#ede9fe' : '#8f7fc0') + ';white-space:pre-wrap;word-break:break-word;';
-        inner.appendChild(desc);
+            inner.appendChild(sectionLabel('DESCRIPCIÓN'));
+            const desc = document.createElement('p');
+            desc.textContent = d.description || 'Sin descripción aún.';
+            desc.style.cssText = 'margin:4px 0 0;font-size:13.5px;line-height:1.55;color:' + (d.description ? '#ede9fe' : '#8f7fc0') + ';white-space:pre-wrap;word-break:break-word;';
+            if (window.StevsconFormats && d.description) StevsconFormats.paint(desc, d.description);
+            inner.appendChild(desc);
 
         const divider = document.createElement('div');
         divider.style.cssText = 'margin-top:14px;border-top:1px solid rgba(167,139,250,.15);';
