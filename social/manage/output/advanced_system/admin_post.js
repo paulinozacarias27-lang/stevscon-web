@@ -128,9 +128,9 @@
                     SCSOC.toast('Publicado ✓');
                 });
             });
-            left.appendChild(sel); left.appendChild(cnt);
+           left.appendChild(sel); left.appendChild(cnt);
             foot.appendChild(left); foot.appendChild(btn);
-            /* v6: post_media.js agrega aquí el botón 🖼️ + previews */
+            col.appendChild(ta); col.appendChild(foot);
             SCSOC.runHooks('composer', { box: box, ta: ta, sel: sel, btn: btn, left: left, foot: foot, col: col });
             col.appendChild(ta); col.appendChild(foot);
             row.appendChild(avSlot); row.appendChild(col);

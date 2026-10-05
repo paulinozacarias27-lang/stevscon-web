@@ -226,9 +226,11 @@
     SCSOC.onHook('composer', function (ctx) {
         if (!ctx || !ctx.box || !ctx.col || !ctx.foot || _pickers.has(ctx.box)) return;
         const slot = SCSOC.el('div', 'display:flex;flex-direction:column;gap:8px;');
-        ctx.col.insertBefore(slot, ctx.foot);
+        if (ctx.foot.parentNode === ctx.col) ctx.col.insertBefore(slot, ctx.foot);
+        else ctx.col.appendChild(slot);
         _pickers.set(ctx.box, picker(slot, null));
-    });
+    }); 
+
     PM.composerGet = function (box) {
         const pk = box && _pickers.get(box);
         const arr = pk ? pk.get() : [];
