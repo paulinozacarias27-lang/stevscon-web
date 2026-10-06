@@ -1,32 +1,20 @@
 /**
  * ====
- * STEVSCON.COM — social/manage/output/security/accounts/accounts.js (v1)
+ * STEVSCON.COM — social/manage/output/security/accounts/accounts.js (v2)
  * MÓDULO «ACCOUNTS» del panel de Seguridad.
  *
- *  - BOX en el panel (SEC.body): tarjeta ACCOUNTS con contadores vivos
- *    (cuentas registradas · staff · baneados) y botón ABRIR.
- *  - VENTANA TIPO PANEL (encima de todo, z-index 2147483040): lista
- *    COMPLETA de las cuentas registradas de la web, línea tras línea,
- *    con búsqueda en vivo y filtros (Todos / Staff / Verificados / Baneados).
- *  - DETALLE por cuenta (más info, en líneas): UID, email, handler,
- *    rango, verificación, estado online, registro, descripción,
- *    contadores y SU CONTENIDO (posts, comentarios y respuestas).
- *  - ACCIONES: BANEAR (con razón) / DESBANEAR · VERIFICAR (los 5 tipos
- *    de verified.js) / QUITAR · STAFF dar admin/mod (solo Owner).
- *  - HISTORIAL global de acciones (security/accounts/logs) en vivo,
- *    dentro de la ventana y filtrado por cuenta en el detalle.
+ *  v2: el() local arreglado (cssText + className separados) · botón ABRIR
+ *      funcional · openDetail() definido · caja rediseñada con contadores
+ *      en celdas · pestañas con estado · búsqueda ya no pierde el foco.
  *
- *  PERMISOS (igual que verified.js):
- *    · Ver el módulo y las listas: TODO el staff (owner/admin/mod).
- *    · Banear, verificar y escribir historial: Owner y Admins.
- *    · Dar/quitar rango staff: SOLO el Owner (reglas de Firebase).
- *    · El Owner (steven23hd@gmail.com) NO puede ser baneado ni editar su rango.
+ *  - BOX en el panel (SEC.body) + VENTANA tipo panel (z 2147483040).
+ *  - Lista completa con búsqueda y filtros (Todos/Staff/Verificados/Baneados).
+ *  - Detalle por cuenta: UID, email, handler, rango, verificación, estado,
+ *    registro, descripción, contadores y su contenido (posts/comentarios/
+ *    respuestas) + acciones (ban, verificar 5 tipos, rango staff) + historial.
  *
- *  REQUIERE: security_panel.js (SEC.body), utils.js y verified.js.
- *  REQUIERE: reglas de Firebase con nodo `security` + lectura staff de `users`.
- *  SEGURIDAD: Firebase Auth exclusivo · todo texto de usuario se pinta
- *  con textContent (NUNCA innerHTML con datos) · innerHTML solo para
- *  iconos estáticos.
+ *  SEGURIDAD: Firebase Auth exclusivo · todo texto de usuario con
+ *  textContent (NUNCA innerHTML con datos) · innerHTML solo para iconos.
  * ====
  */
 (function (window, document) {
@@ -37,13 +25,13 @@
 
     /* ==== RUTAS (alineadas a tu árbol real) ==== */
     const CFG = {
-        USERS: 'users',                       // users/{uid}
-        STAFF: 'social/staff',                // social/staff/{uid} = { role: 'admin'|'mod' }
-        POSTS: 'social/posts',                // social/posts/{postId}
-        COMMENTS: 'social/comments',          // social/comments/{postId}/{commentId}
-        RESPONSES: 'social/responses',        // social/responses/{commentId}/{responseId}
-        BANS: 'security/accounts/bans',       // security/accounts/bans/{uid} = { reason, by, byName, at }
-        LOGS: 'security/accounts/logs'        // security/accounts/logs/{pushId}
+        USERS: 'users',
+        STAFF: 'social/staff',
+        POSTS: 'social/posts',
+        COMMENTS: 'social/comments',
+        RESPONSES: 'social/responses',
+        BANS: 'security/accounts/bans',
+        LOGS: 'security/accounts/logs'
     };
     const OWNER_EMAIL = (SCSOC.CONFIG && SCSOC.CONFIG.OWNER_EMAIL) || 'steven23hd@gmail.com';
 
@@ -53,26 +41,35 @@
     };
 
     /* ==== ESTADO ==== */
-    let myRole = null;                    /* 'owner' | 'admin' | 'mod' (al montar) */
+    let myRole = null;
     let mounted = false;
     const S = {
         users: {}, bans: {}, staff: {}, logs: [], verified: {},
         attachedVerified: {},
         permUsers: false, permBans: false, permLogs: false,
-        tab: 'cuentas',                   /* 'cuentas' | 'historial' */
-        detail: null,                     /* uid abierto en detalle | null */
-        q: '', filter: 'todos',
+        tab: 'cuentas',
+        detail: null,
+        q: '', filter: 'todos', refocus: false,
         act: null, actAt: 0, actFor: null,
-        detailSub: 'posts',               /* sub-pestaña de contenido */
+        detailSub: 'posts',
         win: false, modalFor: null
     };
 
     /* ==== DOM refs ==== */
-    let boxStat, listHost, winEl, winBody, winCount, tabBtnC, tabBtnH, modalEl, modalTitle, modalReason;
+    let statN, statS, statB, listHost, winEl, backdropEl, winBody, winCount, tabBtnC, tabBtnH, modalEl, modalTitle, modalReason;
 
     /* ==== HELPERS ==== */
     function toast(m) { if (SCSOC.toast) try { SCSOC.toast(m); } catch (e) {} else console.log('[SEC accounts] ' + m); }
-    function el(tag, css, cls) { return SCSOC.el(tag, css || '', cls || ''); }
+
+    /* el() LOCAL — css inline y clase van por SEPARADO (este era el bug v1) */
+    function el(tag, css, cls) {
+        const n = document.createElement(tag);
+        if (css) n.style.cssText = css;
+        if (cls) n.className = cls;
+        return n;
+    }
+    function E(tag, cls) { return el(tag, '', cls); }
+
     function db() { return firebase.database(); }
     function me() { try { return firebase.auth().currentUser; } catch (e) { return null; } }
     function isOwnerEmail(e) { return String(e || '').toLowerCase() === OWNER_EMAIL; }
@@ -119,6 +116,12 @@
         if (!u) return 'sistema';
         const r = S.users[u.uid];
         return r ? adapt(r)._name : String(u.email || u.uid);
+    }
+    function avatarEl(a, size, st) {
+        if (SCSOC.avatarEl) { try { return SCSOC.avatarEl(a, size, st); } catch (e) {} }
+        const d = el('div', 'flex:none;width:' + size + 'px;height:' + size + 'px;border-radius:50%;background:var(--bg-hover,#261f36);display:flex;align-items:center;justify-content:center;font:800 ' + Math.max(10, Math.round(size * .4)) + 'px Inter,sans-serif;color:var(--text-main,#f8fafc);border:2px solid ' + ((STATUS[st] || {}).color || '#6b7280') + ';overflow:hidden;box-sizing:border-box;');
+        d.textContent = String(a._name || '?').charAt(0).toUpperCase();
+        return d;
     }
     function copyText(t) {
         try {
@@ -201,11 +204,13 @@
             render();
         }).catch(function (e) { toast('⚠️ No se pudo desbanear (' + (e && e.code || 'error') + ')'); });
     }
+    function vLabel(type) {
+        try { const t = SCSOC.verified && SCSOC.verified.TYPES && SCSOC.verified.TYPES[type]; return (t && t.label) || type; } catch (e) { return type; }
+    }
     function doVerify(uid, type) {
         if (!SCSOC.verified) return;
         SCSOC.verified.grant(uid, type).then(function () {
-            const t = SCSOC.verified.TYPES[type];
-            addLog('verify', uid, t ? t.label : type);
+            addLog('verify', uid, vLabel(type));
             toast('Verificación aplicada ✅');
             render();
         }).catch(function (err) { toast('⚠️ ' + (err && err.message ? err.message : 'No se pudo verificar')); });
@@ -278,7 +283,7 @@
     /* ==== ACTIVIDAD (posts/comentarios/respuestas del usuario) ==== */
     function loadActivity(uid, cb) {
         const now = Date.now();
-        if (S.act && S.actFor === null && now - S.actAt < 30000) return cb(S.act);
+        if (S.act && S.actFor === uid && now - S.actAt < 30000) return cb(S.act);
         Promise.all([
             db().ref(CFG.POSTS).once('value'),
             db().ref(CFG.COMMENTS).once('value'),
@@ -310,28 +315,38 @@
             const byNew = function (a, b) { return (b.at || 0) - (a.at || 0); };
             posts.sort(byNew); comments.sort(byNew); responses.sort(byNew);
             S.act = { posts: posts, comments: comments, responses: responses };
-            S.actAt = now;
+            S.actAt = now; S.actFor = uid;
             cb(S.act);
         }).catch(function (e) { cb(null, e); });
     }
 
-    /* ==== RENDER: CAJA + VENTANA ==== */
+    /* ==== RENDER MAESTRO ==== */
     function render() {
-        /* contadores de la caja (siempre) */
-        if (boxStat) {
-            const n = Object.keys(S.users).length;
-            let st = 0; Object.keys(S.staff).forEach(function (k) { if (roleOf(S.staff[k])) st++; });
-            const b = Object.keys(S.bans).length;
-            boxStat.textContent = n + ' cuenta' + (n === 1 ? '' : 's') + ' · ' + st + ' staff · ' + b + ' baneado' + (b === 1 ? '' : 's');
-        }
-        if (winCount) {
-            const n = Object.keys(S.users).length;
-            winCount.textContent = n + ' reg.';
+        /* contadores de la caja (siempre, aunque la ventana esté cerrada) */
+        const n = Object.keys(S.users).length;
+        let st = 0; Object.keys(S.staff).forEach(function (k) { if (roleOf(S.staff[k])) st++; });
+        const b = Object.keys(S.bans).length;
+        if (statN) statN.textContent = String(n);
+        if (statS) statS.textContent = String(st);
+        if (statB) statB.textContent = String(b);
+        if (winCount) winCount.textContent = n + ' reg.';
+
+        if (tabBtnC && tabBtnH) {
+            tabBtnC.classList.toggle('sc-on', S.win && !S.detail && S.tab === 'cuentas');
+            tabBtnH.classList.toggle('sc-on', S.win && !S.detail && S.tab === 'historial');
         }
         if (!S.win) return;
         if (S.detail) return renderDetail();
         if (S.tab === 'historial') return renderHistory();
         return renderList();
+    }
+
+    function openDetail(uid) {
+        S.detail = uid;
+        S.detailSub = 'posts';
+        S.act = null; S.actFor = null;
+        render();
+        if (winBody) winBody.scrollTop = 0;
     }
 
     function filteredUids() {
@@ -390,7 +405,7 @@
         search.type = 'text';
         search.placeholder = 'Buscar por nombre, @handler, correo o UID…';
         search.value = S.q;
-        search.addEventListener('input', function () { S.q = search.value; renderSoon(); const s = listHost.querySelector('input'); if (s && s !== search && S.q === search.value) { /* noop */ } });
+        search.addEventListener('input', function () { S.q = search.value; S.refocus = true; renderSoon(); });
         bar.appendChild(search);
 
         const chips = el('div', 'display:flex;gap:6px;flex-wrap:wrap;');
@@ -415,7 +430,7 @@
         const uids = filteredUids();
         if (!uids.length) {
             const empty = el('div', 'padding:44px 20px;text-align:center;color:var(--text-muted,#94a3b8);font:600 13px Inter,sans-serif;');
-            empty.textContent = S.q || S.filter !== 'todos' ? 'Ninguna cuenta coincide con la búsqueda/filtro.' : 'Aún no hay cuentas registradas.';
+            empty.textContent = (S.q || S.filter !== 'todos') ? 'Ninguna cuenta coincide con la búsqueda/filtro.' : 'Aún no hay cuentas registradas.';
             listHost.appendChild(empty);
             return;
         }
@@ -430,7 +445,7 @@
             row.addEventListener('mouseenter', function () { row.style.background = 'var(--bg-hover,#261f36)'; });
             row.addEventListener('mouseleave', function () { row.style.background = 'transparent'; });
 
-            row.appendChild(SCSOC.avatarEl(a, 40, st));
+            row.appendChild(avatarEl(a, 40, st));
 
             const mid = el('div', 'flex:1;min-width:0;');
             const nameLine = el('div', 'display:flex;align-items:center;gap:7px;flex-wrap:wrap;');
@@ -469,6 +484,16 @@
 
             listHost.appendChild(row);
         });
+
+        /* devolver el foco al buscador tras re-render (no perder teclas) */
+        if (S.refocus) {
+            S.refocus = false;
+            const inp = listHost.querySelector('input');
+            if (inp) {
+                inp.focus();
+                try { const L = inp.value.length; inp.setSelectionRange(L, L); } catch (e) {}
+            }
+        }
 
         listHost.scrollTop = scroll;
     }
@@ -567,8 +592,10 @@
         const back = el('button', 'display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border-color,#2e2440);background:transparent;color:var(--text-muted,#94a3b8);font:800 11.5px Inter,sans-serif;letter-spacing:.06em;padding:8px 13px;border-radius:9px;cursor:pointer;margin:14px 16px 4px;');
         back.type = 'button';
         back.innerHTML = '<i class="fa-solid fa-arrow-left" aria-hidden="true"></i>';
-        back.appendChild(Object.assign(document.createElement('span'), { textContent: 'TODAS LAS CUENTAS' }));
-        back.addEventListener('click', function () { S.detail = null; S.act = null; render(); });
+        const backTxt = document.createElement('span');
+        backTxt.textContent = 'TODAS LAS CUENTAS';
+        back.appendChild(backTxt);
+        back.addEventListener('click', function () { S.detail = null; S.act = null; S.actFor = null; render(); });
         listHost.appendChild(back);
 
         if (!raw) {
@@ -588,7 +615,7 @@
 
         /* cabecera del detalle */
         const head = el('div', 'display:flex;align-items:center;gap:14px;margin:8px 0 4px;');
-        head.appendChild(SCSOC.avatarEl(a, 62, st));
+        head.appendChild(avatarEl(a, 62, st));
         const hmid = el('div', 'min-width:0;');
         const hname = el('div', 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;');
         const hn = el('b', 'color:var(--text-main,#f8fafc);font-size:17px;letter-spacing:-.01em;');
@@ -621,23 +648,21 @@
         lines.appendChild(line('Nombre', a._name));
         lines.appendChild(line('Rango', role === 'owner' ? 'OWNER' : role ? role.toUpperCase() : '—'));
         const verWrap = el('span');
-        const verTxt = document.createElement('span');
-        verWrap.appendChild(verTxt);
         lines.appendChild(line('Verificación', verWrap));
         if (SCSOC.verified) SCSOC.verified.watch(uid, function (type) {
             while (verWrap.firstChild) verWrap.removeChild(verWrap.firstChild);
             if (type) {
                 verWrap.appendChild(SCSOC.verified.badgeEl(type, 14));
                 const t = document.createElement('span');
-                t.textContent = SCSOC.verified.TYPES[type].label;
+                t.textContent = vLabel(type);
                 verWrap.appendChild(t);
             } else verWrap.textContent = 'Sin verificación';
         });
         const stWrap = el('span');
         const stDot = el('span', 'width:9px;height:9px;border-radius:50%;display:inline-flex;background:' + stM.color + ';');
-        const stTxt = document.createElement('span');
-        stTxt.textContent = stM.label + (raw.online && raw.online.lastSeen ? ' · visto ' + SCSOC.timeAgo(Number(raw.online.lastSeen)) : '');
-        stWrap.appendChild(stDot); stWrap.appendChild(stTxt);
+        const stTxt2 = document.createElement('span');
+        stTxt2.textContent = stM.label + (raw.online && raw.online.lastSeen ? ' · visto ' + SCSOC.timeAgo(Number(raw.online.lastSeen)) : '');
+        stWrap.appendChild(stDot); stWrap.appendChild(stTxt2);
         lines.appendChild(line('Estado', stWrap));
         lines.appendChild(line('Registrado', raw.createdAt ? fmtDate(Number(raw.createdAt)) : '—'));
         lines.appendChild(line('Descripción', p.description ? String(p.description).slice(0, 220) : '—'));
@@ -733,17 +758,15 @@
                 if (S.bans[uid]) acts.appendChild(actionBtn('QUITAR BAN', 'ok', function () { doUnban(uid); }));
                 else acts.appendChild(actionBtn('BANEAR CUENTA', 'danger', function () { openBanModal(uid); }));
             }
-            /* verificación (los 5 tipos de verified.js) */
             if (SCSOC.verified && !isMe) {
                 const vTypes = Object.keys(SCSOC.verified.TYPES || {});
                 if (vTypes.length) {
-                    const sel = selectEl(vTypes.map(function (k) { return [k, SCSOC.verified.TYPES[k].label]; }), vTypes[0]);
+                    const sel = selectEl(vTypes.map(function (k) { return [k, vLabel(k)]; }), vTypes[0]);
                     acts.appendChild(sel);
                     acts.appendChild(actionBtn('APLICAR VERIFICACIÓN', 'purple', function () { doVerify(uid, sel.value); }));
                     acts.appendChild(actionBtn('QUITAR VERIFICACIÓN', 'ghost', function () { doUnverify(uid); }));
                 }
             }
-            /* staff (solo Owner) */
             if (roleNow() === 'owner' && !isOwnerAcc(uid) && !isMe) {
                 const selR = selectEl([['none', '— sin rango —'], ['mod', 'MOD'], ['admin', 'ADMIN']], roleOf(S.staff[uid]) || 'none');
                 acts.appendChild(selR);
@@ -764,7 +787,7 @@
             own.slice(0, 50).forEach(function (e) {
                 const m = LOG_META[e.action] || { icon: 'fa-shield-halved', color: '#94a3b8', label: e.action.toUpperCase() };
                 const r2 = el('div', 'display:flex;gap:10px;align-items:center;padding:9px 13px;border-bottom:1px solid var(--border-color,#2e2440);');
-                const ic = el('i', 'fa-solid ' + m.icon);
+                const ic = E('i', 'fa-solid ' + m.icon);
                 ic.style.color = m.color;
                 ic.setAttribute('aria-hidden', 'true');
                 r2.appendChild(ic);
@@ -779,18 +802,22 @@
         listHost.appendChild(pad);
     }
 
-    /* ==== VENTANA ==== */
+    /* ==== VENTANA (ahora SÍ con clases bien puestas) ==== */
     function openWin(uid) {
         if (!winEl) return;
         S.win = true;
-        if (uid) { S.detail = uid; S.tab = 'cuentas'; }
+        if (uid) { S.detail = uid; S.act = null; S.actFor = null; }
         winEl.classList.add('sc-on');
+        if (backdropEl) backdropEl.classList.add('sc-on');
+        document.body.classList.add('scacc-lock');
         render();
     }
     function closeWin() {
         S.win = false;
         S.detail = null;
         if (winEl) winEl.classList.remove('sc-on');
+        if (backdropEl) backdropEl.classList.remove('sc-on');
+        document.body.classList.remove('scacc-lock');
         closeModal();
     }
 
@@ -799,9 +826,9 @@
         const css = document.createElement('style');
         css.textContent = ''
             + '.scacc-backdrop{position:fixed;inset:0;background:rgba(5,3,12,.6);z-index:2147483030;opacity:0;pointer-events:none;transition:opacity .25s ease;}'
-            + 'body.scacc-open .scacc-backdrop{opacity:1;pointer-events:auto;}'
+            + '.scacc-backdrop.sc-on{opacity:1;pointer-events:auto;}'
             + '.scacc-win{position:fixed;top:0;right:0;bottom:0;z-index:2147483040;width:min(620px,100vw);background:var(--bg-card,#16121f);border-left:1px solid var(--border-color,#2e2440);transform:translateX(103%);transition:transform .3s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column;}'
-            + 'body.scacc-open .scacc-win{transform:translateX(0);}'
+            + '.scacc-win.sc-on{transform:translateX(0);}'
             + 'body.scacc-lock{overflow:hidden;}'
             + '.scacc-head{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--border-color,#2e2440);}'
             + '.scacc-title{font:800 12.5px Inter,sans-serif;letter-spacing:.16em;color:var(--text-main,#f8fafc);}'
@@ -812,13 +839,13 @@
             + '.scacc-tab{border:0;border-bottom:2px solid transparent;background:transparent;color:var(--text-muted,#94a3b8);font:800 11px Inter,sans-serif;letter-spacing:.1em;padding:9px 12px;cursor:pointer;}'
             + '.scacc-tab.sc-on{color:var(--purple-accent,#8b5cf6);border-bottom-color:var(--purple-accent,#8b5cf6);}'
             + '.scacc-body{flex:1;overflow-y:auto;}'
-            + '.scacc-box{border:1px solid var(--border-color,#2e2440);border-radius:13px;padding:16px;margin-bottom:12px;transition:border-color .2s ease,box-shadow .2s ease;}'
-            + '.scacc-box:hover{border-color:rgba(139,92,246,.55);box-shadow:0 0 0 3px rgba(139,92,246,.08);}'
+            + '.scacc-box{border:1px solid var(--border-color,#2e2440);border-left:3px solid var(--purple-accent,#8b5cf6);border-radius:13px;padding:16px;margin-bottom:12px;background:rgba(139,92,246,.05);transition:border-color .2s ease,background .2s ease;}'
+            + '.scacc-box:hover{border-color:rgba(139,92,246,.55);border-left-color:var(--purple-accent,#8b5cf6);background:rgba(139,92,246,.09);}'
             + '.scacc-boxtop{display:flex;align-items:center;gap:11px;margin-bottom:8px;}'
             + '.scacc-boxic{flex:none;width:38px;height:38px;border-radius:11px;background:rgba(139,92,246,.14);border:1px solid rgba(139,92,246,.4);display:flex;align-items:center;justify-content:center;color:var(--purple-accent,#8b5cf6);font-size:15px;}'
             + '.scacc-boxttl{font:800 13px Inter,sans-serif;letter-spacing:.12em;color:var(--text-main,#f8fafc);}'
-            + '.scacc-boxsub{color:var(--text-muted,#94a3b8);font:600 12px Inter,sans-serif;line-height:1.55;margin:2px 0 10px;}'
-            + '.scacc-boxstat{display:inline-flex;align-items:center;gap:7px;font:700 11px Inter,sans-serif;color:var(--text-muted,#94a3b8);border:1px solid var(--border-color,#2e2440);border-radius:8px;padding:5px 9px;margin-bottom:12px;}'
+            + '.scacc-boxsub{color:var(--text-muted,#94a3b8);font:600 12px Inter,sans-serif;line-height:1.55;margin:2px 0 12px;}'
+            + '.scacc-boxstats{display:flex;border:1px solid var(--border-color,#2e2440);border-radius:10px;overflow:hidden;background:var(--bg-main,#0d0b14);margin-bottom:12px;}'
             + '.scacc-openbtn{width:100%;display:flex;align-items:center;justify-content:center;gap:9px;border:1px solid rgba(139,92,246,.55);background:rgba(139,92,246,.14);color:#c4b5fd;font:800 12.5px Inter,sans-serif;letter-spacing:.08em;padding:11px 14px;border-radius:10px;cursor:pointer;transition:background .18s ease,transform .18s ease;}'
             + '.scacc-openbtn:hover{background:rgba(139,92,246,.26);}'
             + '.scacc-openbtn:active{transform:scale(.97);}'
@@ -839,37 +866,41 @@
         });
 
         /* --- BOX ACCOUNTS dentro del panel de seguridad --- */
-        const box = el('div', 'scacc-box');
-        const top = el('div', 'scacc-boxtop');
-        const ic = el('div', 'scacc-boxic');
+        const box = E('div', 'scacc-box');
+        const top = E('div', 'scacc-boxtop');
+        const ic = E('div', 'scacc-boxic');
         ic.innerHTML = '<i class="fa-solid fa-users" aria-hidden="true"></i>';
-        const ttl = el('div', 'scacc-boxttl');
+        const ttl = E('div', 'scacc-boxttl');
         ttl.textContent = 'ACCOUNTS';
         top.appendChild(ic); top.appendChild(ttl);
-        const tag = el('span', 'scacc-tag'); tag.style.marginLeft = 'auto'; tag.textContent = 'ADMIN';
+        const tag = E('span', 'scacc-tag');
+        tag.style.marginLeft = 'auto';
+        tag.textContent = 'ADMIN';
         top.appendChild(tag);
         box.appendChild(top);
 
-        const sub = el('div', 'scacc-boxsub');
+        const sub = E('div', 'scacc-boxsub');
         sub.textContent = 'Cuentas registradas de la web: información completa línea por línea, verificaciones, rango staff, baneos, su contenido (posts, comentarios y respuestas) e historial de acciones.';
         box.appendChild(sub);
 
-        boxStat = el('span', 'scacc-boxstat');
-        boxStat.innerHTML = '<i class="fa-solid fa-database" aria-hidden="true" style="color:var(--purple-accent,#8b5cf6)"></i>';
-        const statTxt = document.createElement('span');
-        statTxt.textContent = 'cargando cuentas…';
-        boxStat.appendChild(statTxt);
-        /* guardamos el nodo de texto para actualizar solo el texto */
-        boxStat._txt = statTxt;
-        const _orig = boxStat;
-        Object.defineProperty(_orig, '_upd', { value: true });
-        boxStat = boxStat; /* mantener referencia al stat */
-        box._statTxt = statTxt;
-        boxStat = null;
-        boxStat = statTxt; /* render() escribirá el texto aquí */
-        box.appendChild(_orig);
+        /* contadores en 3 celdas (vivos) */
+        const statsRow = E('div', 'scacc-boxstats');
+        const mkStat = function (label, color, first) {
+            const c = el('div', 'flex:1;text-align:center;padding:9px 4px;' + (first ? '' : 'border-left:1px solid var(--border-color,#2e2440);'));
+            const n = el('div', 'font:800 15px Inter,sans-serif;color:' + color + ';');
+            n.textContent = '—';
+            const l = el('div', 'font:800 8.5px Inter,sans-serif;letter-spacing:.12em;color:var(--text-muted,#94a3b8);margin-top:1px;');
+            l.textContent = label;
+            c.appendChild(n); c.appendChild(l);
+            statsRow.appendChild(c);
+            return n;
+        };
+        statN = mkStat('CUENTAS', 'var(--purple-accent,#8b5cf6)', true);
+        statS = mkStat('STAFF', '#c4b5fd', false);
+        statB = mkStat('BANEADOS', '#f87171', false);
+        box.appendChild(statsRow);
 
-        const openBtn = el('button', 'scacc-openbtn');
+        const openBtn = E('button', 'scacc-openbtn');
         openBtn.type = 'button';
         openBtn.innerHTML = '<i class="fa-solid fa-right-long" aria-hidden="true"></i>';
         const obTxt = document.createElement('span');
@@ -880,46 +911,47 @@
 
         bodyEl.appendChild(box);
 
-        /* ojo: boxStat apunta al span de texto; render() hace boxStat.textContent = "..." */
-        /* (el icono queda intacto porque el texto vive en el span interno) */
-
         /* --- VENTANA --- */
-        const back = el('div', 'scacc-backdrop');
-        back.addEventListener('click', closeWin);
-        document.body.appendChild(back);
+        backdropEl = E('div', 'scacc-backdrop');
+        backdropEl.addEventListener('click', closeWin);
+        document.body.appendChild(backdropEl);
 
-        winEl = el('aside', 'scacc-win');
+        winEl = E('aside', 'scacc-win');
         winEl.setAttribute('role', 'dialog');
         winEl.setAttribute('aria-label', 'Accounts — cuentas registradas');
-        const head = el('div', 'scacc-head');
+        const head = E('div', 'scacc-head');
         const hic = document.createElement('i');
         hic.className = 'fa-solid fa-users';
         hic.style.color = 'var(--purple-accent,#8b5cf6)';
         hic.setAttribute('aria-hidden', 'true');
-        const ht = el('span', 'scacc-title'); ht.textContent = 'ACCOUNTS';
-        winCount = el('span', 'scacc-count');
-        const tag2 = el('span', 'scacc-tag'); tag2.textContent = 'SECURITY';
-        const x = el('button', 'scacc-x');
+        const ht = E('span', 'scacc-title');
+        ht.textContent = 'ACCOUNTS';
+        winCount = E('span', 'scacc-count');
+        const tag2 = E('span', 'scacc-tag');
+        tag2.textContent = 'SECURITY';
+        const x = E('button', 'scacc-x');
         x.type = 'button'; x.setAttribute('aria-label', 'Cerrar');
         x.innerHTML = '<i class="fa-solid fa-xmark" aria-hidden="true"></i>';
         x.addEventListener('click', closeWin);
         head.appendChild(hic); head.appendChild(ht); head.appendChild(winCount); head.appendChild(tag2); head.appendChild(x);
         winEl.appendChild(head);
 
-        const tabs = el('div', 'scacc-tabs');
-        tabBtnC = el('button', 'scacc-tab sc-on'); tabBtnC.type = 'button'; tabBtnC.textContent = 'CUENTAS';
-        tabBtnH = el('button', 'scacc-tab'); tabBtnH.type = 'button'; tabBtnH.textContent = 'HISTORIAL';
+        const tabs = E('div', 'scacc-tabs');
+        tabBtnC = E('button', 'scacc-tab sc-on');
+        tabBtnC.type = 'button'; tabBtnC.textContent = 'CUENTAS';
+        tabBtnH = E('button', 'scacc-tab');
+        tabBtnH.type = 'button'; tabBtnH.textContent = 'HISTORIAL';
         tabBtnC.addEventListener('click', function () { S.tab = 'cuentas'; S.detail = null; render(); });
         tabBtnH.addEventListener('click', function () { S.tab = 'historial'; S.detail = null; render(); });
         tabs.appendChild(tabBtnC); tabs.appendChild(tabBtnH);
         winEl.appendChild(tabs);
 
-        winBody = el('div', 'scacc-body');
+        winBody = E('div', 'scacc-body');
         listHost = winBody;
         winEl.appendChild(winBody);
         document.body.appendChild(winEl);
 
-        /* Escape: cierra modal > detalle > ventana (y no deja pasar al panel de seguridad) */
+        /* Escape: cierra modal > detalle > ventana (sin dejar pasar al panel) */
         document.addEventListener('keydown', function (e) {
             if (e.key !== 'Escape' || !S.win) return;
             e.preventDefault(); e.stopPropagation();
@@ -948,13 +980,13 @@
             function () { S.permLogs = true; });
 
         render();
-        console.log('[Stevscon][SEC] accounts.js listo (v1) — box ACCOUNTS montado en el panel de Seguridad.');
+        console.log('[Stevscon][SEC] accounts.js listo (v2) — el() arreglado, botón funcional, caja con contadores.');
     }
 
     /* ==== ARRANQUE: espera motor + confirma staff (monta solo para staff) ==== */
     (function wait() {
         const ok = window.firebase && SCSOC.security && SCSOC.security.body &&
-            SCSOC.el && SCSOC.verified && SCSOC.staff;
+            SCSOC.verified && SCSOC.staff;
         if (!ok) return setTimeout(wait, 150);
         tryMount();
         try { firebase.auth().onAuthStateChanged(function () { tryMount(); }); } catch (e) {}
