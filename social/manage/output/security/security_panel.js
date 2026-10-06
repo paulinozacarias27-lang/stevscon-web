@@ -1,18 +1,23 @@
 /**
  * ====
- * STEVSCON.COM — social/manage/output/security/security_panel.js (v1)
+ * STEVSCON.COM — social/manage/output/security/security_panel.js (v2)
  * CATEGORÍA «SECURITY» — BOTÓN DE HERRAMIENTAS SOLO PARA ADMINS.
- *  - Botón fijo en el borde derecho de la pantalla (llave inglesa).
- *  - SOLO aparece para Admin / Owner (usa TUS sistemas, sin inventar):
- *      1) OwnerSystem.isOwner(user)  -> owner.js
- *      2) AdminSystem.isAdmin(user)  -> admin.js (role 'Admin' | 'Owner')
- *      3) Respaldo directo: user.role === 'admin' | 'owner'
- *      4) Respaldo Firebase Auth: email del owner (funciona aunque esta
- *         página no cargue memory_acc.js).
- *  - Al presionarlo abre un panel lateral VACÍO: la zona de trabajo
- *    donde construiremos el módulo de seguridad (SEC.body).
- *  - Visitantes / usuarios normales: no ven NADA. Si un admin cierra
- *    sesión con el panel abierto, se cierra y el botón desaparece.
+ *
+ * v2 — FIX: el botón no aparecía al entrar a social.html.
+ *  Causa real: social.html no carga memory_acc.js, así que la detección
+ *  dependía solo de Firebase, cuya sesión tarda segundos en restaurarse;
+ *  la v1 se colgaba tarde al evento y re-chequeaba cada 2.5s -> el botón
+ *  debutaba cuando ya estabas saliendo. Ahora:
+ *   1) El listener de Firebase se registra en el INSTANTE 0 (no espera
+ *      DOMContentLoaded) -> detecta el admin en cuanto la sesión existe.
+ *   2) Re-chequeo rápido cada 400ms (antes 2500ms).
+ *   3) REVELACIÓN SINCRONIZADA con la pantalla de arranque: el botón
+ *      hace su entrada animada justo cuando #sc-boot se apaga (con tope
+ *      de 20s de emergencia para no quedar nunca invisible).
+ *   4) Si algún script reconstruye el <body>, el botón se re-ancla solo.
+ *  Detección (igual que v1, tus sistemas, cero inventos):
+ *      OwnerSystem.isOwner / AdminSystem.isAdmin / role 'admin'|'owner'
+ *      / email owner vía Firebase Auth.
  *  ESCAPE HATCH: social.html?nosecurity=1 oculta el botón.
  * ====
  */
@@ -27,6 +32,8 @@
     }
 
     const OWNER_EMAIL = 'steven23hd@gmail.com';
+    const BOOT_ID = 'sc-boot';        /* pantalla de arranque de social.html */
+    const BOOT_MAX_WAIT = 20000;      /* tope de espera a la pantalla de arranque */
 
     const SEC = SCSOC.security = {
         ready: false, isAdmin: false,
@@ -47,7 +54,7 @@
                 const role = String(u.role || '').toLowerCase();
                 if (role === 'admin' || role === 'owner') return true;
             }
-        } catch (e) { /* esta página quizá no carga memory_acc.js -> Firebase respalda */ }
+        } catch (e) { /* esta página no carga memory_acc.js -> Firebase respalda */ }
         try {
             const fb = (window.firebase && firebase.auth) ? firebase.auth().currentUser : null;
             if (fb && String(fb.email || '').toLowerCase() === OWNER_EMAIL) return true;
@@ -55,7 +62,19 @@
         return false;
     }
 
-    /* ==== ESTILOS ==== */
+    /* ==== PANTALLA DE ARRANQUE: ¿ya terminó? ==== */
+    let bootDeadline = 0;
+    function bootDone() {
+        const b = document.getElementById(BOOT_ID);
+        if (!b) return true;                          /* no hay pantalla -> revelar ya */
+        if (b.style.display === 'none') return true;  /* hideBoot() ya pasó */
+        try { if (getComputedStyle(b).display === 'none') return true; } catch (e) {}
+        if (!bootDeadline) bootDeadline = Date.now() + BOOT_MAX_WAIT;
+        if (Date.now() > bootDeadline) return true;   /* emergencia: nunca ocultar de más */
+        return false;
+    }
+
+    /* ==== ESTILOS (idénticos a v1) ==== */
     const css = document.createElement('style');
     css.textContent = ''
         + '.scsec-btn{position:fixed;right:0;top:50%;transform:translateY(-50%) translateX(4px);z-index:960;'
@@ -94,12 +113,27 @@
         document.body.classList.remove('scsec-open', 'scsec-lock');
     }
 
-    /* ==== REFRESCO: botón visible SOLO si hay admin; si el rol se va, se corta todo ==== */
+    /* ==== REFRESCO: admin confirmado + pantalla de arranque terminada ==== */
     function refresh() {
+        if (!btn) return;
         SEC.isAdmin = resolveAdmin();
-        btn.classList.toggle('sc-on', SEC.isAdmin);
-        if (!SEC.isAdmin) close();
+        const show = SEC.isAdmin && bootDone();
+        if (!document.contains(btn)) { reattach(); } /* seguro anti-reconstrucción del body */
+        btn.classList.toggle('sc-on', show);
+        if (!show) close();
     }
+    function reattach() {
+        if (btn && !document.contains(btn)) document.body.appendChild(btn);
+        if (back && !document.contains(back)) document.body.appendChild(back);
+        if (panel && !document.contains(panel)) document.body.appendChild(panel);
+    }
+
+    /* ==== INSTANTE 0: colgarnos a Firebase YA MISMO (no espera DOM) ==== */
+    try {
+        if (window.firebase && firebase.auth) {
+            firebase.auth().onAuthStateChanged(function () { if (btn) refresh(); });
+        }
+    } catch (e) { /* el intervalo de abajo cubre este caso */ }
 
     /* ==== CONSTRUCCIÓN (cuando el body exista) ==== */
     let btn, back, panel;
@@ -146,13 +180,10 @@
         SEC.body = bodyEl; /* <- ancla para construir el módulo después */
 
         document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
-        if (window.firebase && firebase.auth) {
-            firebase.auth().onAuthStateChanged(function () { refresh(); });
-        }
-        setInterval(refresh, 2500); /* por si MemoryAcc termina de cargar después */
+        setInterval(refresh, 400); /* ritmo rápido: sesión o rol tardíos se cazan al instante */
         refresh();
         SEC.ready = true;
-        console.log('[Stevscon] security_panel.js listo (v1) — botón solo admins, panel vacío para construir.');
+        console.log('[Stevscon] security_panel.js listo (v2) — aparece al terminar la pantalla de carga, solo admins.');
     }
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
