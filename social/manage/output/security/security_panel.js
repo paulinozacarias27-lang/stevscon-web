@@ -1,23 +1,18 @@
 /**
  * ====
- * STEVSCON.COM — social/manage/output/security/security_panel.js (v2)
- * CATEGORÍA «SECURITY» — BOTÓN DE HERRAMIENTAS SOLO PARA ADMINS.
+ * STEVSCON.COM — social/manage/output/security/security_panel.js (v3)
+ * CATEGORÍA «SECURITY» — BOTÓN 🛠 SOLO PARA STAFF (Admin/Owner).
  *
- * v2 — FIX: el botón no aparecía al entrar a social.html.
- *  Causa real: social.html no carga memory_acc.js, así que la detección
- *  dependía solo de Firebase, cuya sesión tarda segundos en restaurarse;
- *  la v1 se colgaba tarde al evento y re-chequeaba cada 2.5s -> el botón
- *  debutaba cuando ya estabas saliendo. Ahora:
- *   1) El listener de Firebase se registra en el INSTANTE 0 (no espera
- *      DOMContentLoaded) -> detecta el admin en cuanto la sesión existe.
- *   2) Re-chequeo rápido cada 400ms (antes 2500ms).
- *   3) REVELACIÓN SINCRONIZADA con la pantalla de arranque: el botón
- *      hace su entrada animada justo cuando #sc-boot se apaga (con tope
- *      de 20s de emergencia para no quedar nunca invisible).
- *   4) Si algún script reconstruye el <body>, el botón se re-ancla solo.
- *  Detección (igual que v1, tus sistemas, cero inventos):
- *      OwnerSystem.isOwner / AdminSystem.isAdmin / role 'admin'|'owner'
- *      / email owner vía Firebase Auth.
+ * v3 — REECRITO CON EL MOTOR REAL (gracias a admin_post.js v10):
+ *  · Detección vía SCSOC.staff.role(): EL MISMO semáforo que decide
+ *    si aparece el composer "POSTEAR". Sin MemoryAcc ni objetos que
+ *    no existen: 100% Firebase a través del motor SCSOC.
+ *  · FIX del fantasma de "Volver": la v2 solo entendía display:none
+ *    para la pantalla de arranque, así que el botón quedaba preso
+ *    hasta su tope de emergencia (20s) — que caía justo al salir.
+ *    Ahora detecta cualquier forma de ocultado + tope de 6s.
+ *  · Sesión: listener de Firebase desde el instante 0 y re-chequeo
+ *    cada segundo (el motor puede cargar después de este file).
  *  ESCAPE HATCH: social.html?nosecurity=1 oculta el botón.
  * ====
  */
@@ -32,8 +27,8 @@
     }
 
     const OWNER_EMAIL = 'steven23hd@gmail.com';
-    const BOOT_ID = 'sc-boot';        /* pantalla de arranque de social.html */
-    const BOOT_MAX_WAIT = 20000;      /* tope de espera a la pantalla de arranque */
+    const BOOT_ID = 'sc-boot';       /* pantalla de arranque de social.html */
+    const BOOT_MAX_WAIT = 6000;      /* tope: jamás ocultar de más */
 
     const SEC = SCSOC.security = {
         ready: false, isAdmin: false,
@@ -43,38 +38,45 @@
         body: null /* <- aquí vamos a trabajar después (scsec-body) */
     };
 
-    /* ==== DETECCIÓN DE ADMIN (tus sistemas, cero adivinanzas) ==== */
-    function resolveAdmin() {
-        try {
-            const u = (typeof MemoryAcc !== 'undefined' && MemoryAcc.getLocalUser)
-                ? MemoryAcc.getLocalUser() : null;
-            if (u) {
-                if (typeof OwnerSystem !== 'undefined' && OwnerSystem.isOwner && OwnerSystem.isOwner(u)) return true;
-                if (typeof AdminSystem !== 'undefined' && AdminSystem.isAdmin && AdminSystem.isAdmin(u)) return true;
-                const role = String(u.role || '').toLowerCase();
-                if (role === 'admin' || role === 'owner') return true;
-            }
-        } catch (e) { /* esta página no carga memory_acc.js -> Firebase respalda */ }
-        try {
-            const fb = (window.firebase && firebase.auth) ? firebase.auth().currentUser : null;
-            if (fb && String(fb.email || '').toLowerCase() === OWNER_EMAIL) return true;
-        } catch (e) {}
-        return false;
+    /* ==== SESIÓN (Firebase puro, como admin_post.js) ==== */
+    function sessionUser() {
+        try { return (window.firebase && firebase.auth) ? firebase.auth().currentUser : null; }
+        catch (e) { return null; }
+    }
+    function isOwnerEmail(u) {
+        return !!(u && String(u.email || '').toLowerCase() === OWNER_EMAIL);
     }
 
-    /* ==== PANTALLA DE ARRANQUE: ¿ya terminó? ==== */
+    /* ==== ¿STAFF? — EL MISMO semáforo que el composer (SCSOC.staff.role) ==== */
+    function staffCheck(cb) {
+        try {
+            if (SCSOC.staff && typeof SCSOC.staff.role === 'function') {
+                SCSOC.staff.role(function (r) { cb(!!r); });
+            } else {
+                /* el motor aún no cargó -> el owner pasa por email */
+                cb(isOwnerEmail(sessionUser()));
+            }
+        } catch (e) { cb(isOwnerEmail(sessionUser())); }
+    }
+
+    /* ==== PANTALLA DE ARRANQUE: ¿terminó? (entiende TODO tipo de ocultado) ==== */
     let bootDeadline = 0;
     function bootDone() {
         const b = document.getElementById(BOOT_ID);
-        if (!b) return true;                          /* no hay pantalla -> revelar ya */
-        if (b.style.display === 'none') return true;  /* hideBoot() ya pasó */
-        try { if (getComputedStyle(b).display === 'none') return true; } catch (e) {}
+        if (!b || !b.isConnected) return true;      /* no existe o ya la sacaron */
+        let hidden = false;
+        try {
+            const cs = getComputedStyle(b);
+            hidden = b.style.display === 'none' || cs.display === 'none'
+                  || cs.visibility === 'hidden' || parseFloat(cs.opacity) < 0.05
+                  || b.getAttribute('aria-hidden') === 'true';
+        } catch (e) { hidden = (b.style.display === 'none'); }
+        if (hidden) return true;
         if (!bootDeadline) bootDeadline = Date.now() + BOOT_MAX_WAIT;
-        if (Date.now() > bootDeadline) return true;   /* emergencia: nunca ocultar de más */
-        return false;
+        return Date.now() > bootDeadline;            /* emergencia: 6s y se libera */
     }
 
-    /* ==== ESTILOS (idénticos a v1) ==== */
+    /* ==== ESTILOS ==== */
     const css = document.createElement('style');
     css.textContent = ''
         + '.scsec-btn{position:fixed;right:0;top:50%;transform:translateY(-50%) translateX(4px);z-index:960;'
@@ -106,21 +108,29 @@
     document.head.appendChild(css);
 
     function open() {
-        if (!SEC.isAdmin) return; /* doble chequeo: ni con consola se abre sin ser admin */
+        if (!SEC.isAdmin) return; /* doble chequeo: ni con consola se abre sin ser staff */
         document.body.classList.add('scsec-open', 'scsec-lock');
     }
     function close() {
         document.body.classList.remove('scsec-open', 'scsec-lock');
     }
 
-    /* ==== REFRESCO: admin confirmado + pantalla de arranque terminada ==== */
-    function refresh() {
+    /* ==== REFRESCO: staff confirmado + pantalla de arranque terminada ==== */
+    function paint(show) {
         if (!btn) return;
-        SEC.isAdmin = resolveAdmin();
-        const show = SEC.isAdmin && bootDone();
-        if (!document.contains(btn)) { reattach(); } /* seguro anti-reconstrucción del body */
         btn.classList.toggle('sc-on', show);
         if (!show) close();
+    }
+    function refresh() {
+        if (!btn) return;
+        if (!document.contains(btn)) reattach(); /* seguro anti-reconstrucción del body */
+        const u = sessionUser();
+        if (!u) { SEC.isAdmin = false; paint(false); return; }
+        staffCheck(function (is) {
+            if (!btn) return;
+            SEC.isAdmin = !!is;
+            paint(SEC.isAdmin && bootDone());
+        });
     }
     function reattach() {
         if (btn && !document.contains(btn)) document.body.appendChild(btn);
@@ -131,7 +141,7 @@
     /* ==== INSTANTE 0: colgarnos a Firebase YA MISMO (no espera DOM) ==== */
     try {
         if (window.firebase && firebase.auth) {
-            firebase.auth().onAuthStateChanged(function () { if (btn) refresh(); });
+            firebase.auth().onAuthStateChanged(function () { refresh(); });
         }
     } catch (e) { /* el intervalo de abajo cubre este caso */ }
 
@@ -180,10 +190,10 @@
         SEC.body = bodyEl; /* <- ancla para construir el módulo después */
 
         document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
-        setInterval(refresh, 400); /* ritmo rápido: sesión o rol tardíos se cazan al instante */
+        setInterval(refresh, 1000); /* ritmo: el staff del motor puede cargar después */
         refresh();
         SEC.ready = true;
-        console.log('[Stevscon] security_panel.js listo (v2) — aparece al terminar la pantalla de carga, solo admins.');
+        console.log('[Stevscon] security_panel.js listo (v3) — detección por SCSOC.staff (la del composer), aparece al terminar la pantalla de carga.');
     }
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
