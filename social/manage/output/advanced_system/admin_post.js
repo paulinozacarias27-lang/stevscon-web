@@ -1,6 +1,6 @@
 /**
  * ====
- * STEVSCON.COM — social/manage/output/advanced_system/admin_post.js (v6)
+ * STEVSCON.COM — social/manage/output/advanced_system/admin_post.js (v10)
  * SISTEMA DE POSTEO — solo el STAFF publica (owner + elegidos).
  *  - Composer con contador "0 / 15.000" y categoría
  *  - Feed en TIEMPO REAL (nada de refrescar)
@@ -8,11 +8,20 @@
  *  - v3 FIX: el 💬 del post ahora muestra COMENTARIOS + RESPUESTAS.
  *  - v4 FIX: composer reactivo a la sesión (espera a Auth).
  *  - v6 MULTIMEDIA: publish() acepta un array `media` (dataURLs) que
- *    vive DENTRO del nodo del post (social/posts/{id}/media). El
- *    botón 🖼️ y las previsualizaciones los pone post_media.js vía el
- *    hook 'composer' — si ese file no carga, todo sigue funcionando
- *    igual que v5 (llamadas protegidas con if).
- * ==== 
+ *    vive DENTRO del nodo del post (social/posts/{id}/media).
+ *  - v7 FIX: hook 'composer' lanzado con el DOM ya armado.
+ *  - v10 CATEGORÍAS: el feed obedece a las PESTAÑAS (feed_tabs.js):
+ *      · P.setFilter(cat) + P.applyFilter() — filtra SIN re-mount,
+ *        sin tocar la BD ni reglas (cada post nace con su categoría
+ *        y cae SOLO en la pestaña de esa categoría).
+ *      · Estado vacío por pestaña + contadores en vivo por pestaña
+ *        (evento 'sc:social-feed-cats' -> feed_tabs.js pinta chips).
+ *      · Categorías descubiertas en el feed que no estén en la lista
+ *        base aparecen como pestaña EXTRA automática (nada se pierde).
+ *      · El select del composer SIGUE a la pestaña activa.
+ *      · FIX: línea appendChild duplicada del parche v7 eliminada
+ *        (reordenaba el slot de multimedia por encima del textarea).
+ * ====
  */
 (function (window, document) {
     'use strict';
@@ -30,6 +39,61 @@
     /* ==== v4: WATCHER DE SESIÓN ==== */
     function watchAuth(cb) {
         return firebase.auth().onAuthStateChanged(function (u) { cb(u || null); });
+    }
+
+    /* ==== v10: ÍNDICE DEL FEED + FILTRO POR PESTAÑA ====
+     * P._findex = { fbKey: { el, cat } } — saber qué categoría es cada
+     * tarjeta SIN re-mount: al cambiar de pestaña solo se oculta/muestra. */
+    P.filter = null;
+    P._findex = {};
+    P._empty = null;
+
+    function normCat(c) { const s = String(c == null ? '' : c).trim(); return s || 'General'; }
+
+    P.setFilter = function (cat) {
+        P.filter = (cat == null) ? null : normCat(cat);
+        P.applyFilter();
+    };
+
+    P.applyFilter = function () {
+        let visible = 0;
+        Object.keys(P._findex).forEach(function (k) {
+            const it = P._findex[k];
+            const show = !P.filter || it.cat === P.filter;
+            it.el.style.display = show ? '' : 'none';
+            if (show) visible++;
+        });
+        if (P._empty) {
+            P._empty.style.display = visible ? 'none' : 'block';
+            /* La frase base 'No hay publicaciones todavía.' se conserva
+             * EXACTA al inicio: social.html la usa para quitar la carga. */
+            P._empty.textContent = P.filter
+                ? 'No hay publicaciones todavía. Nada en «' + P.filter + '» por ahora.'
+                : 'No hay publicaciones todavía.';
+        }
+    };
+
+    /* v10: categorías que existen en el feed pero NO en la lista base */
+    P.extraCats = function () {
+        const base = SCSOC.categories();
+        const out = [];
+        Object.keys(P._findex).forEach(function (k) {
+            const c = P._findex[k].cat;
+            if (base.indexOf(c) === -1 && out.indexOf(c) === -1) out.push(c);
+        });
+        return out;
+    };
+
+    /* v10: avisa a feed_tabs.js (contadores por pestaña) */
+    function fireCats() {
+        try {
+            const counts = {};
+            Object.keys(P._findex).forEach(function (k) {
+                const c = P._findex[k].cat;
+                counts[c] = (counts[c] || 0) + 1;
+            });
+            document.dispatchEvent(new CustomEvent('sc:social-feed-cats', { detail: { counts: counts } }));
+        } catch (e) {}
     }
 
     /* ==== PUBLICAR (v2: a prueba de duplicados · v6: con multimedia) ==== */
@@ -60,7 +124,7 @@
                 const post = {
                     id: id,
                     text: text,
-                    category: category || 'General',
+                    category: normCat(category),
                     authorUid: auth.uid,
                     authorName: (u && u._name) || 'Usuario',
                     authorHandler: (u && u._handler) || '',
@@ -80,7 +144,7 @@
         });
     };
 
-    /* ==== COMPOSER (v4 reactivo a la sesión · v6: hook 'composer') ==== */
+    /* ==== COMPOSER (v4 reactivo a la sesión · v6: hook 'composer' · v10: sigue a la pestaña) ==== */
     P.mountCompose = function (host) {
         if (host.__scsocComposeOff) { try { host.__scsocComposeOff(); } catch (e) {} host.__scsocComposeOff = null; }
 
@@ -105,6 +169,13 @@
                 o.value = c; o.textContent = c;
                 sel.appendChild(o);
             });
+            /* v10: el select arranca en la pestaña activa del feed */
+            if (P.filter) {
+                for (let i = 0; i < sel.options.length; i++) {
+                    if (sel.options[i].value === P.filter) { sel.value = P.filter; break; }
+                }
+            }
+            P._composerSel = sel;
             const cnt = SCSOC.el('span', 'color:var(--text-muted,#94a3b8);font:600 11.5px Inter,sans-serif;');
             const paintCnt = function () {
                 const n = ta.value.length;
@@ -128,11 +199,12 @@
                     SCSOC.toast('Publicado ✓');
                 });
             });
-           left.appendChild(sel); left.appendChild(cnt);
+            left.appendChild(sel); left.appendChild(cnt);
             foot.appendChild(left); foot.appendChild(btn);
             col.appendChild(ta); col.appendChild(foot);
+            /* v7/v10: hook con el DOM YA armado — UNA SOLA vez (la línea
+             * duplicada del parche v7 reordenaba el slot de multimedia) */
             SCSOC.runHooks('composer', { box: box, ta: ta, sel: sel, btn: btn, left: left, foot: foot, col: col });
-            col.appendChild(ta); col.appendChild(foot);
             row.appendChild(avSlot); row.appendChild(col);
             box.appendChild(row);
             return box;
@@ -152,6 +224,16 @@
 
         host.__scsocComposeOff = watchAuth(evaluate);
     };
+
+    /* ==== v10: el select del composer SIGUE a la pestaña activa ==== */
+    document.addEventListener('sc:social-tab', function (e) {
+        const cat = e && e.detail && e.detail.category;
+        const sel = P._composerSel;
+        if (!cat || !sel) return;
+        for (let i = 0; i < sel.options.length; i++) {
+            if (sel.options[i].value === cat) { sel.value = cat; break; }
+        }
+    });
 
     /* ==== TARJETA DE POST (v6: host de galería multimedia) ==== */
     P.renderCard = function (post, fbKey) {
@@ -243,14 +325,22 @@
         };
     };
 
-    /* ==== FEED EN TIEMPO REAL (v2: UNA instancia por host, dedupe doble) ==== */
+    /* ==== FEED EN TIEMPO REAL (v2 dedupe · v10: obedece a las PESTAÑAS) ==== */
     P.mountFeed = function (host) {
         if (host.__scsocFeedOff) { try { host.__scsocFeedOff(); } catch (e) {} host.__scsocFeedOff = null; }
 
         host.innerHTML = '';
+        P._findex = {};                                     /* v10: feed fresco */
+
+        /* v10: aquí arriba se monta la BARRA DE PESTAÑAS (feed_tabs.js
+         * escucha el hook 'feedMount' y se inserta como primer hijo) */
+        SCSOC.runHooks('feedMount', { host: host });
+
         const empty = SCSOC.el('p', 'color:var(--text-muted,#94a3b8);font:600 13px Inter,sans-serif;text-align:center;padding:30px 0;font-family:Inter,sans-serif;');
         empty.textContent = 'No hay publicaciones todavía.';
         host.appendChild(empty);
+        P._empty = empty;                                   /* v10: estado vacío gestionado */
+        P.applyFilter();                                    /* v10 */
 
         const ref = SCSOC.db().ref(CONFIG.POSTS).orderByChild('createdAt').limitToLast(CONFIG.FEED_SIZE);
         const cards = {};
@@ -258,16 +348,26 @@
             const p = s.val();
             const k = s.key;
             if (!p || !k) return;
-            if (empty.parentNode) host.removeChild(empty);
             if (cards[k]) return;
             if (host.querySelector('[data-scsoc-post="' + k + '"]')) return;
             const c = P.renderCard(p, k);
             cards[k] = c;
-            host.insertBefore(c.el, host.firstChild);
+            host.insertBefore(c.el, empty);                 /* v10: SIEMPRE detrás del aviso (la barra queda arriba) */
+            P._findex[k] = { el: c.el, cat: normCat(p.category) };   /* v10 */
+            P.applyFilter();                                /* v10: respeta la pestaña + estado vacío */
+            fireCats();                                     /* v10: contadores de pestañas */
         };
         const onCh = function (s) {
             const p = s.val();
-            if (p && cards[s.key]) cards[s.key].update(p);
+            if (p && cards[s.key]) {
+                cards[s.key].update(p);
+                /* v10: la categoría pudo cambiar -> re-filtra esa tarjeta */
+                if (P._findex[s.key]) {
+                    P._findex[s.key].cat = normCat(p.category);
+                    P.applyFilter();
+                    fireCats();
+                }
+            }
         };
         const onRm = function (s) {
             const c = cards[s.key];
@@ -275,6 +375,11 @@
                 if (c.el.parentNode) c.el.parentNode.removeChild(c.el);
                 if (c.off) c.off();
                 delete cards[s.key];
+            }
+            if (P._findex[s.key]) {                         /* v10 */
+                delete P._findex[s.key];
+                P.applyFilter();
+                fireCats();
             }
         };
         ref.on('child_added', onAdd);
@@ -289,5 +394,5 @@
         return host.__scsocFeedOff;
     };
 
-    console.log('[Stevscon] admin_post.js listo (v6) — composer reactivo + feed en tiempo real + soporte multimedia.');
+    console.log('[Stevscon] admin_post.js listo (v10) — composer reactivo + feed con PESTAÑAS de categoría + multimedia.');
 })(window, document);
