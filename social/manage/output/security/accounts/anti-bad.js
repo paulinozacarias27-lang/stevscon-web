@@ -1,7 +1,10 @@
 /**
  * ====
- * STEVSCON.COM — social/manage/output/security/accounts/anti-bad.js (v1)
+ * STEVSCON.COM — social/manage/output/security/accounts/anti-bad.js (v2)
  * MÓDULO «ANTI-BAD» del panel de Seguridad (tercer box, bajo REPORTS).
+ *
+ *  v2: FIX de cierre (X / clic afuera / ESC), refresco en vivo de las
+ *      pestañas y arranque del motor DESPUÉS del login.
  *
  *  - FILTRO DE PALABRAS: lista editable desde el panel. Detecta trampas
  *    (acentos, pu.u.ta, puuuta, p@uta, 9u74...) normalizando el texto.
@@ -55,7 +58,7 @@
     const lastLogAt = {};    /* anti-spam del propio log */
 
     let statTotal, statHoy, statWords;
-    let winEl, winBody, tabBtns = [];
+    let winEl, bdEl, winBody, tabBtns = [];
 
     /* ==== HELPERS ==== */
     function toast(m) { if (SCSOC.toast) try { SCSOC.toast(m); } catch (e) {} else console.log('[Anti-Bad] ' + m); }
@@ -165,7 +168,7 @@
     function verdict(u, kind, text) {
         if (!S.cfgOk) return { ok: true };                    /* sin config: no frenar nada */
         if (!text || !String(text).trim()) return { ok: true };
-        if (!u) return { ok: true };                          /* invitados no publican igual */
+        if (!u) return { ok: true };                    /* invitados no publican igual */
         if (isOwner() || myRole) return { ok: true };         /* staff publicar libre */
         const f = S.cfg.filters || {};
         if (f.flood !== false) {
@@ -249,6 +252,7 @@
             S.cfg = mergeCfg(s.val());
             S.cfgOk = !!s.val();
             paintStats();
+            liveRefresh();          /* AJUSTES/PALABRAS se actualizan en vivo */
         }, function () { S.cfgOk = false; });
 
         db().ref(CFG.LOGS).limitToLast(LOG_CAP).on('value', function (s) {
@@ -256,7 +260,7 @@
             s.forEach(function (c) { const v = c.val(); if (v) { v.id = c.key; out.push(v); } });
             S.logs = out.reverse();   /* push keys van de viejo a nuevo */
             paintStats();
-            if (S.win && S.tab === 'registro') renderLogs();
+            liveRefresh();
         }, function () { /* sin permiso de lectura: nada */ });
     }
 
@@ -374,7 +378,7 @@
         if (!S.cfgOk && canCfg()) {
             try { db().ref(CFG.CONFIG).set(S.cfg); } catch (e) {}
         }
-        console.log('[Stevscon][SEC] anti-bad.js listo (v1) — box ANTI-BAD montado, filtro activo en comentarios y respuestas.');
+        console.log('[Stevscon][SEC] anti-bad.js listo (v2) — box ANTI-BAD montado, filtro activo en comentarios y respuestas.');
     }
 
     function mkCell(host, label) {
@@ -422,6 +426,9 @@
         win.appendChild(head); win.appendChild(tabs); win.appendChild(winBody);
         document.body.appendChild(bd); document.body.appendChild(win);
 
+        /* FIX v2: guardar referencias — sin esto closeWin() no podía cerrar nada */
+        winEl = win; bdEl = bd;
+
         requestAnimationFrame(function () {
             bd.classList.add('scab-on');
             win.classList.add('scab-on');
@@ -431,11 +438,10 @@
     }
     function closeWin() {
         if (!S.win || !winEl) return;
-        const bd = winEl.previousSibling;
-        winEl.classList.remove('scab-on');
-        if (bd && bd.classList) bd.classList.remove('scab-on');
-        const w = winEl, b = bd;
-        S.win = false; winEl = null; winBody = null;
+        const w = winEl, b = bdEl;
+        w.classList.remove('scab-on');
+        if (b && b.classList) b.classList.remove('scab-on');
+        S.win = false; winEl = null; bdEl = null; winBody = null;
         setTimeout(function () {
             if (w && w.parentNode) w.parentNode.removeChild(w);
             if (b && b.parentNode) b.parentNode.removeChild(b);
@@ -453,6 +459,14 @@
         if (S.tab === 'registro') renderLogs();
         else if (S.tab === 'palabras') renderWords();
         else renderAjustes();
+    }
+    /* FIX v2: la pestaña abierta se refresca sola cuando llega config/logs nueva.
+       Nunca refresca si el usuario está escribiendo en un input de la ventana. */
+    function liveRefresh() {
+        if (!S.win || !winBody) return;
+        const a = document.activeElement;
+        if (a && winBody.contains(a) && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA')) return;
+        renderTab();
     }
 
     /* ==== TAB 1 · REGISTRO ==== */
@@ -737,24 +751,32 @@
             saving = false;
             toast('Anti-Bad actualizado ✓');
             paintStats();
-            if (S.win && S.tab === 'palabras') renderWords();
+            liveRefresh();
         }).catch(function (err) {
             saving = false;
             toast('No se pudo guardar (' + ((err && err.code) || 'permisos') + ').');
         });
     }
 
-    /* ==== ARRANQUE: motor (todos) + panel (solo staff) ==== */
+    /* ==== ARRANQUE: motor (DESPUÉS del login; si se engancha antes,
+       los listeners mueren con "permission denied" y la sección nunca
+       se actualiza) + panel (solo staff) ==== */
     (function wait() {
         const ok = window.firebase;
         if (!ok) return setTimeout(wait, 150);
-        startEngine();
+
+        let engineOn = false;
+        try {
+            firebase.auth().onAuthStateChanged(function (u) {
+                if (u && !engineOn) { engineOn = true; startEngine(); }
+                tryMount();
+            });
+        } catch (e) { if (!engineOn) { engineOn = true; startEngine(); } }
 
         const waitPanel = function () {
             const okP = SCSOC.security && SCSOC.security.body && SCSOC.staff;
             if (!okP) return setTimeout(waitPanel, 150);
             tryMount();
-            try { firebase.auth().onAuthStateChanged(function () { tryMount(); }); } catch (e) {}
         };
         waitPanel();
     })();
