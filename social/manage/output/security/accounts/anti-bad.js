@@ -42,7 +42,14 @@
         /* API pública: por si otros files quieren consultar el filtro */
         check: function (text) {
             const u = me();
-            const v = verdict(u, 'contenido', String(text || ''));
+            const v = verdict(u, 'contenido', String(text || ''), false);
+            return { ok: v.ok, kind: v.kind || null, msg: v.msg || '' };
+        },
+        /* v3 · para CHAT (MDs): palabras + enlaces sí, flood NO.
+           Escribir rápido en un chat es normal, no es spam. */
+        checkChat: function (text) {
+            const u = me();
+            const v = verdict(u, 'contenido', String(text || ''), true);
             return { ok: v.ok, kind: v.kind || null, msg: v.msg || '' };
         }
     };
@@ -165,13 +172,13 @@
     }
 
     /* ==== VEREDICTO (núcleo, síncrono) ==== */
-    function verdict(u, kind, text) {
+    function verdict(u, kind, text, noFlood) {
         if (!S.cfgOk) return { ok: true };                    /* sin config: no frenar nada */
         if (!text || !String(text).trim()) return { ok: true };
         if (!u) return { ok: true };                    /* invitados no publican igual */
         if (isOwner() || myRole) return { ok: true };         /* staff publicar libre */
         const f = S.cfg.filters || {};
-        if (f.flood !== false) {
+        if (f.flood !== false && !noFlood) {
             const wait = floodHit(u.uid);
             if (wait) return { ok: false, kind: 'flood', match: '', text: text,
                 msg: 'Vas muy rápido. Espera ' + wait + 's para volver a comentar.' };

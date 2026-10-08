@@ -234,6 +234,13 @@
         let composerMode = null;
         function paintTimer() {
             if (!S.meta) { tTx.textContent = '—'; return; }
+            /* v4: con un AMIGO no hay reloj — chip morado «Amigos» */
+            if (D.peerIsFriend(S.meta)) {
+                tTx.textContent = 'Amigos';
+                timer.style.color = PURPLE;
+                paintLock();
+                return;
+            }
             tTx.textContent = fmtLeft(D.msLeft(S.meta));
             timer.style.color = D.isExpired(S.meta) ? '#fbbf24' : '';
             paintLock();

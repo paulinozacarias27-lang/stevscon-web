@@ -63,10 +63,35 @@
         return Math.max(0, Number(meta.expiresAt) - Date.now());
     };
 
-    D.peerOf = function (usersObj, myUid) {
-        const keys = Object.keys(usersObj || {});
-        for (let i = 0; i < keys.length; i++) if (keys[i] !== myUid) return keys[i];
-        return '';
+    /* v4: ¿el peer es mi amigo? Los amigos SIEMPRE pueden escribirse,
+       aunque el otro tenga mdAllow:'nadie' (eso solo frena desconocidos). */
+    function isFriendOf(peerUid) {
+        try {
+            const C = SCSOC.dmContacts;
+            return !!(C && C.isFriend && C.isFriend(peerUid));
+        } catch (e) { return false; }
+    }
+
+    /* v5: AMIGOS = MD SIN VENCIMIENTO.
+       peerIsFriend(meta) mira meta.users y dice si el otro es mi amigo.
+       Con amigos: la ventana nunca cierra (UI, cliente Y reglas via
+       meta/friends). Sin amigos: ventana de 10 h de siempre. */
+    D.peerIsFriend = function (meta) {
+        try {
+            const a = me();
+            if (!a || !meta || !meta.users) return false;
+            return isFriendOf(D.peerOf(meta.users, a.uid));
+        } catch (e) { return false; }
+    };
+    D.msLeft = function (meta) {
+        if (D.peerIsFriend(meta)) return D.WINDOW_MS;
+        if (!meta) return 0;
+        const t = meta.expiresAt || ((meta.createdAt || 0) + D.WINDOW_MS);
+        return t - Date.now();
+    };
+    D.isExpired = function (meta) {
+        if (D.peerIsFriend(meta)) return false;
+        return !meta || D.msLeft(meta) <= 0;
     };
 
     D.nameOf = function (uid, cb) {
@@ -125,9 +150,9 @@
             SCSOC.toast('No puedes abrir un MD contigo mismo.');
             return;
         }
-        /* v3: ¿me deja mandarle MD? */
+        /* v4: ¿me deja mandarle MD? (si son amigos, siempre pasa) */
         D.prefOf(peerUid, function (p) {
-            if (p && p.mdAllow === 'nadie') {
+            if (p && p.mdAllow === 'nadie' && !isFriendOf(peerUid)) {
                 SCSOC.toast('Esta persona tiene los Mensajes Directos desactivados.');
                 return;
             }
@@ -211,15 +236,27 @@
                     return;
                 }
                 const peerUid = D.peerOf(meta.users, a.uid);
-                /* v3: por si nos cerró los MD hace un segundo */
+                /* v4: por si nos cerró los MD hace un segundo (amigos pasan) */
                 D.prefOf(peerUid, function (p) {
-                    if (p && p.mdAllow === 'nadie') {
+                    if (p && p.mdAllow === 'nadie' && !isFriendOf(peerUid)) {
                         SCSOC.toast('Esta persona tiene los MDs desactivados.');
                         if (cb) cb(new Error('pref'));
                         return;
                     }
-                    /* candado 2: filtro anti-bad v2 (el staff pasa libre) */
-                    const ab = (SCSOC.secAntiBad && SCSOC.secAntiBad.check) ? SCSOC.secAntiBad.check(text) : { ok: true };
+                    /* candado 2: filtro anti-bad (v4: en MDs SIN flood —
+                       escribir rápido es normal en un chat; palabras/enlaces sí filtran) */
+                    const AB = SCSOC.secAntiBad;
+                    const ab = (AB && AB.checkChat) ? AB.checkChat(text)
+                        : (AB && AB.check) ? AB.check(text) : { ok: true };
+                        /* v5: si es mi amigo, enciendo meta/friends para que las
+                       REGLAS dejen pasar el mensaje aunque la ventana vieja
+                       haya cerrado (1 escritura, queda para siempre). */
+                    try {
+                        if (D.peerIsFriend(meta)) {
+                            convRef(convId).child('meta/friends').set(true).catch(function () {});
+                        }
+                    } catch (e) {}
+                    
                     if (ab && ab.ok === false) {
                         logBlocked(a, text, ab);
                         SCSOC.toast(ab.msg || 'Mensaje bloqueado por el filtro.');
