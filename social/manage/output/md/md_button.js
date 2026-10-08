@@ -127,54 +127,8 @@
         } else setTimeout(waitDm, 150);
     })();
 
-    /* ==== «Mensaje» en el panel de perfil (hook defensivo) ==== */
-    function addProfileBtn(uid, host) {
-        if (!host || host.nodeType !== 1) return;
-        if (host.querySelector('[data-scdm-prof="' + uid + '"]')) return;
-        const meU = firebase.auth().currentUser;
-        if (!meU || meU.uid === uid) return;
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.className = 'scdm-profbtn';
-        b.setAttribute('data-scdm-prof', uid);
-        const ic = document.createElement('i');
-        ic.className = 'fa-solid fa-paper-plane';
-        const sp = document.createElement('span');
-        sp.textContent = 'Mensaje';
-        b.appendChild(ic); b.appendChild(sp);
-        b.addEventListener('click', function (e) {
-            e.stopPropagation();
-            SCSOC.dm.open(uid, function (convId) {
-                SCSOC.dmUI.open();
-                SCSOC.dmUI.openConv(convId, uid);
-            });
-        });
-        host.appendChild(b);
-    }
-
-    function hookProfile() {
-        if (!SCSOC.onHook) return false;
-        SCSOC.onHook('profilePanel', function () {
-            const args = Array.prototype.slice.call(arguments);
-            let uid = null, host = null;
-            args.forEach(function (a) {
-                if (typeof a === 'string' && a.length > 8 && !uid) uid = a;
-                else if (a && a.nodeType === 1 && !host) host = a;
-                else if (a && typeof a === 'object') {
-                    if (a.uid && !uid) uid = a.uid;
-                    if (a.cardHost && a.cardHost.nodeType === 1) host = a.cardHost;
-                    else if (a.modal && a.modal.nodeType === 1) host = a.modal;
-                }
-            });
-            if (!uid) return;
-            addProfileBtn(uid, host);
-        });
-        return true;
-    }
-    (function waitHook() {
-        if (hookProfile()) return;
-        setTimeout(waitHook, 300);
-    })();
+    /* «Mensaje» en perfiles ahora vive en md_friends.js (barra de acciones
+       con Solicitud de Amistad + Mensaje). Sección retirada en v4. */
 
     console.log('[Stevscon] md_button.js listo (v2) — badge a prueba de todo: late-inject + auto-boot + reset.');
 })(window, document);

@@ -94,8 +94,43 @@
     function paintList(host) {
         const list = curList || [];
         if (T.active === 'fr') {
+            /* v2 · SOLICITUDES DE AMISTAD pendientes (aceptar / rechazar) */
+            const F = SCSOC.dmFriends;
+            const pend = (F && F.pendingList) ? F.pendingList() : [];
+            pend.forEach(function (p) {
+                const no = E('button', 'scdm-rowbtn');
+                no.type = 'button';
+                no.title = 'Rechazar solicitud';
+                no.setAttribute('aria-label', 'Rechazar solicitud');
+                no.innerHTML = '<i class="fa-solid fa-xmark" aria-hidden="true"></i>';
+                no.addEventListener('click', function (ev) {
+                    ev.stopPropagation();
+                    F.decline(p.uid, function (err) {
+                        if (err) SCSOC.toast('No se pudo rechazar. Intenta de nuevo.');
+                    });
+                });
+                const ok = E('button', 'scdm-rowbtn');
+                ok.type = 'button';
+                ok.title = 'Aceptar solicitud';
+                ok.setAttribute('aria-label', 'Aceptar solicitud');
+                ok.style.color = '#4ade80';
+                ok.innerHTML = '<i class="fa-solid fa-user-check" aria-hidden="true"></i>';
+                ok.addEventListener('click', function (ev) {
+                    ev.stopPropagation();
+                    F.accept(p.uid, function (err) {
+                        if (err) SCSOC.toast('No se pudo aceptar. Intenta de nuevo.');
+                    });
+                });
+                const wrap = E('div');
+                wrap.style.cssText = 'flex:none;display:flex;gap:6px;';
+                wrap.appendChild(no); wrap.appendChild(ok);
+                const row = rowFor(p.uid, {
+                    at: p.at, hint: 'Quiere ser tu amigo', tag: mkTag('Solicitud'), action: wrap
+                });
+                host.appendChild(row);
+            });
             const ids = Object.keys(friends);
-            if (!ids.length) {
+            if (!ids.length && !pend.length) {
                 host.appendChild(emptyBox('fa-user-group',
                     'Aún no tienes amigos. Cuando aceptes una Solicitud de Amistad, esa persona aparecerá aquí y sus MDs ya no serán temporales.'));
                 return;
@@ -166,7 +201,9 @@
 
     function paint() {
         if (!curWin || !curBody || !document.contains(curBody)) return;
-        const n = { fr: Object.keys(friends).length, temp: 0, ign: 0 };
+        const Fp = SCSOC.dmFriends;
+        const nPend = (Fp && Fp.pendingList) ? Fp.pendingList().length : 0;
+        const n = { fr: Object.keys(friends).length + nPend, temp: 0, ign: 0 };
         (curList || []).forEach(function (e) {
             if (C && C.isIgnored && C.isIgnored(e.convId)) n.ign++;
             else if (!friends[e.peerUid]) n.temp++;
