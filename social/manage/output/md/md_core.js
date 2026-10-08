@@ -1,6 +1,6 @@
 /**
  * ====
- * STEVSCON.COM — social/manage/output/md/md_core.js (v1)
+ * STEVSCON.COM — social/manage/output/md/md_core.js (v3)
  * NÚCLEO de Mensajes Directos (MD) — estilo Discord, ventana de 10 h.
  *  - Nodo PRIVADO en la RAÍZ de la BD: dms/{convId}/meta · /msgs · /read
  *    + bandeja personal dms/inbox/{uid}/{convId} (alimenta el badge 99+).
@@ -9,15 +9,18 @@
  *  - VENTANA DE 10 HORAS: la conversación nace con expiresAt; pasado ese
  *    tiempo el MD se CONGELA (el cliente y las REGLAS con `now` lo firman)
  *    y solo queda la Solicitud de Amistad (sistema aparte, ya viene).
- *  - FILTRO: todo MD pasa por SCSOC.secAntiBad.check() (anti-bad v2)
- *    antes de enviarse; los intentos caen en security/moderation/logs.
- *  - CANDADOS v5: requireLogin + users.once() + anti-duplicado 10s.
+ *  - FILTRO: todo MD pasa por SCSOC.secAntiBad.check() (anti-bad v2).
+ *  - NUEVO v3 · PREFERENCIAS: lee users/{peerUid}/settings ANTES de
+ *    abrir/enviar; si el otro tiene mdAllow:'nadie', el MD se bloquea
+ *    (toast claro, cero escritura). Expone watchMyPrefs() para que el
+ *    badge (mdBadge) y la lista (mdPreview) obedezcan tus switches.
  *  - API pública: SCSOC.dm
  *      .open(peerUid, cb)        .send(convId, text, cb)
  *      .watchInbox(cb) -> off    .watchConv(convId, cbs) -> off
  *      .metaOnce(convId, cb)     .markRead(convId)
  *      .isExpired(meta)          .msLeft(meta)       .convIdFor(a, b)
  *      .unreadTotal(list)        .nameOf(uid, cb)    .peerOf(users, my)
+ *      .prefOf(uid, cb)          .watchMyPrefs(cb) -> off   .myPrefs()
  *      .WINDOW_MS / .MAX_TEXT
  *  SEGURIDAD: todo texto via textContent (NUNCA innerHTML con datos).
  * Cargar ANTES de md_ui.js y md_button.js, y ANTES del motor.
@@ -37,6 +40,10 @@
     /* candado anti-duplicado (mismo patrón que admin_post v10) */
     const _lastSend = { uid: '', text: '', at: 0 };
     const _peerCache = {};
+    const _prefCache = {};          /* settings del peer (TTL 30s) */
+    let _myPrefs = {};              /* mis settings (en vivo) */
+    const _myPrefCbs = [];
+    let _myRef = null;
 
     function db() { return firebase.database(); }
     function me() { try { return firebase.auth().currentUser; } catch (e) { return null; } }
@@ -73,6 +80,43 @@
         });
     };
 
+    /* ==== PREFERENCIAS (v3) ==== */
+    /* settings de OTRA persona (una lectura, cache 30s) */
+    D.prefOf = function (uid, cb) {
+        if (!uid || !db()) { cb({}); return; }
+        const c = _prefCache[uid];
+        if (c && (Date.now() - c.at) < 30000) { cb(c.v); return; }
+        db().ref('users/' + uid + '/settings').once('value').then(function (s) {
+            const v = s.val() || {};
+            _prefCache[uid] = { v: v, at: Date.now() };
+            cb(v);
+        }).catch(function () { cb({}); });
+    };
+
+    /* MIS settings en vivo (badge, vista previa, sonido...) */
+    D.myPrefs = function () { return _myPrefs; };
+    D.watchMyPrefs = function (cb) {
+        const a = me();
+        if (!a || !db() || typeof cb !== 'function') { if (typeof cb === 'function') cb({}); return function () {}; }
+        _myPrefCbs.push(cb);
+        if (!_myRef) {
+            _myRef = db().ref('users/' + a.uid + '/settings');
+            _myRef.on('value', function (s) {
+                _myPrefs = s.val() || {};
+                _myPrefCbs.forEach(function (fn) { try { fn(_myPrefs); } catch (e) {} });
+            }, function (err) {
+                console.warn('[MD] settings bloqueados por reglas:', err);
+                _myPrefCbs.forEach(function (fn) { try { fn(_myPrefs); } catch (e) {} });
+            });
+        } else {
+            cb(_myPrefs);
+        }
+        return function () {
+            const i = _myPrefCbs.indexOf(cb);
+            if (i > -1) _myPrefCbs.splice(i, 1);
+        };
+    };
+
     /* ==== abrir (o recuperar) una conversación ==== */
     D.open = function (peerUid, cb) {
         const a = me();
@@ -81,39 +125,46 @@
             SCSOC.toast('No puedes abrir un MD contigo mismo.');
             return;
         }
-        const id = D.convIdFor(a.uid, peerUid);
-        convRef(id).child('meta').once('value').then(function (s) {
-            if (s.exists()) {
-                touchInboxEntry(a.uid, peerUid, id);
-                if (cb) cb(id, s.val());
+        /* v3: ¿me deja mandarle MD? */
+        D.prefOf(peerUid, function (p) {
+            if (p && p.mdAllow === 'nadie') {
+                SCSOC.toast('Esta persona tiene los Mensajes Directos desactivados.');
                 return;
             }
-            const users = {};
-            users[a.uid] = true;
-            users[peerUid] = true;
-            const meta = {
-                users: users,
-                createdAt: firebase.database.ServerValue.TIMESTAMP,
-                expiresAt: Date.now() + D.WINDOW_MS,
-                lastAt: firebase.database.ServerValue.TIMESTAMP,
-                lastFrom: a.uid,
-                lastText: ''
-            };
-            convRef(id).child('meta').set(meta).then(function () {
-                touchInboxEntry(a.uid, peerUid, id);
-                if (cb) cb(id, meta);
-            }).catch(function () {
-                /* carrera: la otra persona la creó en el mismo instante */
-                convRef(id).child('meta').once('value').then(function (s2) {
-                    if (s2.exists()) {
-                        touchInboxEntry(a.uid, peerUid, id);
-                        if (cb) cb(id, s2.val());
-                    } else {
-                        SCSOC.toast('No se pudo abrir el MD.');
-                    }
-                }).catch(function () { SCSOC.toast('No se pudo abrir el MD.'); });
-            });
-        }).catch(function () { SCSOC.toast('No se pudo abrir el MD.'); });
+            const id = D.convIdFor(a.uid, peerUid);
+            convRef(id).child('meta').once('value').then(function (s) {
+                if (s.exists()) {
+                    touchInboxEntry(a.uid, peerUid, id);
+                    if (cb) cb(id, s.val());
+                    return;
+                }
+                const users = {};
+                users[a.uid] = true;
+                users[peerUid] = true;
+                const meta = {
+                    users: users,
+                    createdAt: firebase.database.ServerValue.TIMESTAMP,
+                    expiresAt: Date.now() + D.WINDOW_MS,
+                    lastAt: firebase.database.ServerValue.TIMESTAMP,
+                    lastFrom: a.uid,
+                    lastText: ''
+                };
+                convRef(id).child('meta').set(meta).then(function () {
+                    touchInboxEntry(a.uid, peerUid, id);
+                    if (cb) cb(id, meta);
+                }).catch(function () {
+                    /* carrera: la otra persona la creó en el mismo instante */
+                    convRef(id).child('meta').once('value').then(function (s2) {
+                        if (s2.exists()) {
+                            touchInboxEntry(a.uid, peerUid, id);
+                            if (cb) cb(id, s2.val());
+                        } else {
+                            SCSOC.toast('No se pudo abrir el MD.');
+                        }
+                    }).catch(function () { SCSOC.toast('No se pudo abrir el MD.'); });
+                });
+            }).catch(function () { SCSOC.toast('No se pudo abrir el MD.'); });
+        });
     };
 
     /* crea mi entrada de bandeja SOLO si no existe (no toca unread) */
@@ -127,11 +178,11 @@
                 lastText: '',
                 lastFrom: '',
                 unread: 0
-            }).catch(function () {});
-        }).catch(function () {});
+            }).catch(function (err) { console.warn('[MD] inbox:', err); });
+        }).catch(function (err) { console.warn('[MD] inbox read:', err); });
     }
 
-    /* ==== enviar (filtro anti-bad + candados) ==== */
+    /* ==== enviar (filtro anti-bad + preferencias + candados) ==== */
     D.send = function (convId, raw, cb) {
         SCSOC.requireLogin(function (a) {
             const text = String(raw || '').trim();
@@ -159,53 +210,61 @@
                     if (cb) cb(new Error('expired'));
                     return;
                 }
-                /* candado 2: filtro anti-bad v2 (el staff pasa libre) */
-                const ab = (SCSOC.secAntiBad && SCSOC.secAntiBad.check) ? SCSOC.secAntiBad.check(text) : { ok: true };
-                if (ab && ab.ok === false) {
-                    logBlocked(a, text, ab);
-                    SCSOC.toast(ab.msg || 'Mensaje bloqueado por el filtro.');
-                    if (cb) cb(new Error('filter'));
-                    return;
-                }
-                D.nameOf(a.uid, function (info) {
-                    const id = SCSOC.ids.make();
-                    const msg = {
-                        id: id,
-                        text: text,
-                        authorUid: a.uid,
-                        authorName: info.name,
-                        createdAt: firebase.database.ServerValue.TIMESTAMP
-                    };
-                    const peerUid = D.peerOf(meta.users, a.uid);
-                    const upd = {};
-                    upd['msgs/' + id] = msg;
-                    upd['meta/lastAt'] = firebase.database.ServerValue.TIMESTAMP;
-                    upd['meta/lastFrom'] = a.uid;
-                    upd['meta/lastText'] = text.slice(0, 120);
-                    convRef(convId).update(upd).then(function () {
-                        _lastSend.uid = a.uid; _lastSend.text = text; _lastSend.at = Date.now();
-                        /* mi bandeja: refresca posición (unread intacto) */
-                        db().ref('dms/inbox/' + a.uid + '/' + convId).update({
-                            peerUid: peerUid,
-                            lastAt: firebase.database.ServerValue.TIMESTAMP,
-                            lastText: text.slice(0, 120),
-                            lastFrom: a.uid
-                        }).catch(function () {});
-                        /* bandeja del otro: entrada + unread +1 (transacción) */
-                        const theirs = db().ref('dms/inbox/' + peerUid + '/' + convId);
-                        theirs.update({
-                            peerUid: a.uid,
-                            lastAt: firebase.database.ServerValue.TIMESTAMP,
-                            lastText: text.slice(0, 120),
-                            lastFrom: a.uid
-                        }).catch(function () {});
-                        theirs.child('unread').transaction(function (v) { return (Number(v) || 0) + 1; }, function (err) {
-                            if (err) console.warn('[MD] unread bloqueado (revisa las reglas de dms/inbox):', err);
+                const peerUid = D.peerOf(meta.users, a.uid);
+                /* v3: por si nos cerró los MD hace un segundo */
+                D.prefOf(peerUid, function (p) {
+                    if (p && p.mdAllow === 'nadie') {
+                        SCSOC.toast('Esta persona tiene los MDs desactivados.');
+                        if (cb) cb(new Error('pref'));
+                        return;
+                    }
+                    /* candado 2: filtro anti-bad v2 (el staff pasa libre) */
+                    const ab = (SCSOC.secAntiBad && SCSOC.secAntiBad.check) ? SCSOC.secAntiBad.check(text) : { ok: true };
+                    if (ab && ab.ok === false) {
+                        logBlocked(a, text, ab);
+                        SCSOC.toast(ab.msg || 'Mensaje bloqueado por el filtro.');
+                        if (cb) cb(new Error('filter'));
+                        return;
+                    }
+                    D.nameOf(a.uid, function (info) {
+                        const id = SCSOC.ids.make();
+                        const msg = {
+                            id: id,
+                            text: text,
+                            authorUid: a.uid,
+                            authorName: info.name,
+                            createdAt: firebase.database.ServerValue.TIMESTAMP
+                        };
+                        const upd = {};
+                        upd['msgs/' + id] = msg;
+                        upd['meta/lastAt'] = firebase.database.ServerValue.TIMESTAMP;
+                        upd['meta/lastFrom'] = a.uid;
+                        upd['meta/lastText'] = text.slice(0, 120);
+                        convRef(convId).update(upd).then(function () {
+                            _lastSend.uid = a.uid; _lastSend.text = text; _lastSend.at = Date.now();
+                            /* mi bandeja: refresca posición (unread intacto) */
+                            db().ref('dms/inbox/' + a.uid + '/' + convId).update({
+                                peerUid: peerUid,
+                                lastAt: firebase.database.ServerValue.TIMESTAMP,
+                                lastText: text.slice(0, 120),
+                                lastFrom: a.uid
+                            }).catch(function () {});
+                            /* bandeja del otro: entrada + unread +1 (transacción) */
+                            const theirs = db().ref('dms/inbox/' + peerUid + '/' + convId);
+                            theirs.update({
+                                peerUid: a.uid,
+                                lastAt: firebase.database.ServerValue.TIMESTAMP,
+                                lastText: text.slice(0, 120),
+                                lastFrom: a.uid
+                            }).catch(function () {});
+                            theirs.child('unread').transaction(function (v) { return (Number(v) || 0) + 1; }, function (err) {
+                                if (err) console.warn('[MD] unread bloqueado (revisa las reglas de dms/inbox):', err);
+                            });
+                            if (cb) cb(null, id);
+                        }).catch(function () {
+                            SCSOC.toast('No se pudo enviar el mensaje.');
+                            if (cb) cb(new Error('write'));
                         });
-                        if (cb) cb(null, id);
-                    }).catch(function () {
-                        SCSOC.toast('No se pudo enviar el mensaje.');
-                        if (cb) cb(new Error('write'));
                     });
                 });
             }).catch(function () {
@@ -296,5 +355,5 @@
             .transaction(function () { return 0; });
     };
 
-    console.log('[Stevscon] md_core.js listo (v1) — SCSOC.dm: MDs privados con ventana de 10 h.');
+    console.log('[Stevscon] md_core.js listo (v3) — MDs con ventana de 10 h + preferencias de MD.');
 })(window, document);

@@ -1,6 +1,9 @@
 /**
  * STEVSCON.COM - accounts/manage/settings/buttons/set_preferences.js
- * LÓGICA: PREFERENCIAS (v1) · guarda en users/{uid}/settings y aplica al instante
+ * LÓGICA: PREFERENCIAS (v2) · guarda en users/{uid}/settings y aplica al instante
+ *  - NUEVO: preferencias de MD (mdAllow, mdRequests, mdSound, mdPreview, mdBadge).
+ *  - NUEVO: puente de tema — Oscuro/Claro ahora funciona en TODA la web
+ *    (index + social.html): body class + data-theme + localStorage + evento.
  */
 (function (window, document) {
     'use strict';
@@ -28,7 +31,6 @@
     SCSET.api.preferences = {
         setLang: function (v) {
             try { localStorage.setItem('stevscon_lang', v); } catch (e) {}
-            // Engancha al sistema de lenguaje si expone API; si no, avisa por evento.
             if (window.StevsconLang && typeof window.StevsconLang.set === 'function') {
                 window.StevsconLang.set(v);
             } else {
@@ -45,8 +47,32 @@
         setDefaultStatus: function (v) {
             SCSET.toast('Estado por defecto guardado');
             return patch({ defaultStatus: v });
+        },
+        /* ==== MENSAJES DIRECTOS · un switch = un write a settings ==== */
+        setMD: function (obj, msg) {
+            if (msg) SCSET.toast(msg);
+            return patch(obj);
         }
     };
 
-    console.log('[Stevscon] set_preferences.js listo (botones registrados).');
+    /* ==== PUENTE DE TEMA (toda la web) ====
+       Conserva el comportamiento original del index (si existía) y AÑADE:
+       data-theme en <html> + localStorage('stevscon_theme') + evento
+       'sc:theme-applied' que social.html escucha para pintarse claro/oscuro. */
+    const _origTheme = (typeof SCSET.applyTheme === 'function') ? SCSET.applyTheme : null;
+    SCSET.applyTheme = function (v) {
+        const val = (v === 'light') ? 'light' : 'dark';
+        if (_origTheme) { try { _origTheme(val); } catch (e) {} }
+        else {
+            try {
+                document.body.classList.remove('theme-dark', 'theme-light');
+                document.body.classList.add('theme-' + val);
+            } catch (e) {}
+        }
+        try { document.documentElement.setAttribute('data-theme', val); } catch (e) {}
+        try { localStorage.setItem('stevscon_theme', val); } catch (e) {}
+        document.dispatchEvent(new CustomEvent('sc:theme-applied', { detail: { theme: val } }));
+    };
+
+    console.log('[Stevscon] set_preferences.js listo (v2 · botones + puente de tema para toda la web).');
 })(window, document);

@@ -154,9 +154,12 @@
             idb.appendChild(SCSOC.userHead(e.peerUid, 38, { nameSize: 13, handlerSize: 10.5 }));
             const meta = E('div', 'scdm-rmeta');
             const prev = E('div', 'scdm-rprev');
-            prev.textContent = e.lastText
-                ? (e.lastFrom === meUid ? 'Tú: ' + e.lastText : e.lastText)
-                : 'Conversación nueva';
+            const noPrev = !!(D.myPrefs && D.myPrefs() && D.myPrefs().mdPreview === 'no');
+            prev.textContent = noPrev
+                ? 'Vista previa oculta'
+                : (e.lastText
+                    ? (e.lastFrom === meUid ? 'Tú: ' + e.lastText : e.lastText)
+                    : 'Conversación nueva');
             const when = E('div', 'scdm-rwhen');
             when.textContent = e.lastAt ? SCSOC.timeAgo(e.lastAt) : '';
             meta.appendChild(prev); meta.appendChild(when);

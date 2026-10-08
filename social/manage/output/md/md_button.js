@@ -17,7 +17,7 @@
     if (SCSOC.dmButton) return;
 
     const B = SCSOC.dmButton = {};
-    let btn = null, badge = null, offInbox = null;
+    let btn = null, badge = null, offInbox = null, badgeOff = false;
     let lastTotal = 0;
 
     function injectCss() {
@@ -100,8 +100,17 @@
         if (offInbox || !SCSOC.dm || !SCSOC.dm.watchInbox) return;
         offInbox = SCSOC.dm.watchInbox(function (list) {
             lastTotal = SCSOC.dm.unreadTotal(list);
-            paintBadge(); /* FIX: ya no depende de que el botón exista */
+            if (!badgeOff) paintBadge();
+            else if (badge) badge.classList.remove('scdm-show');
         });
+        /* Preferencias: el badge se puede apagar desde Ajustes > Preferencias */
+        if (SCSOC.dm.watchMyPrefs) {
+            SCSOC.dm.watchMyPrefs(function (p) {
+                badgeOff = !!(p && p.mdBadge === 'no');
+                if (badgeOff) { if (badge) badge.classList.remove('scdm-show'); }
+                else paintBadge();
+            });
+        }
     }
     (function waitDm() {
         if (window.firebase && SCSOC.dm && SCSOC.dmUI) {

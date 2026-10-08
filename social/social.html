@@ -44,9 +44,14 @@
 <style>
     /* Mismas variables que usa tu sistema (category_posts.js las hereda de aquí) */
     :root{
-        --bg-main:#0d0b14; --border-color:#2e2440; --bg-hover:#261f36;
+        --bg-main:#0d0b14; --border-color:#2e2440; --bg-hover:#261f36; --bg-card:#1a1625;
         --purple-accent:#8b5cf6; --purple-dark:#6d28d9; --purple-glow:rgba(139,92,246,.35);
         --text-main:#f8fafc; --text-muted:#94a3b8;
+    }
+    html[data-theme="light"]{
+        --bg-main:#f4f1fa; --border-color:#ddd6f0; --bg-hover:#eae4f6; --bg-card:#ffffff;
+        --purple-accent:#7c3aed; --purple-dark:#6d28d9; --purple-glow:rgba(124,58,237,.22);
+        --text-main:#221e33; --text-muted:#6e6987;
     }
     *{box-sizing:border-box}
     html,body{margin:0;padding:0}
@@ -66,6 +71,32 @@
     @keyframes scsocFlash{50%{box-shadow:0 0 0 3px var(--purple-glow)}}
 </style>
 <script src="/social/move.js?v=1"></script>
+<script>
+/* TEMA · aplica al instante el Oscuro/Claro guardado desde Preferencias */
+(function () {
+    var t = 'dark';
+    try { t = localStorage.getItem('stevscon_theme') || 'dark'; } catch (e) {}
+    if (t === 'light') document.documentElement.setAttribute('data-theme', 'light');
+    document.addEventListener('sc:theme-applied', function (e) {
+        var v = (e && e.detail && e.detail.theme) || 'dark';
+        document.documentElement.setAttribute('data-theme', v);
+        try { localStorage.setItem('stevscon_theme', v); } catch (er) {}
+    });
+})();
+</script>
+<script>
+/* TEMA · al iniciar sesión, manda el guardado en Firebase (Preferencias) */
+firebase.auth().onAuthStateChanged(function (u) {
+    if (!u || !firebase.database) return;
+    firebase.database().ref('users/' + u.uid + '/settings/theme').once('value').then(function (s) {
+        var t = s.val();
+        if (t === 'light' || t === 'dark') {
+            document.documentElement.setAttribute('data-theme', t);
+            try { localStorage.setItem('stevscon_theme', t); } catch (e) {}
+        }
+    }).catch(function () {});
+});
+</script>
 </head>
 <body>
 
@@ -95,6 +126,12 @@
         }
     } catch (e) { console.warn('[Social] Firebase config:', e && e.message); }
 </script>
+
+  <script defer src="accounts/manage/settings/output/ui_settings.js?v=7"></script>
+  <script defer src="accounts/manage/settings/output/ui_preferences.js?v=2"></script>
+  <script defer src="accounts/manage/settings/output/ui_privacy.js?v=1"></script>
+  <script defer src="accounts/manage/settings/output/ui_data.js?v=2"></script>
+  <script defer src="accounts/manage/settings/buttons/set_preferences.js?v=2"></script>
 
 <!-- output primero (UI), buttons después (Firebase), coordinador AL FINAL -->
   <script defer src="accounts/manage/settings/output/ui_settings.js?v=7"></script>
@@ -139,9 +176,9 @@
 <script src="/social/manage/output/security/accounts/anti-bad.js?v=2"></script>
 <script src="/social/manage/output/security/accounts/analytics.js?v=1"></script>
 
-<script src="/social/manage/output/md/md_core.js?v=2"></script>
-<script src="/social/manage/output/md/md_ui.js?v=1"></script>
-<script src="/social/manage/output/md/md_button.js?v=2"></script>
+<script src="/social/manage/output/md/md_core.js?v=3"></script>
+<script src="/social/manage/output/md/md_ui.js?v=2"></script>
+<script src="/social/manage/output/md/md_button.js?v=3"></script>
 
 <!-- EL MOTOR: category_posts.js monta la página Social completa.
      Ruta REAL (según tu árbol y tu index): social/manage/posts/ -->
