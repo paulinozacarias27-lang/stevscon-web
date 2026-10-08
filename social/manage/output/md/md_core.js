@@ -52,6 +52,13 @@
     D.convIdFor = function (a, b) {
         return [String(a || ''), String(b || '')].sort().join('__');
     };
+    /* v7 · peerOf HABÍA DESAPARECIDO (el parche v5 lo pisó al pegarse).
+       Sin él, peerIsFriend() reventaba en silencio y todo se veía EXPIRADO. */
+    D.peerOf = function (usersObj, myUid) {
+        const keys = Object.keys(usersObj || {});
+        for (let i = 0; i < keys.length; i++) if (keys[i] !== myUid) return keys[i];
+        return '';
+    };
 
     D.isExpired = function (meta) {
         if (!meta || !Number(meta.expiresAt)) return false;
