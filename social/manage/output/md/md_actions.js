@@ -161,6 +161,8 @@
 
     function paintStates() {
         if (!cur || !cur.bBlk) return;
+        /* v2: entre AMIGOS no existe "Ignorar" — se oculta en vivo */
+        if (cur.bIgn) cur.bIgn.style.display = (C.isFriend && C.isFriend(cur.peerUid)) ? 'none' : '';
         const blk = C.isBlocked(cur.peerUid);
         const ign = C.isIgnored(cur.convId);
         /* Bloquear <-> Desbloquear */

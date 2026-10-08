@@ -256,7 +256,7 @@
                             convRef(convId).child('meta/friends').set(true).catch(function () {});
                         }
                     } catch (e) {}
-                    
+
                     if (ab && ab.ok === false) {
                         logBlocked(a, text, ab);
                         SCSOC.toast(ab.msg || 'Mensaje bloqueado por el filtro.');
@@ -393,4 +393,29 @@
     };
 
     console.log('[Stevscon] md_core.js listo (v3) — MDs con ventana de 10 h + preferencias de MD.');
+
+    /* ==== v6 · AMIGOS = MD SIN EXPIRACIÓN (parche final) ====
+       Va AL FINAL para ganar a CUALQUIER definición anterior.
+       Envuelve las funciones originales: si el peer es mi amigo,
+       nunca expira; si no es amigo, todo sigue idéntico. */
+    (function () {
+        const oldMsLeft = D.msLeft, oldIsExpired = D.isExpired;
+        D.peerIsFriend = function (meta) {
+            try {
+                const u = firebase.auth().currentUser;
+                if (!u || !meta || !meta.users) return false;
+                const C = SCSOC.dmContacts;
+                const peer = D.peerOf(meta.users, u.uid);
+                return !!(peer && C && C.isFriend && C.isFriend(peer));
+            } catch (e) { return false; }
+        };
+        D.msLeft = function (meta) {
+            if (D.peerIsFriend(meta)) return (D.WINDOW_MS || 36000000);
+            return oldMsLeft ? oldMsLeft(meta) : 0;
+        };
+        D.isExpired = function (meta) {
+            if (D.peerIsFriend(meta)) return false;
+            return oldIsExpired ? oldIsExpired(meta) : !meta;
+        };
+    })();
 })(window, document);
