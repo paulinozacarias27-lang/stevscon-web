@@ -24,7 +24,7 @@
         }
         return out;
     }
-    function obfuscate(pass) {
+   function obfuscate(pass) {
         try { return btoa(unescape(encodeURIComponent(xor(String(pass))))); } catch (e) { return ''; }
     }
     function reveal(token) {
