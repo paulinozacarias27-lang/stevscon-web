@@ -178,7 +178,7 @@
         const actions = document.createElement('button');
         actions.type = 'button';
         actions.textContent = 'Editar perfil';
-        actions.style.cssText = 'padding:8px 16px;border-radius:9px;border:0;background:#7c3aed;color:#ffffff;font-family:Inter,sans-serif;font-size:12.5px;font-weight:800;cursor:pointer;';
+        actions.style.cssText = 'padding:8px 16px;border-radius:9px;border:0;background:#7c3aed;color:#ffff;font-family:Inter,sans-serif;font-size:12.5px;font-weight:800;cursor:pointer;';
         actions.addEventListener('click', renderEdit);
 
         const cardBox = document.createElement('div');
@@ -187,6 +187,12 @@
             metadata: SCp.user.metadata
         }, { actions: actions });
         contentBox.appendChild(cardBox);
+
+        // SWITCH · Botón "Cambiar de cuenta" (lo monta panel.js) al final del panel.
+        // Va DESPUÉS de pintar la tarjeta para que ningún re-render lo borre.
+        if (SCp.switchAcc && typeof SCp.switchAcc.mountButton === 'function') {
+            SCp.switchAcc.mountButton(contentBox);
+        }
     }
 
     // ---- MODO EDITAR: los campos ----
