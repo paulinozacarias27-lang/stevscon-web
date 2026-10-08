@@ -199,7 +199,9 @@
                             lastText: text.slice(0, 120),
                             lastFrom: a.uid
                         }).catch(function () {});
-                        theirs.child('unread').transaction(function (v) { return (Number(v) || 0) + 1; });
+                        theirs.child('unread').transaction(function (v) { return (Number(v) || 0) + 1; }, function (err) {
+                            if (err) console.warn('[MD] unread bloqueado (revisa las reglas de dms/inbox):', err);
+                        });
                         if (cb) cb(null, id);
                     }).catch(function () {
                         SCSOC.toast('No se pudo enviar el mensaje.');
@@ -251,7 +253,9 @@
             out.sort(function (x, y) { return y.lastAt - x.lastAt; });
             cb(out);
         };
-        ref.on('value', fn);
+        ref.on('value', fn, function (err) {
+            console.warn('[MD] Bandeja bloqueada por reglas (badge muerto):', err);
+        });
         return function () { ref.off('value', fn); };
     };
 

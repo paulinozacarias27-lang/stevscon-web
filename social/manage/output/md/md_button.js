@@ -1,13 +1,12 @@
 /**
  * ====
- * STEVSCON.COM — social/manage/output/md/md_button.js (v1)
- * BOTÓN CIRCULAR de MD para la cabecera de la página Social
- * (category_posts.js) + botón «Mensaje» en el panel de perfil.
- *  - Se inyecta solo cuando la página Social se abre ('sc:social-opened'),
- *    junto al indicador EN VIVO. Nada de adivinar: el header YA existe.
- *  - Badge rojo estilo Discord con el total de MDs sin leer (tope 99+),
- *    alimentado por SCSOC.dm.watchInbox en tiempo real.
- *  - «Mensaje» en perfiles: hook 'profilePanel' (defensivo con args).
+ * STEVSCON.COM — social/manage/output/md/md_button.js (v2)
+ * BOTÓN CIRCULAR de MD + badge rojo estilo Discord (99+) + «Mensaje».
+ * v2: FIX NOTIFICACIONES —
+ *  - El badge ya NO pierde datos si el botón aún no existía: el total
+ *    se guarda en lastTotal y se pinta en cuanto el botón nace.
+ *  - Auto-inyección al cargar si la página Social ya está abierta.
+ *  - Reset de badge al cerrar sesión.
  * Cargar AL FINAL del bloque md (después de md_ui.js).
  * ====
  */
@@ -19,6 +18,7 @@
 
     const B = SCSOC.dmButton = {};
     let btn = null, badge = null, offInbox = null;
+    let lastTotal = 0;
 
     function injectCss() {
         if (document.querySelector('style[data-scdmb]')) return;
@@ -33,6 +33,13 @@
             + '.scdm-profbtn{display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(139,92,246,.55);background:rgba(139,92,246,.14);color:#c4b5fd;font:800 12px Inter,sans-serif;padding:8px 14px;border-radius:999px;cursor:pointer;transition:background .18s ease;}'
             + '.scdm-profbtn:hover{background:rgba(139,92,246,.26);}';
         document.head.appendChild(css);
+    }
+
+    /* pinta el badge con el último total conocido (aunque el botón sea nuevo) */
+    function paintBadge() {
+        if (!badge) return;
+        badge.textContent = lastTotal > 99 ? '99+' : String(lastTotal);
+        badge.classList.toggle('scdm-show', lastTotal > 0);
     }
 
     /* ==== inyección del botón en el header de la página Social ==== */
@@ -53,6 +60,7 @@
         badge = document.createElement('span');
         badge.className = 'scdm-fabdot';
         btn.appendChild(badge);
+        paintBadge(); /* FIX: nace con lo que ya se sabía */
         btn.addEventListener('click', function (e) {
             e.stopPropagation();
             SCSOC.dmUI.open();
@@ -69,9 +77,18 @@
         let tries = 0;
         (function waitHead() {
             if (ensureBtn()) return;
-            if (++tries < 40) setTimeout(waitHead, 120);
+            if (++tries < 200) setTimeout(waitHead, 120);
         })();
     });
+
+    /* FIX: si la página Social ya estaba abierta al cargar (orden raro de
+       scripts o recarga), no esperamos ningún evento: nos inyectamos ya. */
+    injectCss();
+    (function bootWait() {
+        if (ensureBtn()) return;
+        let tries = 0;
+        if (++tries < 200) setTimeout(bootWait, 150);
+    })();
 
     /* si la página Social se cierra, el drawer también */
     document.addEventListener('sc:social-closed', function () {
@@ -82,10 +99,8 @@
     function startBadge() {
         if (offInbox || !SCSOC.dm || !SCSOC.dm.watchInbox) return;
         offInbox = SCSOC.dm.watchInbox(function (list) {
-            if (!badge) return;
-            const total = SCSOC.dm.unreadTotal(list);
-            badge.textContent = total > 99 ? '99+' : String(total);
-            badge.classList.toggle('scdm-show', total > 0);
+            lastTotal = SCSOC.dm.unreadTotal(list);
+            paintBadge(); /* FIX: ya no depende de que el botón exista */
         });
     }
     (function waitDm() {
@@ -94,11 +109,12 @@
                 firebase.auth().onAuthStateChanged(function (u) {
                     if (u) startBadge();
                     else {
+                        lastTotal = 0;
                         if (badge) badge.classList.remove('scdm-show');
                         if (offInbox) { try { offInbox(); } catch (e) {} offInbox = null; }
                     }
                 });
-            } catch (e) {}
+            } catch (e) { console.warn('[MD] badge auth:', e); }
         } else setTimeout(waitDm, 150);
     })();
 
@@ -151,5 +167,5 @@
         setTimeout(waitHook, 300);
     })();
 
-    console.log('[Stevscon] md_button.js listo (v1) — botón MD + badge 99+ en vivo + «Mensaje» en perfiles.');
+    console.log('[Stevscon] md_button.js listo (v2) — badge a prueba de todo: late-inject + auto-boot + reset.');
 })(window, document);
