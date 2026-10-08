@@ -27,7 +27,10 @@
         open: function (cb) { open(cb); },
         openConv: function (convId, peerUid) { openConv(convId, peerUid); },
         close: close,
-        isOpen: function () { return !!S.on; }
+        isOpen: function () { return !!S.on; },
+        /* v3 · extras para md_tabs.js / md_actions.js */
+        state: function () { return { on: S.on, view: S.view, convId: S.convId, peerUid: S.peerUid, meta: S.meta }; },
+        backToList: function () { if (S.on) renderList(); }
     };
 
     const S = { on: false, view: 'list', convId: null, peerUid: null, inbox: null, offInbox: null, offMsgs: null, meta: null, timer: null, markT: null };
@@ -137,6 +140,12 @@
 
         const meUid = me() ? me().uid : '';
         const list = S.inbox || [];
+        /* v3 · si md_tabs.js está cargado, ÉL pinta las pestañas y las filas */
+        if (SCSOC.dmTabs && SCSOC.dmTabs.render) {
+            SCSOC.dmTabs.render(win, body, list, meUid);
+            document.dispatchEvent(new CustomEvent('sc:dm-view', { detail: { view: 'list', win: win } }));
+            return;
+        }
         if (!list.length) {
             const empty = E('div', 'scdm-empty');
             const ei = document.createElement('i');
@@ -154,9 +163,8 @@
             idb.appendChild(SCSOC.userHead(e.peerUid, 38, { nameSize: 13, handlerSize: 10.5 }));
             const meta = E('div', 'scdm-rmeta');
             const prev = E('div', 'scdm-rprev');
-            const noPrev = !!(D.myPrefs && D.myPrefs() && D.myPrefs().mdPreview === 'no');
-            prev.textContent = noPrev
-                ? 'Vista previa oculta'
+            const _p = (D && D.myPrefs) ? D.myPrefs() : {};
+            prev.textContent = _p.mdPreview === 'no' ? 'Vista previa oculta'
                 : (e.lastText
                     ? (e.lastFrom === meUid ? 'Tú: ' + e.lastText : e.lastText)
                     : 'Conversación nueva');
@@ -172,6 +180,7 @@
             row.addEventListener('click', function () { openConv(e.convId, e.peerUid); });
             body.appendChild(row);
         });
+        document.dispatchEvent(new CustomEvent('sc:dm-view', { detail: { view: 'list', win: win } }));
     }
 
     /* ==== VISTA 2 · CHAT ==== */
@@ -308,6 +317,8 @@
             }
         });
         scheduleMark();
+        /* v3 · avisa a md_actions.js: botones Reportar / Bloquear / Ignorar */
+        document.dispatchEvent(new CustomEvent('sc:dm-view', { detail: { view: 'chat', win: win, convId: convId, peerUid: peerUid } }));
     }
 
     function bubble(m, mine) {
