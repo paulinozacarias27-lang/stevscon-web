@@ -206,23 +206,26 @@
         if (!canAct()) return toast('⚠️ Solo Owner y Admins pueden desbanear');
         const u = me();
         const rec = {
-            by: u ? u.uid : '',
-            byName: myName(),
+            by: String((u && u.uid) || 'owner'),
+            byName: String(myName() || 'Staff'),
             reason: String(reason || '').slice(0, 300),
             at: firebase.database.ServerValue.TIMESTAMP
         };
-        /* 1) aviso (unbans) → 2) quitar ban → 3) limpiar espejo del correo */
-        db().ref(CFG.UNBANS).child(uid).set(rec).then(function () {
+        /* 1) Intentar aviso (si falla, el desban IGUAL procede) → 2) quitar ban → 3) limpiar espejo */
+        db().ref(CFG.UNBANS).child(uid).set(rec).catch(function (err) {
+            console.warn('[SC-ACC] aviso de unban no guardado:', err && err.code);
+            return null;
+        }).then(function () {
             return db().ref(CFG.BANS).child(uid).remove();
         }).then(function () {
             const em = (S.users[uid] || {}).email;
             if (em) db().ref(CFG.BAN_EMAILS).child(emailKey(em)).remove().catch(function () {});
-            addLog('unban', uid, rec.reason ? ('Razón: ' + rec.reason) : '');
-            toast('Ban quitado — aviso enviado');
+            try { addLog('unban', uid, rec.reason ? ('Razón: ' + rec.reason) : ''); } catch (e) {}
+            toast('✅ Ban quitado — cuenta libre');
             closeUnbanModal();
             render();
         }).catch(function (e) {
-            toast('⚠️ No se pudo desbanear (' + (e && e.code || 'error') + ') — publica las reglas nuevas');
+            toast('⚠️ No se pudo desbanear (' + (e && e.code || 'error') + ')');
         });
     }
     function vLabel(type) {
