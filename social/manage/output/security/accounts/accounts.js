@@ -31,6 +31,8 @@
         COMMENTS: 'social/comments',
         RESPONSES: 'social/responses',
         BANS: 'security/accounts/bans',
+        BAN_EMAILS: 'security/accounts/ban_emails',
+        UNBANS: 'security/accounts/unbans',
         LOGS: 'security/accounts/logs'
     };
     const OWNER_EMAIL = (SCSOC.CONFIG && SCSOC.CONFIG.OWNER_EMAIL) || 'steven23hd@gmail.com';
@@ -211,15 +213,18 @@
             reason: String(reason || '').slice(0, 300),
             at: firebase.database.ServerValue.TIMESTAMP
         };
-        /* 1) Intentar aviso (si falla, el desban IGUAL procede) → 2) quitar ban → 3) limpiar espejo */
-        db().ref(CFG.UNBANS).child(uid).set(rec).catch(function (err) {
+        /* Rutas de emergencia: aunque CFG venga de una versión vieja, esto SIEMPRE apunta bien */
+        const UNBANS_REF = CFG.UNBANS || 'security/accounts/unbans';
+        const BAN_EMAILS_REF = CFG.BAN_EMAILS || 'security/accounts/ban_emails';
+        /* 1) Aviso (si falla, el desban IGUAL procede) → 2) quitar ban → 3) limpiar espejo del correo */
+        db().ref(UNBANS_REF).child(uid).set(rec).catch(function (err) {
             console.warn('[SC-ACC] aviso de unban no guardado:', err && err.code);
             return null;
         }).then(function () {
             return db().ref(CFG.BANS).child(uid).remove();
         }).then(function () {
             const em = (S.users[uid] || {}).email;
-            if (em) db().ref(CFG.BAN_EMAILS).child(emailKey(em)).remove().catch(function () {});
+            if (em) db().ref(BAN_EMAILS_REF).child(emailKey(em)).remove().catch(function () {});
             try { addLog('unban', uid, rec.reason ? ('Razón: ' + rec.reason) : ''); } catch (e) {}
             toast('✅ Ban quitado — cuenta libre');
             closeUnbanModal();
