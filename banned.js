@@ -399,22 +399,25 @@
 
     /* ==== PRE-CHEQUEO POR CORREO (antes de crear/acceder) ==== */
     function precheckEmail(em) {
-        var dev = devGetEmail(em);
-        if (dev) return Promise.resolve({ via: 'device', info: dev });
         var k = emailKey(em);
+        var dev = devGetEmail(em);
+        var uidGuess = (dev && dev.uid) || null;
         return new Promise(function (res) {
             var done = false, to = null;
             function fin(v) { if (done) return; done = true; if (to) clearTimeout(to); res(v); }
             to = setTimeout(function () { fin(null); }, 2500);
+            /* La bandera del dispositivo YA NO manda: la verdad SIEMPRE es Firebase */
             db().ref(BAN_EMAILS_PATH + '/' + k).once('value').then(function (s) {
                 var v = s.val();
-                if (!v || !v.uid) return fin(null);
-                /* La verdad SIEMPRE es el nodo del UID (auto-sanación tras un desban) */
-                db().ref(BANS_PATH + '/' + v.uid).once('value').then(function (bs) {
-                    if (bs.val()) return fin({ via: 'mirror', info: v });
+                if (v && v.uid) uidGuess = v.uid;
+                if (!uidGuess) return fin(null);
+                db().ref(BANS_PATH + '/' + uidGuess).once('value').then(function (bs) {
+                    if (bs.val()) return fin({ via: v ? 'mirror' : 'device', info: v || dev });
+                    /* NO baneado según Firebase → la bandera local MUERE aquí (fin del deadlock) */
+                    devClear(uidGuess, em);
                     db().ref(BAN_EMAILS_PATH + '/' + k).remove().catch(function () {});
                     fin(null);
-                }).catch(function () { fin({ via: 'mirror', info: v }); });
+                }).catch(function () { fin(v ? { via: 'mirror', info: v } : null); });
             }).catch(function () { fin(null); });
         });
     }
@@ -520,6 +523,7 @@
         if (!d.last) return;
         var rec = d.e && d.e[d.last];
         if (rec) showBan({ reason: rec.reason, byName: rec.byName, at: rec.at, uid: rec.uid, email: rec.email });
+        verifyDeviceFlag(); /* la pantalla instantánea SIEMPRE se contrasta con Firebase */
     }
     function verifyDeviceFlag() {
         var d = devRead();
