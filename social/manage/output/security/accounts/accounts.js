@@ -196,13 +196,34 @@
             closeModal(); render();
         }).catch(function (e) { toast('⚠️ No se pudo banear (' + (e && e.code || 'error') + ')'); });
     }
-    function doUnban(uid) {
+    function emailKey(e) {
+        /* Firebase no permite . # $ [ ] en llaves: el punto va a coma (igual que banned.js) */
+        return String(e || '').trim().toLowerCase().replace(/[.#$\[\]]/g, function (ch) {
+            return ch === '.' ? ',' : '_';
+        });
+    }
+    function doUnban(uid, reason) {
         if (!canAct()) return toast('⚠️ Solo Owner y Admins pueden desbanear');
-        db().ref(CFG.BANS).child(uid).remove().then(function () {
-            addLog('unban', uid, '');
-            toast('Ban quitado');
+        const u = me();
+        const rec = {
+            by: u ? u.uid : '',
+            byName: myName(),
+            reason: String(reason || '').slice(0, 300),
+            at: firebase.database.ServerValue.TIMESTAMP
+        };
+        /* 1) aviso (unbans) → 2) quitar ban → 3) limpiar espejo del correo */
+        db().ref(CFG.UNBANS).child(uid).set(rec).then(function () {
+            return db().ref(CFG.BANS).child(uid).remove();
+        }).then(function () {
+            const em = (S.users[uid] || {}).email;
+            if (em) db().ref(CFG.BAN_EMAILS).child(emailKey(em)).remove().catch(function () {});
+            addLog('unban', uid, rec.reason ? ('Razón: ' + rec.reason) : '');
+            toast('Ban quitado — aviso enviado');
+            closeUnbanModal();
             render();
-        }).catch(function (e) { toast('⚠️ No se pudo desbanear (' + (e && e.code || 'error') + ')'); });
+        }).catch(function (e) {
+            toast('⚠️ No se pudo desbanear (' + (e && e.code || 'error') + ') — publica las reglas nuevas');
+        });
     }
     function vLabel(type) {
         try { const t = SCSOC.verified && SCSOC.verified.TYPES && SCSOC.verified.TYPES[type]; return (t && t.label) || type; } catch (e) { return type; }
@@ -278,6 +299,47 @@
     function closeModal() {
         S.modalFor = null;
         if (modalEl) modalEl.style.display = 'none';
+    }
+
+    /* ==== MODAL DE DESBANEO (v3) ==== */
+    let unbanModalEl = null, unbanTitleEl = null, unbanReasonEl = null;
+    function ensureUnbanModal() {
+        if (unbanModalEl) return;
+        const back = el('div', 'position:fixed;inset:0;background:rgba(5,3,12,.7);z-index:2147483050;display:none;align-items:center;justify-content:center;padding:20px;');
+        const card = el('div', 'width:min(430px,94vw);background:var(--bg-card,#16121f);border:1px solid rgba(34,197,94,.45);border-radius:14px;padding:20px;box-shadow:0 24px 70px rgba(0,0,0,.6);');
+        unbanTitleEl = el('div', 'font:800 15px Inter,sans-serif;color:var(--text-main,#f8fafc);margin-bottom:6px;');
+        const hint = el('div', 'font:600 12px Inter,sans-serif;color:var(--text-muted,#94a3b8);margin-bottom:12px;');
+        hint.textContent = 'Se quitará el ban y el usuario recibirá un aviso verde con tu nombre y esta razón.';
+        unbanReasonEl = document.createElement('textarea');
+        unbanReasonEl.placeholder = 'Razón del desban (opcional)…';
+        unbanReasonEl.rows = 3;
+        unbanReasonEl.style.cssText = 'width:100%;box-sizing:border-box;resize:vertical;background:var(--bg-main,#0d0b14);border:1px solid var(--border-color,#2e2440);border-radius:10px;color:var(--text-main,#f8fafc);font:600 13px Inter,sans-serif;padding:10px 12px;outline:none;';
+        const btns = el('div', 'display:flex;gap:10px;justify-content:flex-end;margin-top:14px;');
+        const c = el('button', 'border:1px solid var(--border-color,#2e2440);background:transparent;color:var(--text-main,#f8fafc);font:700 12.5px Inter,sans-serif;padding:9px 14px;border-radius:9px;cursor:pointer;');
+        c.type = 'button'; c.textContent = 'Cancelar';
+        c.addEventListener('click', closeUnbanModal);
+        const go = el('button', 'border:1px solid rgba(34,197,94,.5);background:rgba(34,197,94,.12);color:#4ade80;font:800 12.5px Inter,sans-serif;padding:9px 14px;border-radius:9px;cursor:pointer;');
+        go.type = 'button'; go.textContent = 'Quitar ban';
+        go.addEventListener('click', function () { if (S.unbanFor) doUnban(S.unbanFor, unbanReasonEl.value); });
+        btns.appendChild(c); btns.appendChild(go);
+        card.appendChild(unbanTitleEl); card.appendChild(hint); card.appendChild(unbanReasonEl);
+        card.appendChild(btns);
+        back.appendChild(card);
+        back.addEventListener('click', function (e) { if (e.target === back) closeUnbanModal(); });
+        document.body.appendChild(back);
+        unbanModalEl = back;
+    }
+    function openUnbanModal(uid) {
+        ensureUnbanModal();
+        S.unbanFor = uid;
+        unbanTitleEl.textContent = 'Desbanear a ' + nameOf(uid);
+        unbanReasonEl.value = '';
+        unbanModalEl.style.display = 'flex';
+        try { unbanReasonEl.focus(); } catch (e) {}
+    }
+    function closeUnbanModal() {
+        S.unbanFor = null;
+        if (unbanModalEl) unbanModalEl.style.display = 'none';
     }
 
     /* ==== ACTIVIDAD (posts/comentarios/respuestas del usuario) ==== */
@@ -476,7 +538,7 @@
             reg.textContent = raw.createdAt ? SCSOC.timeAgo(Number(raw.createdAt)) : '';
             right.appendChild(reg);
             if (canAct() && !isOwnerAcc(uid) && !(me() && uid === me().uid)) {
-                if (S.bans[uid]) right.appendChild(iconBtn('fa-unlock', 'Quitar ban', '#22c55e', function () { doUnban(uid); }));
+                if (S.bans[uid]) right.appendChild(iconBtn('fa-unlock', 'Quitar ban', '#22c55e', function () { openUnbanModal(uid); }));
                 else right.appendChild(iconBtn('fa-ban', 'Banear', '#f87171', function () { openBanModal(uid); }));
             }
             right.appendChild(iconBtn('fa-circle-info', 'Ver información completa', 'var(--purple-accent,#8b5cf6)', function () { openDetail(uid); }));
@@ -755,7 +817,7 @@
             acts.appendChild(note);
         } else {
             if (!isOwnerAcc(uid) && !isMe) {
-                if (S.bans[uid]) acts.appendChild(actionBtn('QUITAR BAN', 'ok', function () { doUnban(uid); }));
+                if (S.bans[uid]) acts.appendChild(actionBtn('QUITAR BAN', 'ok', function () { openUnbanModal(uid); }));
                 else acts.appendChild(actionBtn('BANEAR CUENTA', 'danger', function () { openBanModal(uid); }));
             }
             if (SCSOC.verified && !isMe) {
@@ -956,6 +1018,7 @@
             if (e.key !== 'Escape' || !S.win) return;
             e.preventDefault(); e.stopPropagation();
             if (S.modalFor) return closeModal();
+            if (S.unbanFor) return closeUnbanModal();
             if (S.detail) { S.detail = null; render(); return; }
             closeWin();
         }, true);

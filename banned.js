@@ -544,7 +544,8 @@
 
     /* ==== API PÚBLICA (para futuros sistemas: bloquear publicar, etc.) ==== */
     window.StevsconBan = {
-        version: 2,
+        version: 3,
+        hide: function () { hideBan(); },
         isBanned: function (uid, cb) {
             if (typeof cb !== 'function') return;
             try {
