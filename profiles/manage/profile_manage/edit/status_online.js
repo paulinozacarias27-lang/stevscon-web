@@ -245,8 +245,25 @@
 
     function armDisconnect() {
         if (!statusRef) return;
-        try { statusRef.onDisconnect().update({ state: 'offline', updated: TS() }); }
+        try {
+            statusRef.onDisconnect().update({ state: 'offline', updated: TS() })
+                .catch(function (err) { console.error('[Stevscon Status] onDisconnect rechazado:', err); });
+        }
         catch (e) { console.error('[Stevscon Status] onDisconnect falló:', e); }
+    }
+
+    /* ==== v3 · escrituras automáticas SOLO con pestaña VISIBLE ====
+       Así la reconexión en 2º plano (celular) ya NO revive el estado:
+       el 'offline' que dejó el onDisconnect se respeta hasta que el
+       usuario vuelva de verdad. Esto mata al fantasma "Inactivo". */
+    function isVisible() { return document.visibilityState === 'visible'; }
+
+    function pushState() {
+        if (!statusRef || !isVisible()) return;
+        const want = effectiveWant();
+        if (cached.state !== want) {
+            statusRef.update({ state: want, updated: TS() }).catch(function () {});
+        }
     }
 
     function onValue(snap) {
@@ -254,19 +271,15 @@
         cached = { state: v.state || 'online', manual: v.manual || v.state || 'online' };
         repaintBadges();
         if (panelEl) refreshPanelChecks();
-        if (statusRef && !(SCST.auto && SCST.auto.isAway && SCST.auto.isAway())) {
-            const want = effectiveWant();
-            if (cached.state !== want) {
-                statusRef.update({ state: want, updated: TS() }).catch(function () {});
-            }
-        }
+        if (statusRef && !(SCST.auto && SCST.auto.isAway && SCST.auto.isAway())) pushState();
     }
 
     function onConnected(s) {
         if (!s.val() || !statusRef) return;
         armDisconnect();
-        const want = effectiveWant();
-        statusRef.update({ state: want, updated: TS() }).catch(function () {});
+        /* v3 · si la pestaña está en 2º plano NO se escribe nada: el
+           'offline' del onDisconnect se queda limpio hasta que vuelvas. */
+        if (isVisible()) pushState();
     }
 
    function onAuto(e) {
@@ -304,6 +317,12 @@
 
         if (SCST.auto && SCST.auto.start) SCST.auto.start();
         document.addEventListener('sc:status-auto', onAuto);
+        /* v3 · al VOLVER a la pestaña: re-armar el onDisconnect y sincronizar. */
+        document.addEventListener('visibilitychange', function () {
+            if (!statusRef || !isVisible()) return;
+            armDisconnect();
+            pushState();
+        });
     }
 
     function stopForUser() {

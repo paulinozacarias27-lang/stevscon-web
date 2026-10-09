@@ -4,6 +4,14 @@
  * PERFILES · UTIL · Presets morados + tarjeta de perfil estilo Discord.
  * En Firebase solo van IDs de preset o URLs: los degradados viven AQUÍ.
  * Todo se pinta con textContent y style: cero innerHTML, cero XSS.
+ *
+ * v3 (arreglo Social + tema claro):
+ *  - Aro del avatar: borde con var(--bg-card) + border-radius:50%
+ *    garantizado DESPUÉS del borde (adiós aro cuadrado asomando).
+ *  - Tarjeta y textos con variables de tema (--text-main / --text-muted /
+ *    --purple-accent) en vez de colores fijos: visible en claro Y oscuro.
+ *  - memberSince blindado: si el módulo de edad no cargó (social.html),
+ *    se calcula aquí en vez de tirar un error que tumba la tarjeta.
  * ====
  */
 (function (window, document) {
@@ -36,6 +44,15 @@
         return list.length ? list[0].css : '#7c3aed';
     };
 
+    /* v3 · "Miembro desde" de reserva (si SCp.age no existe en esta página) */
+    function memberSinceFallback(d) {
+        const v = d.createdAt || (d.metadata && d.metadata.createdAt) || null;
+        const dt = v ? new Date(v) : null;
+        if (!dt || isNaN(dt.getTime())) return '—';
+        return String(dt.getDate()).padStart(2, '0') + '/' +
+            String(dt.getMonth() + 1).padStart(2, '0') + '/' + dt.getFullYear();
+    }
+
     // Avatar: imagen si hay URL; degradado + inicial si no.
     SCp.ui.avatarEl = function (data, px, letter) {
         const d = data || {};
@@ -52,7 +69,7 @@
         } else {
             el = document.createElement('div');
             el.textContent = letter || 'S';
-            el.style.cssText = 'color:#ffffff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:' + Math.round(px * 0.44) + 'px;';
+            el.style.cssText = 'color:#ffff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:' + Math.round(px * 0.44) + 'px;';
         }
         el.style.cssText += 'width:' + px + 'px;height:' + px + 'px;border-radius:50%;object-fit:cover;flex:none;background:' + (d.avatarUrl ? 'transparent' : SCp.ui.presetCss('avatar', d.avatarPreset)) + ';';
         return el;
@@ -81,7 +98,7 @@
     function sectionLabel(text) {
         const p = document.createElement('p');
         p.textContent = text;
-        p.style.cssText = 'margin:14px 0 0;font-size:10.5px;font-weight:800;letter-spacing:.14em;color:#8f7fc0;';
+        p.style.cssText = 'margin:14px 0 0;font-size:10.5px;font-weight:800;letter-spacing:.14em;color:var(--text-muted,#8f7fc0);';
         return p;
     }
 
@@ -93,7 +110,7 @@
         while (container.firstChild) container.removeChild(container.firstChild);
 
         const card = document.createElement('div');
-        card.style.cssText = 'background:#1a1526;border:1px solid rgba(167,139,250,.35);border-radius:14px;overflow:hidden;color:#ede9fe;font-family:Inter,sans-serif;';
+        card.style.cssText = 'background:var(--bg-card,#1a1526);border:1px solid var(--border-color,rgba(167,139,250,.35));border-radius:14px;overflow:hidden;color:var(--text-main,#ede9fe);font-family:Inter,sans-serif;';
 
         const bannerWrap = document.createElement('div');
         bannerWrap.style.cssText = 'position:relative;';
@@ -106,7 +123,10 @@
         avatarRow.style.cssText = 'display:flex;align-items:flex-end;justify-content:space-between;margin-top:-38px;margin-bottom:10px;position:relative;z-index:2;';
         const letter = (d.username || d.handler || (authUser && authUser.email) || 'S').charAt(0).toUpperCase();
         const av = SCp.ui.avatarEl(d, 76, letter);
-        av.style.border = '4px solid #1a1526';
+        /* v3 · el aro abraza AL avatar: color del tema y bordes redondos
+           garantizados DESPUÉS del borde. Nunca más esquinas asomando. */
+        av.style.border = '4px solid var(--bg-card,#1a1526)';
+        av.style.borderRadius = '50%';
         avatarRow.appendChild(av);
         if (options.actions) avatarRow.appendChild(options.actions);
         inner.appendChild(avatarRow);
@@ -115,7 +135,7 @@
         nameRow.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;';
         const nameEl = document.createElement('h3');
         nameEl.textContent = d.username || 'Sin nombre';
-        nameEl.style.cssText = 'margin:0;font-size:20px;font-weight:800;color:#ffffff;letter-spacing:-.02em;';
+        nameEl.style.cssText = 'margin:0;font-size:20px;font-weight:800;color:var(--text-main,#ffff);letter-spacing:-.02em;';
         nameRow.appendChild(nameEl);
         if (d.rank && d.rank !== 'USER') {
             const badge = document.createElement('span');
@@ -127,22 +147,22 @@
 
         const handlerEl = document.createElement('p');
         handlerEl.textContent = (d.handler ? '@' + d.handler : (authUser && authUser.email) || '');
-        handlerEl.style.cssText = 'margin:2px 0 0;font-size:13px;color:#a78bfa;font-weight:600;';
+        handlerEl.style.cssText = 'margin:2px 0 0;font-size:13px;color:var(--purple-accent,#a78bfa);font-weight:600;';
         inner.appendChild(handlerEl);
 
         if (d.userId) {
             const idRow = document.createElement('div');
-            idRow.style.cssText = 'display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12.5px;color:#8f7fc0;';
+            idRow.style.cssText = 'display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12.5px;color:var(--text-muted,#8f7fc0);';
             const idLabel = document.createElement('span');
             idLabel.textContent = 'ID';
             idLabel.style.fontWeight = '700';
             const idVal = document.createElement('span');
             idVal.textContent = d.userId;
-            idVal.style.cssText = 'color:#ede9fe;font-variant-numeric:tabular-nums;';
+            idVal.style.cssText = 'color:var(--text-main,#ede9fe);font-variant-numeric:tabular-nums;';
             const copyBtn = document.createElement('button');
             copyBtn.type = 'button';
             copyBtn.textContent = 'Copiar';
-            copyBtn.style.cssText = 'background:none;border:0;color:#a78bfa;font-family:Inter,sans-serif;font-size:11.5px;font-weight:700;cursor:pointer;padding:0;';
+            copyBtn.style.cssText = 'background:none;border:0;color:var(--purple-accent,#a78bfa);font-family:Inter,sans-serif;font-size:11.5px;font-weight:700;cursor:pointer;padding:0;';
             copyBtn.addEventListener('click', function () {
                 if (navigator.clipboard && navigator.clipboard.writeText) {
                     navigator.clipboard.writeText(d.userId);
@@ -156,12 +176,12 @@
             inner.appendChild(idRow);
         }
 
-            inner.appendChild(sectionLabel('DESCRIPCIÓN'));
-            const desc = document.createElement('p');
-            desc.textContent = d.description || 'Sin descripción aún.';
-            desc.style.cssText = 'margin:4px 0 0;font-size:13.5px;line-height:1.55;color:' + (d.description ? '#ede9fe' : '#8f7fc0') + ';white-space:pre-wrap;word-break:break-word;';
-            if (window.StevsconFormats && d.description) StevsconFormats.paint(desc, d.description);
-            inner.appendChild(desc);
+        inner.appendChild(sectionLabel('DESCRIPCIÓN'));
+        const desc = document.createElement('p');
+        desc.textContent = d.description || 'Sin descripción aún.';
+        desc.style.cssText = 'margin:4px 0 0;font-size:13.5px;line-height:1.55;color:' + (d.description ? 'var(--text-main,#ede9fe)' : 'var(--text-muted,#8f7fc0)') + ';white-space:pre-wrap;word-break:break-word;';
+        if (window.StevsconFormats && d.description) StevsconFormats.paint(desc, d.description);
+        inner.appendChild(desc);
 
         const divider = document.createElement('div');
         divider.style.cssText = 'margin-top:14px;border-top:1px solid rgba(167,139,250,.15);';
@@ -169,15 +189,18 @@
 
         inner.appendChild(sectionLabel('MIEMBRO DESDE'));
         const since = document.createElement('p');
-        since.textContent = SCp.age.memberSince(d, authUser);
-        since.style.cssText = 'margin:4px 0 0;font-size:13.5px;color:#ede9fe;font-variant-numeric:tabular-nums;';
+        /* v3 · blindaje: usa SCp.age si existe; si no, calcula aquí. */
+        since.textContent = (SCp.age && typeof SCp.age.memberSince === 'function')
+            ? SCp.age.memberSince(d, authUser)
+            : memberSinceFallback(d);
+        since.style.cssText = 'margin:4px 0 0;font-size:13.5px;color:var(--text-main,#ede9fe);font-variant-numeric:tabular-nums;';
         inner.appendChild(since);
 
         // Género: abajo de todo (después de descripción, avatar y banner)
         inner.appendChild(sectionLabel('GÉNERO'));
         const gen = document.createElement('p');
         gen.textContent = d.gender || 'Sin especificar';
-        gen.style.cssText = 'margin:4px 0 0;font-size:13.5px;color:' + (d.gender ? '#ede9fe' : '#8f7fc0') + ';';
+        gen.style.cssText = 'margin:4px 0 0;font-size:13.5px;color:' + (d.gender ? 'var(--text-main,#ede9fe)' : 'var(--text-muted,#8f7fc0)') + ';';
         inner.appendChild(gen);
 
         card.appendChild(bannerWrap);

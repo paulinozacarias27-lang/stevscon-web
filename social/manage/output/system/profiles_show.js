@@ -1,14 +1,13 @@
 /**
  * ====
- * STEVSCON.COM — social/manage/output/system/profiles_show.js (v4)
- * PANEL DE PERFIL del Social — ahora con la información COMPLETA:
- *  - v4 FIX: Profiles guarda los campos editables en users/{uid}/profile
- *    (avatarUrl, bannerUrl, description, gender...), y los de cuenta
- *    (username, handler, rank, userId) en la raíz. Antes le pasábamos el
- *    nodo crudo a renderProfileCard y por eso salía avatar "S", sin
- *    descripción y sin género. Ahora se APLANA: raíz + profile/ encima.
- *  - Clic en cualquier avatar/nombre del Social (data-scsoc-profile)
- *    -> modal con TU tarjeta real (StevsconProfiles.ui.renderProfileCard).
+ * STEVSCON.COM — social/manage/output/system/profiles_show.js (v7)
+ * PANEL DE PERFIL del Social — información COMPLETA:
+ *  - v7 FIX: el modal usa las clases del sistema (.modal-overlay + .modal)
+ *    para que el rescate de tema claro de social.html también lo cubra.
+ *  - v7 FIX: tarjeta de respaldo con variables de tema (visible en claro)
+ *    y aro del avatar redondo SIEMPRE (borderRadius después del borde).
+ *  - v4: users/{uid} se APLANA (raíz + profile/) para la tarjeta.
+ *  - Clic en cualquier avatar/nombre (data-scsoc-profile) -> modal.
  *  - Estado en vivo (users/{uid}/status) + respaldo si Profiles no cargó.
  *  - Perfil ajeno: badge de estado neutralizado (NO cambia tu estado).
  *  - textContent siempre, cero innerHTML con datos de usuario (anti-XSS).
@@ -35,10 +34,9 @@
         return !!(a && a.uid === uid);
     }
 
-    /* ==== NUEVO v4: aplanar users/{uid} para la tarjeta ====
+    /* ==== aplanar users/{uid} para la tarjeta ====
      * users/{uid} = { username, handler, rank, userId, status, profile: {...} }
-     * La tarjeta quiere TODO plano. Base: raíz · Encima: profile/ (lo que
-     * editas en Perfiles manda, igual que en la página de Perfiles). */
+     * Base: raíz · Encima: profile/ (lo que editas en Perfiles manda). */
     function flattenProfile(raw) {
         if (!raw || typeof raw !== 'object') return null;
         const p = (raw.profile && typeof raw.profile === 'object') ? raw.profile : {};
@@ -76,7 +74,7 @@
 
     /* ==== tarjeta de respaldo (si ui_profile.js no está) ==== */
     function label(txt) {
-        const p = SCSOC.el('p', 'margin:14px 0 0;font-size:10.5px;font-weight:800;letter-spacing:.14em;color:#8f7fc0;');
+        const p = SCSOC.el('p', 'margin:14px 0 0;font-size:10.5px;font-weight:800;letter-spacing:.14em;color:var(--text-muted,#8f7fc0);');
         p.textContent = txt;
         return p;
     }
@@ -117,7 +115,7 @@
     }
 
     function fallbackCard(d) {
-        const card = SCSOC.el('div', 'background:var(--bg-main,#14101f);border:1px solid rgba(167,139,250,.35);border-radius:14px;overflow:hidden;color:#ede9fe;');
+        const card = SCSOC.el('div', 'background:var(--bg-card,#1a1526);border:1px solid var(--border-color,rgba(167,139,250,.35));border-radius:14px;overflow:hidden;color:var(--text-main,#ede9fe);');
         const bw = SCSOC.el('div', 'position:relative;');
         bw.appendChild(bannerFor(d, '110px'));
         card.appendChild(bw);
@@ -125,15 +123,17 @@
         const inner = SCSOC.el('div', 'padding:0 16px 16px;');
         const row = SCSOC.el('div', 'display:flex;align-items:flex-end;margin-top:-34px;margin-bottom:10px;position:relative;');
         const av = avatarFor(d, 72);
-        av.style.border = '4px solid var(--bg-main,#14101f)';
+        /* v7 · aro redondo SIEMPRE, con el color del tema */
+        av.style.border = '4px solid var(--bg-card,#1a1526)';
+        av.style.borderRadius = '50%';
         row.appendChild(av);
         inner.appendChild(row);
 
-        const nm = SCSOC.el('h3', 'margin:0;font-size:19px;font-weight:800;color:#ede9fe;letter-spacing:-.02em;');
+        const nm = SCSOC.el('h3', 'margin:0;font-size:19px;font-weight:800;color:var(--text-main,#ede9fe);letter-spacing:-.02em;');
         nm.textContent = nameFor(d);
         inner.appendChild(nm);
 
-        const hd = SCSOC.el('p', 'margin:2px 0 0;font-size:13px;color:#a78bfa;font-weight:600;');
+        const hd = SCSOC.el('p', 'margin:2px 0 0;font-size:13px;color:var(--purple-accent,#a78bfa);font-weight:600;');
         hd.textContent = handlerFor(d) ? '@' + handlerFor(d) : 'Sin handler aún';
         inner.appendChild(hd);
 
@@ -144,26 +144,26 @@
         }
 
         if (d.userId) {
-            const idRow = SCSOC.el('div', 'display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12.5px;color:#8f7fc0;');
+            const idRow = SCSOC.el('div', 'display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12.5px;color:var(--text-muted,#8f7fc0);');
             const l1 = SCSOC.el('span', 'font-weight:700;'); l1.textContent = 'ID';
-            const v1 = SCSOC.el('span', 'color:#ede9fe;font-variant-numeric:tabular-nums;');
+            const v1 = SCSOC.el('span', 'color:var(--text-main,#ede9fe);font-variant-numeric:tabular-nums;');
             v1.textContent = String(d.userId);
             idRow.appendChild(l1); idRow.appendChild(v1);
             inner.appendChild(idRow);
         }
 
         inner.appendChild(label('DESCRIPCIÓN'));
-        const de = SCSOC.el('p', 'margin:4px 0 0;font-size:13.5px;line-height:1.55;color:' + (d.description ? '#ede9fe' : '#8f7fc0') + ';white-space:pre-wrap;word-break:break-word;');
+        const de = SCSOC.el('p', 'margin:4px 0 0;font-size:13.5px;line-height:1.55;color:' + (d.description ? 'var(--text-main,#ede9fe)' : 'var(--text-muted,#8f7fc0)') + ';white-space:pre-wrap;word-break:break-word;');
         de.textContent = d.description || 'Sin descripción aún.';
         inner.appendChild(de);
 
         inner.appendChild(label('MIEMBRO DESDE'));
-        const ms = SCSOC.el('p', 'margin:4px 0 0;font-size:13.5px;color:#ede9fe;font-variant-numeric:tabular-nums;');
+        const ms = SCSOC.el('p', 'margin:4px 0 0;font-size:13.5px;color:var(--text-main,#ede9fe);font-variant-numeric:tabular-nums;');
         ms.textContent = memberSinceTxt(d);
         inner.appendChild(ms);
 
         inner.appendChild(label('GÉNERO'));
-        const ge = SCSOC.el('p', 'margin:4px 0 0;font-size:13.5px;color:' + (d.gender ? '#ede9fe' : '#8f7fc0') + ';');
+        const ge = SCSOC.el('p', 'margin:4px 0 0;font-size:13.5px;color:' + (d.gender ? 'var(--text-main,#ede9fe)' : 'var(--text-muted,#8f7fc0)') + ';');
         ge.textContent = d.gender || 'Sin especificar';
         inner.appendChild(ge);
 
@@ -195,7 +195,7 @@
 
         const data = flattenProfile(raw);
         if (!data) {
-            const p = SCSOC.el('p', 'color:#8f7fc0;font:600 13px Inter,sans-serif;text-align:center;padding:18px 0;');
+            const p = SCSOC.el('p', 'color:var(--text-muted,#8f7fc0);font:600 13px Inter,sans-serif;text-align:center;padding:18px 0;');
             p.textContent = 'Cargando perfil...';
             cardHost.appendChild(p);
             return;
@@ -237,7 +237,12 @@
 
     function buildShell() {
         backdrop = SCSOC.el('div', 'position:fixed;left:0;top:0;right:0;bottom:0;z-index:4500;background:rgba(5,4,10,.66);display:flex;align-items:center;justify-content:center;padding:18px;box-sizing:border-box;font-family:Inter,sans-serif;');
+        /* v7 · clases del sistema: con .modal-overlay + .modal, el rescate de
+           tema claro que ya vive en social.html TAMBIÉN cubre este panel.
+           Los estilos inline ganan sobre las clases: el look no cambia. */
+        backdrop.classList.add('modal-overlay');
         modal = SCSOC.el('div', 'width:440px;max-width:100%;max-height:86vh;overflow-y:auto;position:relative;background:var(--bg-card,#1a1526);border:1px solid rgba(167,139,250,.4);border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.6);box-sizing:border-box;');
+        modal.classList.add('modal');
 
         const x = SCSOC.el('button', 'position:absolute;top:10px;right:10px;z-index:5;width:32px;height:32px;border-radius:50%;border:0;background:rgba(26,21,38,.85);color:#c4b5fd;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;');
         x.innerHTML = '<i class="fa-solid fa-xmark"></i>';
@@ -246,7 +251,7 @@
 
         statusRow = SCSOC.el('div', 'display:none;align-items:center;gap:8px;padding:14px 18px 0;');
         statusDot = SCSOC.el('span', 'width:9px;height:9px;border-radius:50%;flex:none;');
-        statusTxt = SCSOC.el('span', 'font:700 12px Inter,sans-serif;color:#c4b5fd;letter-spacing:.02em;');
+        statusTxt = SCSOC.el('span', 'font:700 12px Inter,sans-serif;color:var(--purple-accent,#c4b5fd);letter-spacing:.02em;');
         statusRow.appendChild(statusDot);
         statusRow.appendChild(statusTxt);
         modal.appendChild(statusRow);
@@ -269,7 +274,7 @@
         document.body.appendChild(backdrop);
         wireLive(uid);
         if (SCSOC.runHooks) SCSOC.runHooks('profilePanel', uid, modal, cardHost);
-                try {
+        try {
             backdrop.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150, easing: 'ease-out' });
             modal.animate(
                 [{ opacity: 0, transform: 'translateY(16px) scale(.96)' }, { opacity: 1, transform: 'translateY(0) scale(1)' }],
@@ -316,5 +321,5 @@
         open(t.dataset.scsocProfile);
     });
 
-    console.log('[Stevscon] profiles_show.js listo (v4) — tarjeta con la información COMPLETA de Profiles.');
+    console.log('[Stevscon] profiles_show.js listo (v7) — tema claro + aro redondo + tarjeta completa.');
 })(window, document);
