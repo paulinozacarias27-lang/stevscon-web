@@ -1,7 +1,11 @@
 /**
  * ====
- * STEVSCON.COM — banned.js (v1) — RAÍZ DEL PROYECTO
+ * STEVSCON.COM — banned.js (v2) — RAÍZ DEL PROYECTO
  * EJECUTOR DEL SISTEMA DE BANEOS.
+ *
+ * v2: Pantalla renovada — sin cubo rojo en la imagen, panel luminoso,
+ *     lluvia infinita de martillos rojos en el fondo, título "Baneado!"
+ *     y frase graciosa aleatoria (1 de 5) bajo el título.
  *
  * accounts.js registra el ban en  security/accounts/bans/{uid}
  * banned.js lo EJECUTA de verdad:
@@ -18,8 +22,8 @@
  *      con ese correo. Entrar a la cuenta exige su contraseña (Firebase).
  *
  * INSTALACIÓN (2 líneas, una por HTML):
- *   index.html  -> <script defer src="banned.js?v=1"></script>  (último del <head>)
- *   social.html -> <script src="/banned.js?v=1"></script>       (después de category_social.js)
+ *   index.html  -> <script defer src="banned.js?v=2"></script>  (último del <head>)
+ *   social.html -> <script src="/banned.js?v=2"></script>       (después de category_social.js)
  *
  * SEGURIDAD: todo texto con textContent (NUNCA innerHTML con datos);
  * innerHTML solo para el icono de reserva. Sin datos de usuario.
@@ -35,6 +39,16 @@
     var FACE_IMG = '/BannedFace.png';                    // tu imagen en la raíz
     var FACE_IMG_FALLBACK = 'BannedFace.png';            // por si la página sirve de otra carpeta
     var LS_KEY = 'sc_ban_device_v1';
+
+    /* Frases graciosas: se elige UNA al azar cada vez que aparece la pantalla */
+    var BAN_QUOTES = [
+        'Ups\u2026 el martillo no tra\u00EDa frenos.',
+        '\u00A1DAMN! Ese ban fue de los legendarios.',
+        'F en el chat, papu. Siempre ser\u00E1s recordado.',
+        'El baneo te queda\u2026 sorprendentemente bien.',
+        'Logro desbloqueado: Baneado Profesional.'
+    ];
+    var HAMMER_COUNT = 16; // martillos vivos en pantalla
 
     var FB = window.StevsconBanData = { ready: false, showing: false };
     var ov = null, guardT = null, lastInfo = null;
@@ -102,6 +116,62 @@
         return staffP;
     }
 
+    /* ==== CSS DE LA PANTALLA (keyframes de martillos y brillos) ==== */
+    function injectBanCSS() {
+        if (document.getElementById('sc-ban-css')) return;
+        var st = document.createElement('style');
+        st.id = 'sc-ban-css';
+        st.textContent =
+            '@keyframes scBanFall{0%{transform:translate3d(0,-14vh,0);opacity:0}8%{opacity:var(--op,.5)}90%{opacity:var(--op,.5)}100%{transform:translate3d(0,114vh,0);opacity:0}}' +
+            '@keyframes scBanSpin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}' +
+            '@keyframes scBanPop{0%{transform:scale(.92) translateY(16px);opacity:0}100%{transform:scale(1) translateY(0);opacity:1}}' +
+            '@keyframes scBanGlow{0%,100%{text-shadow:0 0 16px rgba(239,68,68,.45),0 0 44px rgba(239,68,68,.22)}50%{text-shadow:0 0 26px rgba(239,68,68,.8),0 0 64px rgba(239,68,68,.34)}}' +
+            '@keyframes scBanFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}' +
+            '#sc-ban-overlay .sc-ban-hammer{pointer-events:none}' +
+            '@media (prefers-reduced-motion:reduce){#sc-ban-overlay .sc-ban-hammer{display:none}#sc-ban-overlay .sc-ban-img,#sc-ban-overlay .sc-ban-title,#sc-ban-overlay .sc-ban-quote{animation:none!important}}';
+        document.head.appendChild(st);
+    }
+
+    /* ==== MARTILLO ROJO (SVG dibujado a mano, cae y gira) ==== */
+    function mkHammer() {
+        var size = Math.round(26 + Math.random() * 34);   // 26–60px
+        var left = (-6 + Math.random() * 104).toFixed(1); // posición horizontal
+        var dur = (7 + Math.random() * 6).toFixed(1);     // 7–13s: lento
+        var delay = (-(Math.random() * 14)).toFixed(1);   // negativo: ya están en vuelo al abrir
+        var spin = (3.5 + Math.random() * 5).toFixed(1);  // vuelta por segundo distinta
+        var op = (0.22 + Math.random() * 0.38).toFixed(2);
+        var far = size < 36;                              // lejanos: borrosos, más profundo
+
+        var outer = document.createElement('div');
+        outer.className = 'sc-ban-hammer';
+        outer.style.cssText = 'position:absolute;top:0;left:' + left + '%;width:' + size + 'px;height:' + size + 'px;will-change:transform;animation:scBanFall ' + dur + 's linear infinite;animation-delay:' + delay + 's;';
+        outer.style.setProperty('--op', op);
+
+        var inner = document.createElement('div');
+        inner.style.cssText = 'width:100%;height:100%;transform-origin:50% 42%;animation:scBanSpin ' + spin + 's linear infinite;animation-delay:' + delay + 's;filter:drop-shadow(0 0 6px rgba(239,68,68,.4))' + (far ? ' blur(1.2px)' : '') + ';';
+
+        var NS = 'http://www.w3.org/2000/svg';
+        var svg = document.createElementNS(NS, 'svg');
+        svg.setAttribute('viewBox', '0 0 64 64');
+        svg.setAttribute('width', '100%');
+        svg.setAttribute('height', '100%');
+        svg.setAttribute('aria-hidden', 'true');
+        function part(tag, attrs) {
+            var el = document.createElementNS(NS, tag);
+            for (var k in attrs) { if (attrs.hasOwnProperty(k)) el.setAttribute(k, attrs[k]); }
+            svg.appendChild(el);
+        }
+        part('rect', { x: 7, y: 9, width: 50, height: 18, rx: 5, fill: '#ef4444' });       // cabeza
+        part('rect', { x: 7, y: 9, width: 50, height: 7, rx: 5, fill: '#f87171' });        // brillo
+        part('rect', { x: 7, y: 21, width: 50, height: 6, rx: 3, fill: '#b91c1c' });       // sombra
+        part('rect', { x: 28, y: 27, width: 8, height: 30, rx: 3.5, fill: '#991b1b' });    // mango
+        part('rect', { x: 25.5, y: 53, width: 13, height: 6.5, rx: 3, fill: '#7f1d1d' });  // pomo
+
+        inner.appendChild(svg);
+        outer.appendChild(inner);
+        return outer;
+    }
+
     /* ==== PANTALLA DE BANEO ==== */
     function metaRow(labelTxt, valueTxt) {
         var row = document.createElement('div');
@@ -118,27 +188,37 @@
 
     function buildOverlay(info) {
         lastInfo = info || {};
+        injectBanCSS();
+
         var o = document.createElement('div');
         o.id = 'sc-ban-overlay';
         o.setAttribute('role', 'alertdialog');
         o.setAttribute('aria-modal', 'true');
         o.setAttribute('aria-label', 'Cuenta baneada');
-        o.style.cssText = 'position:fixed;left:0;top:0;right:0;bottom:0;z-index:2147483647;background:rgba(6,4,11,.985);display:flex;align-items:center;justify-content:center;padding:18px;box-sizing:border-box;font-family:Inter,system-ui,sans-serif;';
+        o.style.cssText = 'position:fixed;left:0;top:0;right:0;bottom:0;z-index:2147483647;background:rgba(6,4,11,.985);display:flex;align-items:center;justify-content:center;padding:18px;box-sizing:border-box;font-family:Inter,system-ui,sans-serif;overflow:hidden;';
         o.addEventListener('contextmenu', function (e) { e.preventDefault(); });
 
-        var card = document.createElement('div');
-        card.style.cssText = 'width:min(430px,94vw);background:var(--bg-card,#16121f);border:1px solid rgba(239,68,68,.45);border-left:4px solid #ef4444;border-radius:16px;padding:26px 24px 20px;text-align:center;box-shadow:0 30px 90px rgba(0,0,0,.7);box-sizing:border-box;';
+        /* FONDO: lluvia infinita de martillos rojos */
+        var hammers = document.createElement('div');
+        hammers.style.cssText = 'position:absolute;left:0;top:0;right:0;bottom:0;overflow:hidden;pointer-events:none;';
+        for (var hi = 0; hi < HAMMER_COUNT; hi++) hammers.appendChild(mkHammer());
+        o.appendChild(hammers);
 
+        var card = document.createElement('div');
+        card.style.cssText = 'position:relative;width:min(430px,94vw);background:var(--bg-card,#16121f);border:1px solid rgba(248,113,113,.35);border-radius:18px;padding:26px 24px 20px;text-align:center;box-sizing:border-box;box-shadow:0 0 70px rgba(239,68,68,.16),0 0 26px rgba(239,68,68,.12),0 30px 90px rgba(0,0,0,.75);animation:scBanPop .5s cubic-bezier(.2,.9,.3,1.15) both;';
+
+        /* Imagen: SIN cubo rojo — flota con resplandor */
         var img = document.createElement('img');
         img.id = 'sc-ban-face';
+        img.className = 'sc-ban-img';
         img.alt = 'Baneado';
         img.src = FACE_IMG;
-        img.style.cssText = 'width:128px;height:128px;border-radius:18px;object-fit:cover;border:3px solid rgba(239,68,68,.55);background:var(--bg-main,#0d0b14);display:block;margin:0 auto 6px;box-sizing:border-box;';
+        img.style.cssText = 'width:132px;height:132px;border-radius:26px;object-fit:cover;display:block;margin:0 auto 4px;filter:drop-shadow(0 0 26px rgba(239,68,68,.45));animation:scBanFloat 3.4s ease-in-out infinite;';
         img.addEventListener('error', function () {
             if (img.dataset.fb === '2') {
                 var ic = document.createElement('i');
                 ic.className = 'fa-solid fa-ban';
-                ic.style.cssText = 'display:flex;align-items:center;justify-content:center;width:128px;height:128px;margin:0 auto 6px;border-radius:18px;background:rgba(239,68,68,.12);border:3px solid rgba(239,68,68,.55);color:#ef4444;font-size:52px;box-sizing:border-box;';
+                ic.style.cssText = 'display:flex;align-items:center;justify-content:center;width:132px;height:132px;margin:0 auto 4px;color:#ef4444;font-size:56px;filter:drop-shadow(0 0 22px rgba(239,68,68,.5));box-sizing:border-box;';
                 if (img.parentNode) img.parentNode.replaceChild(ic, img);
                 return;
             }
@@ -147,15 +227,25 @@
         });
         card.appendChild(img);
 
+        /* TÍTULO */
+        var h = document.createElement('h1');
+        h.className = 'sc-ban-title';
+        h.textContent = 'Baneado!';
+        h.style.cssText = 'margin:10px 0 0;font:800 36px/1.1 Inter,sans-serif;letter-spacing:-.02em;color:#f87171;animation:scBanGlow 2.6s ease-in-out infinite;';
+        card.appendChild(h);
+
+        /* FRASE GRACIOSA RANDOM (1 de 5, se elige sola) */
+        var q = document.createElement('p');
+        q.className = 'sc-ban-quote';
+        q.textContent = '\u201C' + BAN_QUOTES[Math.floor(Math.random() * BAN_QUOTES.length)] + '\u201D';
+        q.style.cssText = 'margin:8px auto 14px;max-width:36ch;font:italic 600 13.5px Inter,sans-serif;line-height:1.55;color:#fecaca;animation:scBanPop .55s .18s both;';
+        card.appendChild(q);
+
+        /* Todo lo demás, después */
         var pill = document.createElement('span');
         pill.textContent = 'BAN DEFINITIVO';
-        pill.style.cssText = 'display:inline-block;margin-top:8px;padding:4px 12px;border-radius:999px;background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.5);color:#f87171;font:800 10px Inter,sans-serif;letter-spacing:.16em;';
+        pill.style.cssText = 'display:inline-block;margin:0 0 4px;padding:4px 12px;border-radius:999px;background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.5);color:#f87171;font:800 10px Inter,sans-serif;letter-spacing:.16em;';
         card.appendChild(pill);
-
-        var h = document.createElement('h1');
-        h.textContent = 'CUENTA BANEADA';
-        h.style.cssText = 'margin:10px 0 0;font:800 24px Inter,sans-serif;letter-spacing:-.01em;color:#f87171;';
-        card.appendChild(h);
 
         var sub = document.createElement('p');
         sub.textContent = 'El acceso a Stevscon.com ha sido bloqueado para esta cuenta.';
@@ -454,7 +544,7 @@
 
     /* ==== API PÚBLICA (para futuros sistemas: bloquear publicar, etc.) ==== */
     window.StevsconBan = {
-        version: 1,
+        version: 2,
         isBanned: function (uid, cb) {
             if (typeof cb !== 'function') return;
             try {
@@ -489,6 +579,6 @@
         });
         window.addEventListener('storage', function (e) { if (e && e.key === LS_KEY) recheck(); });
         FB.ready = true;
-        console.log('[Stevscon][BAN] banned.js listo (v1) — ejecutor de baneos ACTIVO. Owner: acceso siempre, creación bloqueada.');
+        console.log('[Stevscon][BAN] banned.js listo (v2) — ejecutor ACTIVO con lluvia de martillos. Owner: acceso siempre, creación bloqueada.');
     })();
 })(window, document);
