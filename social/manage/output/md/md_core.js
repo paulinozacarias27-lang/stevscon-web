@@ -255,14 +255,6 @@
                     const AB = SCSOC.secAntiBad;
                     const ab = (AB && AB.checkChat) ? AB.checkChat(text)
                         : (AB && AB.check) ? AB.check(text) : { ok: true };
-                        /* v5: si es mi amigo, enciendo meta/friends para que las
-                       REGLAS dejen pasar el mensaje aunque la ventana vieja
-                       haya cerrado (1 escritura, queda para siempre). */
-                    try {
-                        if (D.peerIsFriend(meta)) {
-                            convRef(convId).child('meta/friends').set(true).catch(function () {});
-                        }
-                    } catch (e) {}
 
                     if (ab && ab.ok === false) {
                         logBlocked(a, text, ab);
@@ -284,6 +276,11 @@
                         upd['meta/lastAt'] = firebase.database.ServerValue.TIMESTAMP;
                         upd['meta/lastFrom'] = a.uid;
                         upd['meta/lastText'] = text.slice(0, 120);
+                        /* v4 FIX: si es mi amigo, la bandera viaja DENTRO del mismo
+                           update (atómico). Antes iba en un set() aparte que llegaba
+                           tarde o las reglas lo rechazaban en silencio → el mensaje
+                           caía en PERMISSION_DENIED y salía «No se pudo enviar». */
+                        if (D.peerIsFriend(meta)) upd['meta/friends'] = true;
                         convRef(convId).update(upd).then(function () {
                             _lastSend.uid = a.uid; _lastSend.text = text; _lastSend.at = Date.now();
                             /* mi bandeja: refresca posición (unread intacto) */
