@@ -1,19 +1,21 @@
 /**
  * ====
- * STEVSCON.COM — profiles/manage/badges/badges_manage.js (v3)
- * PANEL DE BADGES (Owner/Admins) — otorgar / quitar.
- *  v3 — navegador de usuarios en vivo:
- *    · Lista de TODOS los usuarios (avatar, nombre, @handler, rango, registro).
- *    · Buscador filtra al instante (nombre, @handler, correo o UID).
- *    · Botón de ORDEN cíclico: A–Z → antigüedad de cuenta → rango
- *      (Owner → Admin → Mod → Usuario).
- *    · Catálogo de badges ordenado por rango (plegable, no estorba).
- *    · Chips de rango y contador de badges por usuario.
- *  v2 — panel grande (620px) + iconos estilo Discord en la lista.
+ * STEVSCON.COM — profiles/manage/badges/badges_manage.js (v4)
+ * BADGES · EL PANEL (Owner/Admins/Mods — solo staff): otorgar / quitar.
+ *  v4 — reset de arquitectura: este file es SOLO UI. Ninguna escritura aquí:
+ *    los botones llaman a StevsconBadges.system (badges_system.js), que
+ *    valida permisos, escribe y guarda el log de auditoría.
+ *    · Botones deshabilitados según la matriz del system (owner → solo
+ *      Owner; resto → Owner/Admins; Mods = solo lectura).
+ *    · Nuevo: REGISTRO del usuario seleccionado (últimos 8 movimientos
+ *      con acción, badge, autor y fecha).
+ *  v3 — navegador de usuarios en vivo: lista completa (avatar, nombre,
+ *    @handler, rango, registro), buscador instantáneo, orden cíclico
+ *    A–Z → ANTIGÜEDAD → RANGO, catálogo plegable con conteo por badge.
  *  - Botón 👑 abajo a la derecha (SOLO staff) · cierra con X o ESC.
- *  - El badge 'owner' SOLO lo maneja steven23hd@gmail.com (reglas de Firebase).
+ *  - Si badges_system.js no cargó, el panel avisa y no rompe nada.
  *  - API de consola: StevsconBadges.manage.open()
- * ==== 
+ * ====
  */
 (function (window, document) {
     'use strict';
@@ -33,11 +35,13 @@
         if (cls) e.className = cls;
         return e;
     }
+    function label(id) { return (SB.CATALOG[id] && SB.CATALOG[id].label) || id; }
 
     const state = {
-        open: false, uid: null, name: '', canOwner: false,
+        open: false, uid: null, name: '', role: null,
         backdrop: null, list: null, fb: null, esc: null,
         ulist: null, catBox: null, catBody: null, catOpen: true,
+        logBox: null, logBody: null,
         prev: null, pav: null, pn: null, pu: null, sortBtnIc: null, sortBtnLb: null,
         dir: {}, staff: {}, badgesAll: {},
         loaded: false, loading: false, permErr: '',
@@ -209,7 +213,7 @@
         }
         if (state.permErr) {
             const err = el('div', 'margin:8px 0;border:1px solid rgba(239,68,68,.4);background:rgba(239,68,68,.08);color:#f87171;border-radius:12px;padding:13px;font:600 12px Inter,sans-serif;line-height:1.6;');
-            err.textContent = 'PERMISSION_DENIED leyendo users/ — el panel es solo staff; publica las reglas de Firebase que dan lectura de users/ a Owner/Admins/Mods y recarga.';
+            err.textContent = 'PERMISSION_DENIED leyendo users/ — el panel es solo staff; publica las reglas de Firebase que dan lectura de users/ a Owner/Admins/Mods y vuelve a abrir el panel.';
             host.appendChild(err);
             return;
         }
@@ -304,7 +308,7 @@
         });
     }
 
-    /* ==== SELECCIÓN de usuario (desde lista o búsqueda exacta) ==== */
+    /* ==== SELECCIÓN de usuario ==== */
     function selectUser(uid) {
         state.uid = uid;
         const raw = state.dir[uid];
@@ -317,7 +321,20 @@
         }
         fb('Usuario cargado: ' + (state.name || uid) + '. Otorga o quita badges abajo.', false);
         renderList();
+        renderLog();
         renderUserList();
+    }
+
+    /* Abre un uid aunque no esté en el directorio (búsqueda exacta) */
+    function openUid(uid) {
+        if (state.dir[uid]) { selectUser(uid); return; }
+        db().ref('users/' + uid).once('value').then(function (s) {
+            state.dir[uid] = s.exists() ? s.val() : { username: 'Usuario' };
+            selectUser(uid);
+        }).catch(function () {
+            state.dir[uid] = { username: 'Usuario' };
+            selectUser(uid);
+        });
     }
 
     /* ==== BÚSQUEDA EXACTA (@handler -> uid, o UID directo) ==== */
@@ -325,9 +342,9 @@
         const raw = String(q || '').trim();
         const h = raw.toLowerCase().replace(/^@/, '');
         if (!h) { cb(null); return; }
-        if (raw.charAt(0) !== '@' && /^[a-zA-Z0-9]{20,}$/.test(h)) {
-            return db().ref('users/' + h + '/username').once('value').then(function (s) {
-                cb(s.val() ? h : null);
+        if (raw.charAt(0) !== '@' && /^[a-zA-Z0-9_-]{15,}$/.test(h)) {
+            return db().ref('users/' + h).once('value').then(function (s) {
+                cb(s.exists() ? h : null);
             }).catch(function () { cb(null); });
         }
         db().ref('handlers/' + h).once('value').then(function (s) {
@@ -335,16 +352,21 @@
         }).catch(function () { cb(null); });
     }
 
-    /* ==== LISTA DE BADGES del usuario seleccionado ==== */
+    /* ==== LISTA DE BADGES del usuario seleccionado (vía SYSTEM) ==== */
     function renderList() {
         const host = state.list;
         if (!host) return;
         while (host.firstChild) host.removeChild(host.firstChild);
-        const CATALOG = SB.CATALOG || {};
         if (!state.uid) return;
-        db().ref(NODE + '/' + state.uid).once('value').then(function (s) {
+        if (!SB.system) {
+            const err = el('div', 'border:1px solid rgba(239,68,68,.4);background:rgba(239,68,68,.08);color:#f87171;border-radius:12px;padding:12px;font:700 12px Inter,sans-serif;line-height:1.6;');
+            err.textContent = 'badges_system.js no cargó — no se pueden manejar badges. Revisa el orden de los <script>: core → system → manage.';
+            host.appendChild(err);
+            return;
+        }
+        SB.system.list(state.uid).then(function (mine) {
             while (host.firstChild) host.removeChild(host.firstChild);
-            const mine = s.val() || {};
+            const CATALOG = SB.CATALOG || {};
             const ids = Object.keys(CATALOG).sort(function (a, b) {
                 return (CATALOG[a].order || 99) - (CATALOG[b].order || 99) || a.localeCompare(b);
             });
@@ -372,6 +394,9 @@
         st.style.color = has ? '#4ade80' : 'var(--text-muted,#94a3b8)';
         row.appendChild(st);
 
+        /* permisos SIEMPRE desde el system (única fuente de verdad) */
+        const may = SB.system ? SB.system.roleCan(state.role, id) : false;
+
         const g = el('button', null, 'scbm-btn'); g.type = 'button';
         g.style.cssText = 'background:linear-gradient(135deg,#7c3aed,#8b5cf6);color:#fff;';
         g.textContent = 'Otorgar';
@@ -380,10 +405,14 @@
         r.textContent = 'Quitar';
         g.style.display = has ? 'none' : '';
         r.style.display = has ? '' : 'none';
-        if (id === 'owner' && !state.canOwner) {
+        if (!may) {
             g.disabled = true; r.disabled = true;
-            g.title = 'Solo el Owner puede manejar este badge';
-            r.title = 'Solo el Owner puede manejar este badge';
+            const why = (state.role == null)
+                ? 'Verificando tus permisos…'
+                : (id === 'owner' && state.role !== 'owner')
+                    ? 'Solo el Owner (' + OWNER_EMAIL + ') puede manejar este badge.'
+                    : 'Solo Owner/Admins pueden manejar este badge.';
+            g.title = why; r.title = why;
         }
         g.addEventListener('click', function () { grant(id); });
         r.addEventListener('click', function () { revoke(id); });
@@ -391,24 +420,42 @@
         return row;
     }
 
+    /* ==== ACCIONES: delegadas 100% al SYSTEM ==== */
     function grant(id) {
-        if (id === 'owner' && !state.canOwner) { fb('❌ Solo el Owner (' + OWNER_EMAIL + ') puede manejar el badge Owner.', true); return; }
-        const a = firebase.auth().currentUser;
-        db().ref(NODE + '/' + state.uid + '/' + id).set({ by: a ? a.uid : '', at: Date.now() })
-            .then(function () {
-                fb('✅ Badge "' + SB.CATALOG[id].label + '" otorgado a ' + (state.name || state.uid) + '. Se ve AL INSTANTE en su perfil.', false);
-                renderList(); refreshBadges();
-            })
-            .catch(function (e) { fb('❌ No se pudo otorgar: ' + (e && e.message || e), true); });
+        if (!SB.system) { fb('❌ badges_system.js no cargó. Revisa el orden: core → system → manage.', true); return; }
+        if (!state.uid) return;
+        SB.system.grant(state.uid, id).then(function () {
+            fb('✅ Badge "' + label(id) + '" otorgado a ' + (state.name || state.uid) + '. Se ve AL INSTANTE en su perfil.', false);
+            renderList(); refreshBadges(); renderLog();
+        }).catch(function (e) { fb('❌ No se pudo otorgar: ' + (e && e.message || e), true); });
     }
     function revoke(id) {
-        if (id === 'owner' && !state.canOwner) { fb('❌ Solo el Owner puede manejar el badge Owner.', true); return; }
-        db().ref(NODE + '/' + state.uid + '/' + id).remove()
-            .then(function () {
-                fb('🗑️ Badge "' + SB.CATALOG[id].label + '" quitado a ' + (state.name || state.uid) + '.', false);
-                renderList(); refreshBadges();
-            })
-            .catch(function (e) { fb('❌ No se pudo quitar: ' + (e && e.message || e), true); });
+        if (!SB.system) { fb('❌ badges_system.js no cargó. Revisa el orden: core → system → manage.', true); return; }
+        if (!state.uid) return;
+        SB.system.revoke(state.uid, id).then(function () {
+            fb('🗑️ Badge "' + label(id) + '" quitado a ' + (state.name || state.uid) + '.', false);
+            renderList(); refreshBadges(); renderLog();
+        }).catch(function (e) { fb('❌ No se pudo quitar: ' + (e && e.message || e), true); });
+    }
+
+    /* ==== REGISTRO DE AUDITORÍA del usuario seleccionado (vía SYSTEM) ==== */
+    function renderLog() {
+        const box = state.logBox, bd = state.logBody;
+        if (!box || !bd) return;
+        if (!state.uid || !SB.system) { box.style.display = 'none'; return; }
+        SB.system.logFor(state.uid, 8).then(function (entries) {
+            while (bd.firstChild) bd.removeChild(bd.firstChild);
+            if (!entries.length) { box.style.display = 'none'; return; }
+            entries.forEach(function (e) {
+                const line = el('div', 'font:600 10.5px Inter,sans-serif;color:var(--text-muted,#94a3b8);');
+                const d = e.at ? new Date(e.at).toLocaleDateString() : '';
+                line.textContent = (e.action === 'grant' ? '✅ ' : '🗑️ ') + label(e.badge) +
+                    (e.action === 'grant' ? ' otorgado' : ' quitado') +
+                    (e.byEmail ? ' por ' + e.byEmail : '') + (d ? ' · ' + d : '');
+                bd.appendChild(line);
+            });
+            box.style.display = 'block';
+        }).catch(function () { box.style.display = 'none'; });
     }
 
     /* ==== PANEL ==== */
@@ -499,6 +546,15 @@
         state.list = el('div', 'display:flex;flex-direction:column;gap:10px;margin-top:14px;');
         body.appendChild(state.list);
 
+        /* REGISTRO DE AUDITORÍA del usuario seleccionado (v4) */
+        state.logBox = el('div', 'display:none;margin-top:12px;border:1px dashed var(--border-color,#2e2440);border-radius:12px;padding:10px 12px;');
+        const logT = el('div', 'font:800 9.5px Inter,sans-serif;letter-spacing:.16em;color:var(--text-muted,#94a3b8);margin-bottom:6px;');
+        logT.textContent = 'REGISTRO DE ESTE USUARIO';
+        state.logBox.appendChild(logT);
+        state.logBody = el('div', 'display:flex;flex-direction:column;gap:4px;');
+        state.logBox.appendChild(state.logBody);
+        body.appendChild(state.logBox);
+
         state.fb = el('p', 'margin:14px 0 0;font:700 12px Inter,sans-serif;min-height:16px;');
         body.appendChild(state.fb);
 
@@ -512,36 +568,25 @@
             if (e.key !== 'Enter') return;
             resolve(inp.value, function (uid) {
                 if (!uid) { fb('❌ Usuario no encontrado. Prueba con su @handler exacto o elige de la lista.', true); return; }
-                if (!state.dir[uid]) state.dir[uid] = { username: 'Usuario' };
-                selectUser(uid);
+                openUid(uid);
             });
         });
         go.addEventListener('click', function () {
             resolve(inp.value, function (uid) {
                 if (!uid) { fb('❌ Usuario no encontrado. Prueba con su @handler exacto o elige de la lista.', true); return; }
-                if (!state.dir[uid]) state.dir[uid] = { username: 'Usuario' };
-                selectUser(uid);
+                openUid(uid);
             });
         });
 
         return backdrop;
     }
 
-    /* staff: owner automático por email + social/staff/{uid} ({role} o plano) */
-    function checkStaff(cb) {
-        const a = firebase.auth().currentUser;
-        if (!a) { cb(false, false); return; }
-        if (String(a.email || '').toLowerCase() === OWNER_EMAIL) { cb(true, true); return; }
-        db().ref('social/staff/' + a.uid).once('value').then(function (s) {
-            const v = s.val();
-            const role = v ? (v.role || v) : null;
-            cb(!!(role === 'admin' || role === 'mod'), role === 'admin');
-        }).catch(function () { cb(false, false); });
-    }
-
     function open() {
         if (state.open) return;
         state.open = true;
+        state.loaded = false; state.loading = false; state.permErr = '';
+        state.dir = {}; state.staff = {}; state.badgesAll = {};
+        state.uid = null; state.name = '';
         state.backdrop = buildPanel();
         document.body.appendChild(state.backdrop);
         try { state.backdrop.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150, easing: 'ease-out' }); } catch (e) {}
@@ -552,6 +597,15 @@
         document.addEventListener('keydown', state.esc, true);
         renderUserList(); renderCatalog();
         loadDirectory();
+        if (SB.system) {
+            SB.system.who().then(function (w) {
+                state.role = w ? w.role : null;
+                if (state.uid) renderList();
+                renderUserList();
+            });
+        } else {
+            fb('❌ badges_system.js no cargó — revisa el orden de los <script>: core → system → manage.', true);
+        }
     }
     function close() {
         if (!state.open) return;
@@ -560,6 +614,7 @@
         const b = state.backdrop;
         state.backdrop = null; state.list = null; state.fb = null; state.uid = null; state.name = '';
         state.ulist = null; state.catBox = null; state.catBody = null;
+        state.logBox = null; state.logBody = null;
         state.prev = null; state.pav = null; state.pn = null; state.pu = null;
         if (!b) return;
         try { b.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 130, easing: 'ease-out' }); } catch (e) {}
@@ -568,18 +623,19 @@
 
     SB.manage = { open: open, close: close };
 
-    /* Botón flotante 👑 — SOLO para staff */
+    /* Botón flotante 👑 — SOLO staff (rol resuelto por el SYSTEM) */
     function ensureButton() {
-        checkStaff(function (staff, admin) {
-            if (!staff) return;
+        if (!SB.system) { setTimeout(ensureButton, 300); return; }
+        SB.system.who().then(function (w) {
+            if (!w || (w.role !== 'owner' && w.role !== 'admin' && w.role !== 'mod')) return;
             if (document.getElementById('sc-badges-manage-btn')) return;
-            state.canOwner = !!admin;
+            state.role = w.role;
             const b = el('button', 'position:fixed;right:18px;bottom:18px;z-index:3900;width:46px;height:46px;border-radius:50%;' +
                 'border:1px solid rgba(251,191,36,.7);background:linear-gradient(135deg,#2e1065,#1a1526);color:#fbbf24;font-size:19px;' +
                 'cursor:pointer;box-shadow:0 8px 26px rgba(0,0,0,.5),0 0 14px rgba(251,191,36,.3);display:flex;align-items:center;justify-content:center;transition:transform .15s;');
             b.id = 'sc-badges-manage-btn';
             b.type = 'button';
-            b.title = 'Badges (staff) — ' + (admin ? 'Owner' : 'Staff');
+            b.title = 'Badges (staff) — ' + w.role.toUpperCase();
             b.textContent = '👑';
             b.addEventListener('click', open);
             b.addEventListener('mouseenter', function () { b.style.transform = 'scale(1.08)'; });
@@ -590,5 +646,5 @@
 
     if (firebase.auth) firebase.auth().onAuthStateChanged(function () { ensureButton(); });
 
-    console.log('[Stevscon] badges_manage.js listo (v3) — navegador de usuarios + catálogo + orden cíclico 👑');
+    console.log('[Stevscon] badges_manage.js listo (v4) — EL PANEL: solo UI, escribe vía system 🎛️');
 })(window, document);

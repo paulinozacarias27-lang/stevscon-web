@@ -1,20 +1,22 @@
 /**
  * ====
- * STEVSCON.COM — profiles/manage/badges/badges_core.js (v3)
- * BADGES · Orgullo de la web. Catálogo + motor de render.
- *  v3 — FIX: la corona perdía su color amarillo al otorgarse (IDs de
- *    gradiente duplicados entre SVGs: al repintar una instancia, las demás
- *    apuntaban a un gradiente inexistente y se pintaban marrón/negro).
- *    Ahora CADA instancia genera su propio ID de gradiente único.
- *  v2 — estilo ICONO puro (tipo Discord): sin fondo, sin borde, sin texto;
- *    Owner = SIEMPRE corona dorada con gema morada; tooltip estilo Discord
- *    (nombre + descripción + fecha) al acercar el mouse.
- *  - El catálogo vive AQUÍ: agregar un badge nuevo = agregar UNA entrada
- *    (con su `svg` estática, placeholders {S}=tamaño y {G}=gradiente único).
- *  - Quién tiene qué vive en Firebase: social/badges/{uid}/{badgeId} = { by, at }
- *    (todos leen; solo Owner/Admins escriben — reglas aparte).
- *  - Se engancha SOLO: envuelve renderProfileCard (Perfiles + modal del
- *    Social) y pinta los iconos DEBAJO del @handler. Cero ediciones ajenas.
+ * STEVSCON.COM — profiles/manage/badges/badges_core.js (v4)
+ * BADGES · LA CARA: catálogo + render + auto-mount en perfiles. SOLO LECTURA.
+ *  ARQUITECTURA (v4): cada file tiene UN solo trabajo:
+ *    · badges_core.js   → LA CARA   (catálogo, iconos, tooltips, mount)  ← este file
+ *    · badges_system.js → EL CEREBRO (grant/revoke/validaciones/log)
+ *    · badges_manage.js → EL PANEL  (UI de staff, llama al system)
+ *  v4 — reset de arquitectura. Expone SB.repaint(uid) para que el system
+ *    repinte perfiles al instante tras otorgar/quitar. Sin cambios visuales.
+ *  v3 — FIX corona sin color (IDs de gradiente únicos por instancia).
+ *  v2 — icono puro estilo Discord + tooltip (nombre + desc + fecha).
+ *  - El catálogo vive AQUÍ: nuevo badge = agregar UNA entrada con su `svg`
+ *    estática (placeholders {S}=tamaño y {G}=gradiente único por instancia).
+ *    Opcional: `manageBy: ['owner','admin']` para limitar quién lo maneja.
+ *  - Datos en Firebase: social/badges/{uid}/{badgeId} = { by, at }
+ *    (todos leen; solo Owner/Admin escriben — vía badges_system.js).
+ *  - Se engancha SOLO: envuelve renderProfileCard (Perfiles + modal Social)
+ *    y pinta los iconos DEBAJO del @handler. Cero ediciones ajenas.
  *  - textContent SIEMPRE para datos; innerHTML solo con SVG estático del
  *    catálogo (nunca datos de usuario). Cero XSS.
  * ====
@@ -26,7 +28,7 @@
     if (SB._coreLoaded) return;
     SB._coreLoaded = true;
 
-    const NODE = 'social/badges'; // social/badges/{uid}/{badgeId} = { by, at }
+    const NODE = 'social/badges'; /* social/badges/{uid}/{badgeId} = { by, at } */
 
     /* ==== CORONA OWNER (SVG estático — SIEMPRE corona, fondo transparente) ==== */
     /* {S} = tamaño px · {G} = ID de gradiente ÚNICO por instancia (fix v3) */
@@ -52,6 +54,7 @@
             color: '#fbbf24',
             glow: 'drop-shadow(0 0 5px rgba(251,191,36,.5)) drop-shadow(0 0 13px rgba(139,92,246,.4))',
             svg: CROWN_SVG
+            /* manageBy: sin declarar -> lo manejan Owner/Admin (ver badges_system.js) */
         }
     };
 
@@ -166,6 +169,8 @@
         return row;
     };
 
+    SB.repaint = repaint; /* el system llama esto tras escribir (v4) */
+
     SB.uidFromHandler = function (h, cb) {
         h = String(h || '').toLowerCase().replace(/^@/, '');
         if (!h) { if (cb) cb(null); return; }
@@ -239,5 +244,5 @@
     SB.staticIcon = function (id, size) { return badgeFor(id, null, size || 22); };
     SB.staticPill = SB.staticIcon; /* alias de compatibilidad v1 */
 
-    console.log('[Stevscon] badges_core.js listo (v3) — corona SIEMPRE dorada, Owner primero 👑');
+    console.log('[Stevscon] badges_core.js listo (v4) — LA CARA: catálogo + render, solo lectura 👑');
 })(window, document);
