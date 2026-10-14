@@ -1,11 +1,12 @@
 /**
  * ====
- * STEVSCON.COM — profiles/manage/badges/badges_manage.js (v1)
+ * STEVSCON.COM — profiles/manage/badges/badges_manage.js (v2)
  * PANEL DE BADGES (Owner/Admins) — otorgar / quitar.
+ *  v2 — panel MÁS GRANDE (620px) + iconos estilo Discord en la lista.
  *  - Botón 👑 abajo a la derecha (SOLO visible para staff).
  *  - Buscar por @handler o UID -> preview -> Otorgar / Quitar.
  *  - El badge 'owner' SOLO lo maneja steven23hd@gmail.com (reglas de Firebase).
- *  - Cierra con X o ESC (mismo estilo que unban). Feedback verde/rojo inline.
+ *  - Cierra con X o ESC. Feedback verde/rojo inline.
  *  - API de consola: StevsconBadges.manage.open()
  * ====
  */
@@ -34,17 +35,12 @@
         const st = document.createElement('style');
         st.id = 'sc-badges-manage-style';
         st.textContent =
-            '.scbm-row{display:flex;align-items:center;gap:12px;padding:11px 12px;border:1px solid var(--border-color,#2e2440);border-radius:12px;background:var(--bg-hover,#261f36)}' +
-            '.scbm-btn{border:0;border-radius:9px;padding:7px 13px;font:800 11.5px Inter,sans-serif;letter-spacing:.06em;cursor:pointer;transition:transform .12s,filter .12s}' +
+            '.scbm-row{display:flex;align-items:center;gap:14px;padding:13px 14px;border:1px solid var(--border-color,#2e2440);border-radius:14px;background:var(--bg-hover,#261f36)}' +
+            '.scbm-btn{border:0;border-radius:10px;padding:9px 16px;font:800 12.5px Inter,sans-serif;letter-spacing:.06em;cursor:pointer;transition:transform .12s,filter .12s}' +
             '.scbm-btn:hover{transform:translateY(-1px);filter:brightness(1.15)}' +
             '.scbm-btn:disabled{opacity:.4;cursor:not-allowed;transform:none;filter:none}';
         document.head.appendChild(st);
     })();
-
-    function isOwnerEmail() {
-        const a = firebase.auth().currentUser;
-        return !!(a && String(a.email || '').toLowerCase() === OWNER_EMAIL);
-    }
 
     /* staff: owner automático por email + social/staff/{uid} ({role} o plano) */
     function checkStaff(cb) {
@@ -100,18 +96,18 @@
         const b = SB.CATALOG[id];
         const row = el('div', null, 'scbm-row');
 
-        const left = el('div', 'display:flex;align-items:center;gap:10px;min-width:0;flex:1;');
-        left.appendChild(SB.staticPill(id));
-        const txt = el('div', 'display:flex;flex-direction:column;gap:1px;min-width:0;');
-        const nm = el('b', 'font:800 12.5px Inter,sans-serif;color:var(--text-main,#f8fafc);');
+        const left = el('div', 'display:flex;align-items:center;gap:14px;min-width:0;flex:1;');
+        left.appendChild(SB.staticIcon(id, 28));
+        const txt = el('div', 'display:flex;flex-direction:column;gap:2px;min-width:0;');
+        const nm = el('b', 'font:800 13.5px Inter,sans-serif;color:var(--text-main,#f8fafc);');
         nm.textContent = b.label;
-        const ds = el('span', 'font:600 10.5px Inter,sans-serif;color:var(--text-muted,#94a3b8);');
+        const ds = el('span', 'font:600 11px Inter,sans-serif;color:var(--text-muted,#94a3b8);');
         ds.textContent = b.desc;
         txt.appendChild(nm); txt.appendChild(ds);
         left.appendChild(txt);
         row.appendChild(left);
 
-        const st = el('span', 'font:800 10px Inter,sans-serif;letter-spacing:.1em;flex:none;');
+        const st = el('span', 'font:800 10.5px Inter,sans-serif;letter-spacing:.1em;flex:none;');
         st.textContent = has ? 'OTORGADO ✓' : 'SIN BADGE';
         st.style.color = has ? '#4ade80' : 'var(--text-muted,#94a3b8)';
         row.appendChild(st);
@@ -155,28 +151,28 @@
             .catch(function (e) { fb('❌ No se pudo quitar: ' + (e && e.message || e), true); });
     }
 
-    /* ==== PANEL ==== */
+    /* ==== PANEL (v2: más grande) ==== */
     function buildPanel() {
         const CATALOG = SB.CATALOG || {};
         const backdrop = el('div', 'position:fixed;left:0;top:0;right:0;bottom:0;z-index:4600;background:rgba(5,4,10,.7);display:flex;align-items:center;justify-content:center;padding:18px;font-family:Inter,sans-serif;');
-        const panel = el('div', 'width:420px;max-width:100%;max-height:86vh;overflow-y:auto;background:var(--bg-card,#1a1625);border:1px solid rgba(251,191,36,.45);border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.6),0 0 30px rgba(251,191,36,.12);color:var(--text-main,#f8fafc);box-sizing:border-box;');
+        const panel = el('div', 'width:620px;max-width:92vw;max-height:88vh;overflow-y:auto;background:var(--bg-card,#1a1625);border:1px solid rgba(251,191,36,.45);border-radius:20px;box-shadow:0 24px 70px rgba(0,0,0,.6),0 0 30px rgba(251,191,36,.12);color:var(--text-main,#f8fafc);box-sizing:border-box;');
 
-        const head = el('div', 'display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--border-color,#2e2440);background:linear-gradient(135deg,rgba(124,58,237,.25),rgba(251,191,36,.12));');
-        const crown = el('span', 'font-size:22px;'); crown.textContent = '👑';
+        const head = el('div', 'display:flex;align-items:center;gap:12px;padding:18px 22px;border-bottom:1px solid var(--border-color,#2e2440);background:linear-gradient(135deg,rgba(124,58,237,.25),rgba(251,191,36,.12));');
+        const crown = el('span', 'font-size:26px;'); crown.textContent = '👑';
         const ht = el('div', 'display:flex;flex-direction:column;flex:1;');
-        const h1 = el('h2', 'margin:0;font:800 15px Inter,sans-serif;letter-spacing:.02em;'); h1.textContent = 'Badges — Orgullo de la web';
-        const h2 = el('span', 'font:600 10.5px Inter,sans-serif;color:var(--text-muted,#94a3b8);'); h2.textContent = 'Otorga insignias que se muestran en los perfiles';
+        const h1 = el('h2', 'margin:0;font:800 17px Inter,sans-serif;letter-spacing:.02em;'); h1.textContent = 'Badges — Orgullo de la web';
+        const h2 = el('span', 'font:600 11.5px Inter,sans-serif;color:var(--text-muted,#94a3b8);'); h2.textContent = 'Otorga insignias que se muestran en los perfiles';
         ht.appendChild(h1); ht.appendChild(h2);
-        const x = el('button', 'width:30px;height:30px;border-radius:9px;border:1px solid var(--border-color,#2e2440);background:transparent;color:var(--text-muted,#94a3b8);cursor:pointer;font-size:13px;flex:none;');
+        const x = el('button', 'width:34px;height:34px;border-radius:10px;border:1px solid var(--border-color,#2e2440);background:transparent;color:var(--text-muted,#94a3b8);cursor:pointer;font-size:15px;flex:none;');
         x.type = 'button'; x.textContent = '✕';
         x.addEventListener('click', close);
         head.appendChild(crown); head.appendChild(ht); head.appendChild(x);
         panel.appendChild(head);
 
-        const body = el('div', 'padding:16px 18px 18px;');
+        const body = el('div', 'padding:20px 22px 22px;');
 
-        const srow = el('div', 'display:flex;gap:8px;');
-        const inp = el('input', 'flex:1;min-width:0;padding:10px 13px;border-radius:11px;border:1px solid var(--border-color,#2e2440);background:var(--bg-hover,#261f36);color:var(--text-main,#f8fafc);font:600 13px Inter,sans-serif;outline:none;box-sizing:border-box;');
+        const srow = el('div', 'display:flex;gap:10px;');
+        const inp = el('input', 'flex:1;min-width:0;padding:12px 15px;border-radius:12px;border:1px solid var(--border-color,#2e2440);background:var(--bg-hover,#261f36);color:var(--text-main,#f8fafc);font:600 14px Inter,sans-serif;outline:none;box-sizing:border-box;');
         inp.placeholder = '@handler o UID del usuario…';
         const go = el('button', null, 'scbm-btn'); go.type = 'button';
         go.style.cssText = 'background:linear-gradient(135deg,#7c3aed,#8b5cf6);color:#fff;flex:none;';
@@ -184,19 +180,19 @@
         srow.appendChild(inp); srow.appendChild(go);
         body.appendChild(srow);
 
-        const prev = el('div', 'display:none;align-items:center;gap:10px;margin-top:12px;padding:10px 12px;border-radius:12px;border:1px dashed var(--border-color,#2e2440);');
-        const pav = el('span', 'width:34px;height:34px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff;font:800 14px Inter,sans-serif;');
+        const prev = el('div', 'display:none;align-items:center;gap:12px;margin-top:14px;padding:12px 14px;border-radius:14px;border:1px dashed var(--border-color,#2e2440);');
+        const pav = el('span', 'width:44px;height:44px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff;font:800 16px Inter,sans-serif;');
         const ptx = el('div', 'display:flex;flex-direction:column;min-width:0;');
-        const pn = el('b', 'font:800 13px Inter,sans-serif;'); 
-        const pu = el('span', 'font:600 10px Inter,sans-serif;color:var(--text-muted,#94a3b8);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;');
+        const pn = el('b', 'font:800 15px Inter,sans-serif;');
+        const pu = el('span', 'font:600 11px Inter,sans-serif;color:var(--text-muted,#94a3b8);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;');
         ptx.appendChild(pn); ptx.appendChild(pu);
         prev.appendChild(pav); prev.appendChild(ptx);
         body.appendChild(prev);
 
-        state.list = el('div', 'display:flex;flex-direction:column;gap:9px;margin-top:12px;');
+        state.list = el('div', 'display:flex;flex-direction:column;gap:10px;margin-top:14px;');
         body.appendChild(state.list);
 
-        state.fb = el('p', 'margin:12px 0 0;font:700 11.5px Inter,sans-serif;min-height:15px;');
+        state.fb = el('p', 'margin:14px 0 0;font:700 12px Inter,sans-serif;min-height:16px;');
         body.appendChild(state.fb);
 
         panel.appendChild(body);
@@ -274,5 +270,5 @@
 
     if (firebase.auth) firebase.auth().onAuthStateChanged(function () { ensureButton(); });
 
-    console.log('[Stevscon] badges_manage.js listo (v1) — panel de badges para staff 👑');
+    console.log('[Stevscon] badges_manage.js listo (v2) — panel grande de badges para staff 👑');
 })(window, document);

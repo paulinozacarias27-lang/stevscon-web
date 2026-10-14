@@ -1,16 +1,18 @@
 /**
  * ====
- * STEVSCON.COM — profiles/manage/badges/badges_core.js (v1)
+ * STEVSCON.COM — profiles/manage/badges/badges_core.js (v2)
  * BADGES · Orgullo de la web. Catálogo + motor de render.
- *  - El catálogo vive AQUÍ: agregar un badge nuevo = agregar UNA entrada.
- *  - Quién tiene qué vive en Firebase: social/badges/{uid}/{badgeId} = { by, at }
- *    (todos leen; solo Owner/Admins escriben — reglas aparte).
- *  - Owner SIEMPRE primero (order: 0) y con el LOGO real de la web.
- *  - Se engancha SOLO: envuelve a StevsconProfiles.ui.renderProfileCard
- *    (página de Perfiles + modal del Social) y pinta los badges DEBAJO
- *    del @handler. Cero ediciones en ui_profile.js o profiles_show.js.
- *  - textContent SIEMPRE para datos; innerHTML solo con SVG estático
- *    (mismo patrón de tu verifiedBadge en utils.js). Cero XSS.
+ *  v2 — estilo ICONO puro (tipo Discord, a estilo Stevscon):
+ *    - SIN fondo, SIN borde, SIN texto: SOLO el icono (fondo transparente).
+ *    - Owner = SIEMPRE corona dorada con gema morada y brillo.
+ *    - Tooltip estilo Discord al acercar el mouse: nombre + descripción + fecha.
+ *  - El catálogo vive AQUÍ: agregar un badge nuevo = agregar UNA entrada
+ *    (con su `svg` estática). Quién tiene qué vive en Firebase:
+ *    social/badges/{uid}/{badgeId} = { by, at } — todos leen, solo staff escribe.
+ *  - Se engancha SOLO: envuelve renderProfileCard (Perfiles + modal del Social)
+ *    y pinta los iconos DEBAJO del @handler. Cero ediciones en otros files.
+ *  - textContent SIEMPRE para datos; innerHTML solo con SVG estático del
+ *    catálogo (nunca datos de usuario). Cero XSS.
  * ====
  */
 (function (window, document) {
@@ -20,9 +22,20 @@
     if (SB._coreLoaded) return;
     SB._coreLoaded = true;
 
-    const OWNER_EMAIL = 'steven23hd@gmail.com';
-    const LOGO_SRC = '/SC-LOGO-20260825013121.png';
     const NODE = 'social/badges'; // social/badges/{uid}/{badgeId} = { by, at }
+
+    /* ==== CORONA OWNER (SVG estático — SIEMPRE corona, fondo transparente) ==== */
+    const CROWN_SVG =
+        '<svg xmlns="http://www.w3.org/2000/svg" width="{S}" height="{S}" viewBox="0 0 24 24" aria-hidden="true">' +
+        '<defs><linearGradient id="scCrownG2" x1="0" y1="0" x2="1" y2="1">' +
+        '<stop offset="0" stop-color="#fef3c7"/><stop offset=".55" stop-color="#fbbf24"/><stop offset="1" stop-color="#d97706"/>' +
+        '</linearGradient></defs>' +
+        '<path d="M2.8 8.4 7.6 12.1 12 5.4 16.4 12.1 21.2 8.4 19.4 17.7a1.7 1.7 0 0 1-1.67 1.4H6.27a1.7 1.7 0 0 1-1.67-1.4Z" fill="url(#scCrownG2)" stroke="#92400e" stroke-width=".9" stroke-linejoin="round"/>' +
+        '<circle cx="2.9" cy="7.6" r="1.45" fill="#fde68a" stroke="#92400e" stroke-width=".7"/>' +
+        '<circle cx="12" cy="4.6" r="1.55" fill="#fde68a" stroke="#92400e" stroke-width=".7"/>' +
+        '<circle cx="21.1" cy="7.6" r="1.45" fill="#fde68a" stroke="#92400e" stroke-width=".7"/>' +
+        '<rect x="5.7" y="19.4" width="12.6" height="1.9" rx=".95" fill="url(#scCrownG2)" stroke="#92400e" stroke-width=".7"/>' +
+        '<circle cx="12" cy="14.3" r="1.7" fill="#a78bfa" stroke="#6d28d9" stroke-width=".8"/></svg>';
 
     /* ==== CATÁLOGO (el único lugar donde se declaran badges) ==== */
     SB.CATALOG = {
@@ -31,11 +44,9 @@
             order: 0, /* SIEMPRE el primero de todos */
             label: 'OWNER',
             desc: 'Fundador de Stevscon — el orgullo de la web 💜',
-            icon: 'logo', /* 'logo' = el logo real de la web · 'crown' = corona dorada */
             color: '#fbbf24',
-            bg: 'linear-gradient(135deg, rgba(124,58,237,.32), rgba(251,191,36,.20))',
-            border: 'rgba(251,191,36,.8)',
-            glow: '0 0 12px rgba(251,191,36,.35), 0 0 26px rgba(139,92,246,.28)'
+            glow: 'drop-shadow(0 0 5px rgba(251,191,36,.5)) drop-shadow(0 0 13px rgba(139,92,246,.4))',
+            svg: CROWN_SVG /* {S} = tamaño en px */
         }
     };
 
@@ -47,47 +58,35 @@
         return e;
     }
 
-    /* ==== ESTILOS (una sola vez, con variables de tu tema) ==== */
+    /* ==== ESTILOS (una sola vez) — icono puro + tooltip Discord ==== */
     (function injectStyles() {
         if (document.getElementById('sc-badges-style')) return;
         const st = document.createElement('style');
         st.id = 'sc-badges-style';
         st.textContent =
-            '.sc-badges-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:8px 0 2px}' +
-            '.sc-badge-pill{position:relative;display:inline-flex;align-items:center;gap:6px;padding:3px 11px 3px 5px;border-radius:999px;cursor:default;user-select:none}' +
-            '.sc-badge-tip{position:absolute;bottom:calc(100% + 9px);left:0;transform:translateY(4px);opacity:0;pointer-events:none;' +
-            'transition:opacity .16s ease,transform .16s ease;display:flex;flex-direction:column;gap:2px;background:var(--bg-card,#1a1625);' +
-            'border:1px solid var(--border-color,#2e2440);border-radius:10px;padding:8px 12px;box-shadow:0 14px 40px rgba(0,0,0,.5);z-index:60;white-space:nowrap}' +
-            '.sc-badge-pill:hover .sc-badge-tip{opacity:1;transform:translateY(0)}' +
-            '.sc-badge-tip b{font:800 11px Inter,sans-serif;letter-spacing:.12em}' +
-            '.sc-badge-tip span{font:600 10.5px Inter,sans-serif;color:var(--text-muted,#94a3b8)}';
+            '.sc-badges-row{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:7px 0 2px}' +
+            '.sc-badge{position:relative;display:inline-flex;cursor:default;user-select:none;padding:1px}' +
+            '.sc-badge-ic{display:inline-flex;transition:transform .16s ease}' +
+            '.sc-badge:hover .sc-badge-ic{transform:scale(1.18)}' +
+            '.sc-badge-tip{position:absolute;bottom:calc(100% + 10px);left:0;transform:translateY(5px);opacity:0;pointer-events:none;' +
+            'transition:opacity .16s ease,transform .16s ease;display:flex;flex-direction:column;gap:2px;text-align:left;' +
+            'background:linear-gradient(135deg,rgba(22,15,36,.98),rgba(12,9,20,.98));border:1px solid rgba(139,92,246,.45);' +
+            'border-radius:10px;padding:8px 13px;box-shadow:0 18px 44px rgba(0,0,0,.6),0 0 20px rgba(124,58,237,.28);z-index:60;white-space:nowrap}' +
+            '.sc-badge-tip::after{content:"";position:absolute;left:9px;bottom:-4.5px;width:8px;height:8px;transform:rotate(45deg);' +
+            'background:#150e24;border-right:1px solid rgba(139,92,246,.45);border-bottom:1px solid rgba(139,92,246,.45)}' +
+            '.sc-badge:hover .sc-badge-tip{opacity:1;transform:translateY(0)}' +
+            '.sc-badge-tip b{font:800 11px Inter,sans-serif;letter-spacing:.14em}' +
+            '.sc-badge-tip span{font:600 10.5px Inter,sans-serif;color:var(--text-muted,#94a3b8)}' +
+            '.sc-badge-tip i{font:600 9.5px Inter,sans-serif;font-style:normal;color:var(--text-muted,#94a3b8);opacity:.75}';
         document.head.appendChild(st);
     })();
 
-    /* ==== ICONOS: logo real de la web (con corona dorada de respaldo) ==== */
-    function crownEl() {
-        const s = el('span', 'display:inline-flex;flex:none;');
-        s.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" aria-label="Corona">' +
-            '<defs><linearGradient id="sc-crown-g" x1="0" y1="0" x2="1" y2="1">' +
-            '<stop offset="0" stop-color="#fde68a"/><stop offset="1" stop-color="#f59e0b"/></linearGradient></defs>' +
-            '<path d="M3 8.5 7.5 12 12 5.5 16.5 12 21 8.5 19.2 17.5a1.6 1.6 0 0 1-1.57 1.3H6.37a1.6 1.6 0 0 1-1.57-1.3Z" fill="url(#sc-crown-g)" stroke="#b45309" stroke-width=".8" stroke-linejoin="round"/>' +
-            '<circle cx="12" cy="4.6" r="1.5" fill="#fde68a"/></svg>';
+    /* ==== ICONO del badge: SVG estático del catálogo, fondo transparente ==== */
+    function iconEl(b, size) {
+        const s = el('span', null, 'sc-badge-ic');
+        s.style.filter = b.glow || 'none';
+        s.innerHTML = String(b.svg || '').split('{S}').join(String(size || 22));
         return s;
-    }
-    function iconFor(b) {
-        if (b.icon === 'logo') {
-            const im = document.createElement('img');
-            im.src = b.logoSrc || LOGO_SRC;
-            im.alt = 'Owner'; im.draggable = false; im.referrerPolicy = 'no-referrer';
-            im.style.cssText = 'width:17px;height:17px;border-radius:50%;object-fit:cover;flex:none;' +
-                'box-sizing:content-box;padding:1.5px;background:linear-gradient(135deg,#fbbf24,#f59e0b);';
-            im.onerror = function () {
-                const c = crownEl();
-                if (im.parentNode) im.parentNode.replaceChild(c, im);
-            };
-            return im;
-        }
-        return crownEl();
     }
 
     /* ==== LISTENER ÚNICO por uid + repintado de todas las filas vivas ==== */
@@ -119,20 +118,18 @@
         });
         if (!ids.length) { row.style.display = 'none'; return; }
         row.style.display = 'flex';
-        for (let i = 0; i < ids.length; i++) row.appendChild(pillFor(ids[i], val[ids[i]]));
+        for (let i = 0; i < ids.length; i++) row.appendChild(badgeFor(ids[i], val[ids[i]], 22));
     }
 
-    function pillFor(id, meta) {
+    /* Icono + tooltip (nombre, descripción y fecha al acercar el mouse) */
+    function badgeFor(id, meta, size) {
         const b = SB.CATALOG[id];
-        const pill = el('span', null, 'sc-badge-pill');
-        pill.style.cssText = 'background:' + b.bg + ';border:1px solid ' + b.border + ';box-shadow:' + b.glow + ';';
-        pill.dataset.scBadge = id;
-        pill.appendChild(iconFor(b));
-        const t = el('span', 'font:800 10px Inter,sans-serif;letter-spacing:.16em;color:' + b.color + ';');
-        t.textContent = b.label;
-        pill.appendChild(t);
+        const wrap = el('span', null, 'sc-badge');
+        wrap.dataset.scBadge = id;
+        wrap.setAttribute('role', 'img');
+        wrap.setAttribute('aria-label', b.label);
+        wrap.appendChild(iconEl(b, size));
 
-        /* Tooltip (orgullo): nombre + descripción + fecha de otorgado */
         const tip = el('span', null, 'sc-badge-tip');
         const l1 = el('b'); l1.style.color = b.color; l1.textContent = b.label;
         const l2 = el('span'); l2.textContent = b.desc;
@@ -140,13 +137,13 @@
         if (meta && meta.at) {
             const d = new Date(meta.at);
             if (!isNaN(d.getTime())) {
-                const l3 = el('span');
+                const l3 = el('i');
                 l3.textContent = 'Otorgado el ' + d.toLocaleDateString();
                 tip.appendChild(l3);
             }
         }
-        pill.appendChild(tip);
-        return pill;
+        wrap.appendChild(tip);
+        return wrap;
     }
 
     /* ==== API pública ==== */
@@ -229,8 +226,9 @@
         if (hookProfiles() || ++tries > 50) clearInterval(waitWrap);
     }, 200);
 
-    /* Pill estático (para el panel de manage, sin Firebase) */
-    SB.staticPill = function (id) { return pillFor(id, null); };
+    /* Icono estático (para el panel de manage, sin Firebase) — size opcional */
+    SB.staticIcon = function (id, size) { return badgeFor(id, null, size || 22); };
+    SB.staticPill = SB.staticIcon; /* alias de compatibilidad v1 */
 
-    console.log('[Stevscon] badges_core.js listo (v1) — catálogo + motor, Owner primero 👑');
+    console.log('[Stevscon] badges_core.js listo (v2) — iconos estilo Discord, Owner primero 👑');
 })(window, document);
