@@ -1,16 +1,20 @@
 /**
  * ====
- * STEVSCON.COM — profiles/manage/badges/badges_core.js (v2)
+ * STEVSCON.COM — profiles/manage/badges/badges_core.js (v3)
  * BADGES · Orgullo de la web. Catálogo + motor de render.
- *  v2 — estilo ICONO puro (tipo Discord, a estilo Stevscon):
- *    - SIN fondo, SIN borde, SIN texto: SOLO el icono (fondo transparente).
- *    - Owner = SIEMPRE corona dorada con gema morada y brillo.
- *    - Tooltip estilo Discord al acercar el mouse: nombre + descripción + fecha.
+ *  v3 — FIX: la corona perdía su color amarillo al otorgarse (IDs de
+ *    gradiente duplicados entre SVGs: al repintar una instancia, las demás
+ *    apuntaban a un gradiente inexistente y se pintaban marrón/negro).
+ *    Ahora CADA instancia genera su propio ID de gradiente único.
+ *  v2 — estilo ICONO puro (tipo Discord): sin fondo, sin borde, sin texto;
+ *    Owner = SIEMPRE corona dorada con gema morada; tooltip estilo Discord
+ *    (nombre + descripción + fecha) al acercar el mouse.
  *  - El catálogo vive AQUÍ: agregar un badge nuevo = agregar UNA entrada
- *    (con su `svg` estática). Quién tiene qué vive en Firebase:
- *    social/badges/{uid}/{badgeId} = { by, at } — todos leen, solo staff escribe.
- *  - Se engancha SOLO: envuelve renderProfileCard (Perfiles + modal del Social)
- *    y pinta los iconos DEBAJO del @handler. Cero ediciones en otros files.
+ *    (con su `svg` estática, placeholders {S}=tamaño y {G}=gradiente único).
+ *  - Quién tiene qué vive en Firebase: social/badges/{uid}/{badgeId} = { by, at }
+ *    (todos leen; solo Owner/Admins escriben — reglas aparte).
+ *  - Se engancha SOLO: envuelve renderProfileCard (Perfiles + modal del
+ *    Social) y pinta los iconos DEBAJO del @handler. Cero ediciones ajenas.
  *  - textContent SIEMPRE para datos; innerHTML solo con SVG estático del
  *    catálogo (nunca datos de usuario). Cero XSS.
  * ====
@@ -25,16 +29,17 @@
     const NODE = 'social/badges'; // social/badges/{uid}/{badgeId} = { by, at }
 
     /* ==== CORONA OWNER (SVG estático — SIEMPRE corona, fondo transparente) ==== */
+    /* {S} = tamaño px · {G} = ID de gradiente ÚNICO por instancia (fix v3) */
     const CROWN_SVG =
         '<svg xmlns="http://www.w3.org/2000/svg" width="{S}" height="{S}" viewBox="0 0 24 24" aria-hidden="true">' +
-        '<defs><linearGradient id="scCrownG2" x1="0" y1="0" x2="1" y2="1">' +
+        '<defs><linearGradient id="{G}" x1="0" y1="0" x2="1" y2="1">' +
         '<stop offset="0" stop-color="#fef3c7"/><stop offset=".55" stop-color="#fbbf24"/><stop offset="1" stop-color="#d97706"/>' +
         '</linearGradient></defs>' +
-        '<path d="M2.8 8.4 7.6 12.1 12 5.4 16.4 12.1 21.2 8.4 19.4 17.7a1.7 1.7 0 0 1-1.67 1.4H6.27a1.7 1.7 0 0 1-1.67-1.4Z" fill="url(#scCrownG2)" stroke="#92400e" stroke-width=".9" stroke-linejoin="round"/>' +
+        '<path d="M2.8 8.4 7.6 12.1 12 5.4 16.4 12.1 21.2 8.4 19.4 17.7a1.7 1.7 0 0 1-1.67 1.4H6.27a1.7 1.7 0 0 1-1.67-1.4Z" fill="url(#{G})" stroke="#92400e" stroke-width=".9" stroke-linejoin="round"/>' +
         '<circle cx="2.9" cy="7.6" r="1.45" fill="#fde68a" stroke="#92400e" stroke-width=".7"/>' +
         '<circle cx="12" cy="4.6" r="1.55" fill="#fde68a" stroke="#92400e" stroke-width=".7"/>' +
         '<circle cx="21.1" cy="7.6" r="1.45" fill="#fde68a" stroke="#92400e" stroke-width=".7"/>' +
-        '<rect x="5.7" y="19.4" width="12.6" height="1.9" rx=".95" fill="url(#scCrownG2)" stroke="#92400e" stroke-width=".7"/>' +
+        '<rect x="5.7" y="19.4" width="12.6" height="1.9" rx=".95" fill="url(#{G})" stroke="#92400e" stroke-width=".7"/>' +
         '<circle cx="12" cy="14.3" r="1.7" fill="#a78bfa" stroke="#6d28d9" stroke-width=".8"/></svg>';
 
     /* ==== CATÁLOGO (el único lugar donde se declaran badges) ==== */
@@ -46,9 +51,11 @@
             desc: 'Fundador de Stevscon — el orgullo de la web 💜',
             color: '#fbbf24',
             glow: 'drop-shadow(0 0 5px rgba(251,191,36,.5)) drop-shadow(0 0 13px rgba(139,92,246,.4))',
-            svg: CROWN_SVG /* {S} = tamaño en px */
+            svg: CROWN_SVG
         }
     };
+
+    let _svgN = 0; /* contador para IDs de gradiente únicos */
 
     function db() { return firebase.database(); }
     function el(tag, css, cls) {
@@ -85,7 +92,9 @@
     function iconEl(b, size) {
         const s = el('span', null, 'sc-badge-ic');
         s.style.filter = b.glow || 'none';
-        s.innerHTML = String(b.svg || '').split('{S}').join(String(size || 22));
+        /* ID de gradiente ÚNICO por instancia — la corona NUNCA pierde su color */
+        const gid = 'scbg' + (++_svgN);
+        s.innerHTML = String(b.svg || '').split('{G}').join(gid).split('{S}').join(String(size || 22));
         return s;
     }
 
@@ -230,5 +239,5 @@
     SB.staticIcon = function (id, size) { return badgeFor(id, null, size || 22); };
     SB.staticPill = SB.staticIcon; /* alias de compatibilidad v1 */
 
-    console.log('[Stevscon] badges_core.js listo (v2) — iconos estilo Discord, Owner primero 👑');
+    console.log('[Stevscon] badges_core.js listo (v3) — corona SIEMPRE dorada, Owner primero 👑');
 })(window, document);
