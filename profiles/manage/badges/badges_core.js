@@ -1,15 +1,17 @@
 /**
  * ====
- * STEVSCON.COM — profiles/manage/badges/badges_core.js (v5)
+ * STEVSCON.COM — profiles/manage/badges/badges_core.js (v6)
  * BADGES · LA CARA: catálogo + render + auto-mount en perfiles. SOLO LECTURA.
  *  ARQUITECTURA (v4): cada file tiene UN solo trabajo:
  *    · badges_core.js   → LA CARA   (catálogo, iconos, tooltips, mount)  ← este file
  *    · badges_system.js → EL CEREBRO (grant/revoke/validaciones/log)
  *    · badges_manage.js → EL PANEL  (UI de staff, llama al system)
- *  v5 — 4 badges nuevos: DEV (brackets morados estilo Discord), OG (estrella
- *    bronce vintage con cintas), CAZABUGS (lupa sobre bicho, verde) y
- *    CREADOR (cámara de video violeta). Todos SVG estáticos, fondo
- *    transparente, mismo estilo de la corona.
+ *  v6 — 4 badges nuevos: ADMIN (llave roja, estilo empleados de Discord,
+ *    order 1 justo después de la corona), CAMPEÓN (trofeo dorado),
+ *    TRYHARD (gamepad naranja con rayo) y PREMIUM (diamante hielo).
+ *    Catálogo de 9 badges. Sin más cambios.
+ *  v5 — 4 badges: DEV (brackets morados), OG (estrella bronce),
+ *    CAZABUGS (lupa verde) y CREADOR (cámara violeta).
  *  v4 — reset de arquitectura. Expone SB.repaint(uid) para que el system
  *    repinte perfiles al instante tras otorgar/quitar. Sin cambios visuales.
  *  v3 — FIX corona sin color (IDs de gradiente únicos por instancia).
@@ -47,6 +49,15 @@
         '<circle cx="21.1" cy="7.6" r="1.45" fill="#fde68a" stroke="#92400e" stroke-width=".7"/>' +
         '<rect x="5.7" y="19.4" width="12.6" height="1.9" rx=".95" fill="url(#{G})" stroke="#92400e" stroke-width=".7"/>' +
         '<circle cx="12" cy="14.3" r="1.7" fill="#a78bfa" stroke="#6d28d9" stroke-width=".8"/></svg>';
+
+    /* ==== ADMIN (v6) — llave roja estilo empleados de Discord: autoridad pura ==== */
+    const ADMIN_SVG =
+        '<svg xmlns="http://www.w3.org/2000/svg" width="{S}" height="{S}" viewBox="0 0 24 24" aria-hidden="true">' +
+        '<defs><linearGradient id="{G}" x1="0" y1="0" x2="1" y2="1">' +
+        '<stop offset="0" stop-color="#fecaca"/><stop offset=".55" stop-color="#f87171"/><stop offset="1" stop-color="#dc2626"/>' +
+        '</linearGradient></defs>' +
+        '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" fill="none" stroke="url(#{G})" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>' +
+        '<circle cx="19.6" cy="17.6" r="1.1" fill="#fee2e2" stroke="#b91c1c" stroke-width=".5"/></svg>';
 
     /* ==== DEV (v5) — brackets </> morados, estilo Active Developer de Discord ==== */
     const DEV_SVG =
@@ -96,6 +107,44 @@
         '<circle cx="7.4" cy="12" r="2" fill="#f5d0fe" stroke="#6d28d9" stroke-width=".8"/>' +
         '<circle cx="12.6" cy="9.2" r="1" fill="#f5d0fe" opacity=".85"/></svg>';
 
+    /* ==== CAMPEÓN (v6) — trofeo dorado con asas, ganador de eventos oficiales ==== */
+    const TROPHY_SVG =
+        '<svg xmlns="http://www.w3.org/2000/svg" width="{S}" height="{S}" viewBox="0 0 24 24" aria-hidden="true">' +
+        '<defs><linearGradient id="{G}" x1="0" y1="0" x2="1" y2="1">' +
+        '<stop offset="0" stop-color="#fef9c3"/><stop offset=".55" stop-color="#facc15"/><stop offset="1" stop-color="#b45309"/>' +
+        '</linearGradient></defs>' +
+        '<path d="M7.6 4.8H4.5v.9a3.1 3.1 0 0 0 3.1 3.1" fill="none" stroke="url(#{G})" stroke-width="1.3" stroke-linecap="round"/>' +
+        '<path d="M16.4 4.8h3.1v.9a3.1 3.1 0 0 1-3.1 3.1" fill="none" stroke="url(#{G})" stroke-width="1.3" stroke-linecap="round"/>' +
+        '<path d="M7.6 3.4h8.8v4.6a4.4 4.4 0 0 1-8.8 0Z" fill="url(#{G})" stroke="#92400e" stroke-width=".9" stroke-linejoin="round"/>' +
+        '<path d="M12 12.5v2.9" stroke="#92400e" stroke-width="2" stroke-linecap="round" fill="none"/>' +
+        '<rect x="8.6" y="15.4" width="6.8" height="1.6" rx=".8" fill="url(#{G})" stroke="#92400e" stroke-width=".7"/>' +
+        '<rect x="6.8" y="17.2" width="10.4" height="1.9" rx=".95" fill="url(#{G})" stroke="#92400e" stroke-width=".7"/>' +
+        '<circle cx="10.1" cy="6.3" r="1" fill="#fffbeb" opacity=".9"/>' +
+        '<circle cx="20.6" cy="3.9" r="1.05" fill="#fef08a" stroke="#a16207" stroke-width=".5"/></svg>';
+
+    /* ==== TRYHARD (v6) — gamepad naranja con rayo, jugadores super avanzados ==== */
+    const PAD_SVG =
+        '<svg xmlns="http://www.w3.org/2000/svg" width="{S}" height="{S}" viewBox="0 0 24 24" aria-hidden="true">' +
+        '<defs><linearGradient id="{G}" x1="0" y1="0" x2="1" y2="1">' +
+        '<stop offset="0" stop-color="#fed7aa"/><stop offset=".55" stop-color="#fb923c"/><stop offset="1" stop-color="#c2410c"/>' +
+        '</linearGradient></defs>' +
+        '<path d="M8.9 5.9h6.2a6 6 0 0 1 5.9 4.8l.7 3.4a3.1 3.1 0 0 1-5.6 2.5l-1.2-1.6h-4.8l-1.2 1.6a3.1 3.1 0 0 1-5.6-2.5l.7-3.4a6 6 0 0 1 4.9-4.8Z" fill="url(#{G})" stroke="#7c2d12" stroke-width=".9" stroke-linejoin="round"/>' +
+        '<path d="M7.1 9.7v3.6M5.3 11.5h3.6" stroke="#7c2d12" stroke-width="1.6" stroke-linecap="round" fill="none"/>' +
+        '<circle cx="15.6" cy="10.2" r="1.15" fill="#ffedd5" stroke="#7c2d12" stroke-width=".7"/>' +
+        '<circle cx="17.9" cy="12.5" r="1.15" fill="#ffedd5" stroke="#7c2d12" stroke-width=".7"/>' +
+        '<path d="M20.8 1.7l-2.1 3.1h1.6l-1 2.7 2.8-3.4h-1.7Z" fill="#fde047" stroke="#a16207" stroke-width=".55" stroke-linejoin="round"/></svg>';
+
+    /* ==== PREMIUM (v6) — diamante hielo con facetas, apoyo con dinero real ==== */
+    const DIAMOND_SVG =
+        '<svg xmlns="http://www.w3.org/2000/svg" width="{S}" height="{S}" viewBox="0 0 24 24" aria-hidden="true">' +
+        '<defs><linearGradient id="{G}" x1="0" y1="0" x2="1" y2="1">' +
+        '<stop offset="0" stop-color="#cffafe"/><stop offset=".55" stop-color="#38bdf8"/><stop offset="1" stop-color="#0369a1"/>' +
+        '</linearGradient></defs>' +
+        '<path d="M7.3 4h9.4l4.1 5.1L12 20.9 3.2 9.1Z" fill="url(#{G})" stroke="#155e75" stroke-width=".9" stroke-linejoin="round"/>' +
+        '<path d="M3.2 9.1h17.6" stroke="#155e75" stroke-width=".8" fill="none"/>' +
+        '<path d="M7.3 4l2.6 5.1L12 20.7M16.7 4l-2.6 5.1L12 20.7M9.9 9.1h4.2" stroke="#155e75" stroke-width=".8" fill="none" stroke-linecap="round"/>' +
+        '<circle cx="21" cy="3" r="1" fill="#e0f2fe" stroke="#0e7490" stroke-width=".5"/></svg>';
+
     /* ==== CATÁLOGO (el único lugar donde se declaran badges) ==== */
     SB.CATALOG = {
         owner: {
@@ -108,9 +157,18 @@
             svg: CROWN_SVG
             /* manageBy: sin declarar -> lo manejan Owner/Admin (ver badges_system.js) */
         },
+        admin: {
+            id: 'admin',
+            order: 1, /* staff primero: justo después de la corona */
+            label: 'ADMIN',
+            desc: 'Administrador de Stevscon — mantiene la web en orden 🛠️',
+            color: '#ef4444',
+            glow: 'drop-shadow(0 0 5px rgba(239,68,68,.5))',
+            svg: ADMIN_SVG
+        },
         dev: {
             id: 'dev',
-            order: 1,
+            order: 2,
             label: 'DEV',
             desc: 'Developer de Stevscon — del equipo que construye la web 💜',
             color: '#a78bfa',
@@ -119,7 +177,7 @@
         },
         og: {
             id: 'og',
-            order: 2,
+            order: 3,
             label: 'OG',
             desc: 'Miembro OG — se unió a Stevscon desde el principio 🏅',
             color: '#d9a441',
@@ -128,7 +186,7 @@
         },
         cazabugs: {
             id: 'cazabugs',
-            order: 3,
+            order: 4,
             label: 'CAZABUGS',
             desc: 'Encontró bugs en el Discord oficial de Stevscon.com 🐛',
             color: '#4ade80',
@@ -137,12 +195,39 @@
         },
         creador: {
             id: 'creador',
-            order: 4,
+            order: 5,
             label: 'CREADOR',
             desc: 'Creador de contenido oficial de Stevscon.com 🎬',
             color: '#c084fc',
             glow: 'drop-shadow(0 0 5px rgba(192,132,252,.55))',
             svg: CAM_SVG
+        },
+        campeon: {
+            id: 'campeon',
+            order: 6,
+            label: 'CAMPEÓN',
+            desc: 'Ganador de eventos oficiales de Stevscon.com 🏆',
+            color: '#facc15',
+            glow: 'drop-shadow(0 0 5px rgba(250,204,21,.5))',
+            svg: TROPHY_SVG
+        },
+        tryhard: {
+            id: 'tryhard',
+            order: 7,
+            label: 'TRYHARD',
+            desc: 'Jugador avanzado de Stevscon.com — nivel tryhard 🎮',
+            color: '#fb923c',
+            glow: 'drop-shadow(0 0 5px rgba(251,146,60,.5))',
+            svg: PAD_SVG
+        },
+        premium: {
+            id: 'premium',
+            order: 8,
+            label: 'PREMIUM',
+            desc: 'Apoyó a Stevscon.com con dinero real 💎',
+            color: '#38bdf8',
+            glow: 'drop-shadow(0 0 5px rgba(56,189,248,.55))',
+            svg: DIAMOND_SVG
         }
     };
 
@@ -332,5 +417,5 @@
     SB.staticIcon = function (id, size) { return badgeFor(id, null, size || 22); };
     SB.staticPill = SB.staticIcon; /* alias de compatibilidad v1 */
 
-    console.log('[Stevscon] badges_core.js listo (v5) — LA CARA: 5 badges (Owner, Dev, OG, Cazabugs, Creador) 👑');
+    console.log('[Stevscon] badges_core.js listo (v6) — LA CARA: 9 badges (Owner, Admin, Dev, OG, Cazabugs, Creador, Campeón, Tryhard, Premium) 👑');
 })(window, document);

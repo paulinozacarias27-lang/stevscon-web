@@ -1,20 +1,17 @@
 /**
  * ====
- * STEVSCON.COM — profiles/manage/badges/badges_system.js (v5)
+ * STEVSCON.COM — profiles/manage/badges/badges_system.js (v6)
  * BADGES · EL CEREBRO: ÚNICA puerta hacia Firebase. Toda escritura de badges
  *   pasa por aquí (panel, consola, reglas automáticas futuras…).
  *  ARQUITECTURA (v4): core (cara) -> SYSTEM (cerebro) -> manage (panel).
- *  v5 — matriz de permisos actualizada con los 4 badges nuevos (dev, og,
- *    cazabugs, creador -> Owner/Admins). Sin más cambios.
+ *  v6 — matriz de permisos: + campeon, tryhard, premium (Owner/Admins).
+ *    ('admin' ya estaba en la matriz). Sin más cambios.
+ *  v5 — matriz de permisos actualizada con dev, og, cazabugs y creador.
  *  - MATRIZ DE PERMISOS (coincide con tus reglas de Firebase, cero
  *    PERMISSION_DENIED sorpresas):
  *        badge 'owner' → SOLO steven23hd@gmail.com
- *        badge 'dev'   → Owner + Admins
- *        badge 'og'    → Owner + Admins
- *        badge 'cazabugs' → Owner + Admins
- *        badge 'creador'  → Owner + Admins
- *        badge 'admin' / 'mod' → Owner + Admins
- *        futuros badges (sin entrada en WHO) → Owner + Admins
+ *        TODOS los demás (admin, dev, og, cazabugs, creador, campeon,
+ *          tryhard, premium y futuros) → Owner + Admins
  *        (un badge puede declarar `manageBy: ['owner','admin','mod']` en el
  *         catálogo de core para ampliar quién lo maneja)
  *    Mods ven el panel y el directorio, pero NO pueden otorgar/quitar.
@@ -25,7 +22,7 @@
  *    Gancho listo para cosas tipo "OG automático a las cuentas más antiguas".
  *  - API: SB.system = { who, canManage, roleCan, grant, revoke, has, list,
  *    logFor, addRule, emit }
- *    Ejemplo de consola: StevsconBadges.system.grant(uid, 'og')
+ *    Ejemplo de consola: StevsconBadges.system.grant(uid, 'premium')
  * ====
  */
 (function (window, document) {
@@ -47,7 +44,10 @@
         dev:   ['owner', 'admin'],
         og:    ['owner', 'admin'],
         cazabugs: ['owner', 'admin'],
-        creador:  ['owner', 'admin']
+        creador:  ['owner', 'admin'],
+        campeon:  ['owner', 'admin'],
+        tryhard:  ['owner', 'admin'],
+        premium:  ['owner', 'admin']
         /* badges futuros sin entrada aquí -> ['owner','admin'] */
     };
 
@@ -175,5 +175,5 @@
     };
     SB.addRule = addRule; /* alias corto */
 
-    console.log('[Stevscon] badges_system.js listo (v5) — EL CEREBRO: permisos + escrituras + auditoría 🧠');
+    console.log('[Stevscon] badges_system.js listo (v6) — EL CEREBRO: permisos + escrituras + auditoría 🧠');
 })(window, document);
