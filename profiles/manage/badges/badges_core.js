@@ -1,15 +1,22 @@
 /**
  * ====
- * STEVSCON.COM — profiles/manage/badges/badges_core.js (v6)
+ * STEVSCON.COM — profiles/manage/badges/badges_core.js (v7)
  * BADGES · LA CARA: catálogo + render + auto-mount en perfiles. SOLO LECTURA.
  *  ARQUITECTURA (v4): cada file tiene UN solo trabajo:
  *    · badges_core.js   → LA CARA   (catálogo, iconos, tooltips, mount)  ← este file
  *    · badges_system.js → EL CEREBRO (grant/revoke/validaciones/log)
  *    · badges_manage.js → EL PANEL  (UI de staff, llama al system)
- *  v6 — 4 badges nuevos: ADMIN (llave roja, estilo empleados de Discord,
- *    order 1 justo después de la corona), CAMPEÓN (trofeo dorado),
- *    TRYHARD (gamepad naranja con rayo) y PREMIUM (diamante hielo).
- *    Catálogo de 9 badges. Sin más cambios.
+ *  v7 — FIX tooltip cortado: el tooltip ya NO vive dentro de la tarjeta
+ *    (el overflow:hidden de la card lo decapitaba y sus capas lo tapaban).
+ *    Ahora es UN solo elemento "portal" en <body> con position:fixed y
+ *    z-index máximo: se centra sobre el icono, se recorta a los bordes de
+ *    la pantalla, hace flip hacia abajo si no cabe arriba y la flecha
+ *    apunta siempre al badge (CSS var --ax). Funciona igual en "Mi
+ *    Perfil", en el modal del Social y en el panel de manage. Además se
+ *    oculta al hacer scroll/repaint para no quedar flotando huérfano.
+ *  v6 — 4 badges nuevos: ADMIN (llave roja, order 1 tras la corona),
+ *    CAMPEÓN (trofeo dorado), TRYHARD (gamepad naranja con rayo) y
+ *    PREMIUM (diamante hielo). Catálogo de 9 badges.
  *  v5 — 4 badges: DEV (brackets morados), OG (estrella bronce),
  *    CAZABUGS (lupa verde) y CREADOR (cámara violeta).
  *  v4 — reset de arquitectura. Expone SB.repaint(uid) para que el system
@@ -241,7 +248,7 @@
         return e;
     }
 
-    /* ==== ESTILOS (una sola vez) — icono puro + tooltip Discord ==== */
+    /* ==== ESTILOS (una sola vez) — icono puro + tooltip PORTAL (v7) ==== */
     (function injectStyles() {
         if (document.getElementById('sc-badges-style')) return;
         const st = document.createElement('style');
@@ -251,18 +258,74 @@
             '.sc-badge{position:relative;display:inline-flex;cursor:default;user-select:none;padding:1px}' +
             '.sc-badge-ic{display:inline-flex;transition:transform .16s ease}' +
             '.sc-badge:hover .sc-badge-ic{transform:scale(1.18)}' +
-            '.sc-badge-tip{position:absolute;bottom:calc(100% + 10px);left:0;transform:translateY(5px);opacity:0;pointer-events:none;' +
-            'transition:opacity .16s ease,transform .16s ease;display:flex;flex-direction:column;gap:2px;text-align:left;' +
+            /* Tooltip PORTAL (v7): vive en <body>, position:fixed, z-index máximo.
+               Nada de overflow de tarjetas ni capas ajenas lo cortan o tapan. */
+            '.sc-badge-tip{position:fixed;left:0;top:0;z-index:2147483000;display:flex;flex-direction:column;gap:2px;text-align:left;' +
+            'opacity:0;pointer-events:none;transition:opacity .14s ease,transform .14s ease;transform:translateY(4px);' +
             'background:linear-gradient(135deg,rgba(22,15,36,.98),rgba(12,9,20,.98));border:1px solid rgba(139,92,246,.45);' +
-            'border-radius:10px;padding:8px 13px;box-shadow:0 18px 44px rgba(0,0,0,.6),0 0 20px rgba(124,58,237,.28);z-index:60;white-space:nowrap}' +
-            '.sc-badge-tip::after{content:"";position:absolute;left:9px;bottom:-4.5px;width:8px;height:8px;transform:rotate(45deg);' +
+            'border-radius:10px;padding:8px 13px;box-shadow:0 18px 44px rgba(0,0,0,.6),0 0 20px rgba(124,58,237,.28);white-space:nowrap}' +
+            '.sc-badge-tip.show{opacity:1;transform:translateY(0)}' +
+            /* Flecha: apunta al centro del badge (offset vía --ax). Abajo por defecto. */
+            '.sc-badge-tip::after{content:"";position:absolute;bottom:-4.5px;left:var(--ax,10px);width:8px;height:8px;transform:rotate(45deg);' +
             'background:#150e24;border-right:1px solid rgba(139,92,246,.45);border-bottom:1px solid rgba(139,92,246,.45)}' +
-            '.sc-badge:hover .sc-badge-tip{opacity:1;transform:translateY(0)}' +
+            /* Flip: si el tooltip se dibuja DEBAJO del badge, la flecha va arriba. */
+            '.sc-badge-tip.below::after{bottom:auto;top:-4.5px;border-right:none;border-bottom:none;' +
+            'border-left:1px solid rgba(139,92,246,.45);border-top:1px solid rgba(139,92,246,.45)}' +
             '.sc-badge-tip b{font:800 11px Inter,sans-serif;letter-spacing:.14em}' +
             '.sc-badge-tip span{font:600 10.5px Inter,sans-serif;color:var(--text-muted,#94a3b8)}' +
             '.sc-badge-tip i{font:600 9.5px Inter,sans-serif;font-style:normal;color:var(--text-muted,#94a3b8);opacity:.75}';
         document.head.appendChild(st);
     })();
+
+    /* ==== TOOLTIP PORTAL (v7): UN solo elemento en <body>, reutilizado ==== */
+    let _tip = null;
+    function tipEl() {
+        if (_tip) return _tip;
+        _tip = el('div', null, 'sc-badge-tip');
+        _tip.setAttribute('role', 'tooltip');
+        document.body.appendChild(_tip);
+        return _tip;
+    }
+    function hideTip() { if (_tip) _tip.classList.remove('show'); }
+    /* Si la página hace scroll o se redimensiona, el ancla se mueve: ocultar. */
+    document.addEventListener('scroll', hideTip, true);
+    window.addEventListener('resize', hideTip);
+
+    function showTip(wrap, b, meta) {
+        const tip = tipEl();
+        while (tip.firstChild) tip.removeChild(tip.firstChild);
+        const l1 = el('b'); l1.style.color = b.color; l1.textContent = b.label;
+        const l2 = el('span'); l2.textContent = b.desc;
+        tip.appendChild(l1); tip.appendChild(l2);
+        if (meta && meta.at) {
+            const d = new Date(meta.at);
+            if (!isNaN(d.getTime())) {
+                const l3 = el('i');
+                l3.textContent = 'Otorgado el ' + d.toLocaleDateString();
+                tip.appendChild(l3);
+            }
+        }
+        /* Medir con el tooltip ya en DOM (opacity:0 no afecta a offsetWidth) */
+        tip.classList.remove('show', 'below');
+        const r = wrap.getBoundingClientRect();
+        const tw = tip.offsetWidth || 0, th = tip.offsetHeight || 0;
+        const vw = window.innerWidth || document.documentElement.clientWidth;
+        const vh = window.innerHeight || document.documentElement.clientHeight;
+        /* Horizontal: centrado sobre el icono, recortado a los bordes */
+        let left = r.left + r.width / 2 - tw / 2;
+        left = Math.max(8, Math.min(left, vw - tw - 8));
+        /* Vertical: arriba por defecto; si no cabe, flip hacia abajo */
+        let top = r.top - th - 10, below = false;
+        if (top < 8) { top = r.bottom + 10; below = true; }
+        if (top + th > vh - 8) top = Math.max(8, vh - th - 8);
+        /* La flecha sigue al centro real del badge aunque el tooltip se recorte */
+        const ax = Math.max(6, Math.min(r.left + r.width / 2 - left - 4, tw - 14));
+        tip.style.setProperty('--ax', ax + 'px');
+        tip.style.left = Math.round(left) + 'px';
+        tip.style.top = Math.round(top) + 'px';
+        if (below) tip.classList.add('below');
+        tip.classList.add('show');
+    }
 
     /* ==== ICONO del badge: SVG estático del catálogo, fondo transparente ==== */
     function iconEl(b, size) {
@@ -295,6 +358,7 @@
     }
 
     function paintRow(row, uid) {
+        hideTip(); /* el hover target puede desaparecer al repintar: ocultar portal */
         while (row.firstChild) row.removeChild(row.firstChild);
         const val = _cache[uid];
         const ids = val ? Object.keys(val).filter(function (id) { return SB.CATALOG[id]; }) : [];
@@ -306,7 +370,7 @@
         for (let i = 0; i < ids.length; i++) row.appendChild(badgeFor(ids[i], val[ids[i]], 22));
     }
 
-    /* Icono + tooltip (nombre, descripción y fecha al acercar el mouse) */
+    /* Icono + tooltip portal (nombre, descripción y fecha al acercar el mouse) */
     function badgeFor(id, meta, size) {
         const b = SB.CATALOG[id];
         const wrap = el('span', null, 'sc-badge');
@@ -314,20 +378,9 @@
         wrap.setAttribute('role', 'img');
         wrap.setAttribute('aria-label', b.label);
         wrap.appendChild(iconEl(b, size));
-
-        const tip = el('span', null, 'sc-badge-tip');
-        const l1 = el('b'); l1.style.color = b.color; l1.textContent = b.label;
-        const l2 = el('span'); l2.textContent = b.desc;
-        tip.appendChild(l1); tip.appendChild(l2);
-        if (meta && meta.at) {
-            const d = new Date(meta.at);
-            if (!isNaN(d.getTime())) {
-                const l3 = el('i');
-                l3.textContent = 'Otorgado el ' + d.toLocaleDateString();
-                tip.appendChild(l3);
-            }
-        }
-        wrap.appendChild(tip);
+        /* v7: el tooltip NO se mete dentro de la tarjeta; se pinta en <body> */
+        wrap.addEventListener('mouseenter', function () { showTip(wrap, b, meta); });
+        wrap.addEventListener('mouseleave', hideTip);
         return wrap;
     }
 
@@ -417,5 +470,5 @@
     SB.staticIcon = function (id, size) { return badgeFor(id, null, size || 22); };
     SB.staticPill = SB.staticIcon; /* alias de compatibilidad v1 */
 
-    console.log('[Stevscon] badges_core.js listo (v6) — LA CARA: 9 badges (Owner, Admin, Dev, OG, Cazabugs, Creador, Campeón, Tryhard, Premium) 👑');
+    console.log('[Stevscon] badges_core.js listo (v7) — LA CARA: 9 badges + tooltip portal anti-cortes 👑');
 })(window, document);
