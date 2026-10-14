@@ -1,11 +1,15 @@
 /**
  * ====
- * STEVSCON.COM — profiles/manage/badges/badges_core.js (v4)
+ * STEVSCON.COM — profiles/manage/badges/badges_core.js (v5)
  * BADGES · LA CARA: catálogo + render + auto-mount en perfiles. SOLO LECTURA.
  *  ARQUITECTURA (v4): cada file tiene UN solo trabajo:
  *    · badges_core.js   → LA CARA   (catálogo, iconos, tooltips, mount)  ← este file
  *    · badges_system.js → EL CEREBRO (grant/revoke/validaciones/log)
  *    · badges_manage.js → EL PANEL  (UI de staff, llama al system)
+ *  v5 — 4 badges nuevos: DEV (brackets morados estilo Discord), OG (estrella
+ *    bronce vintage con cintas), CAZABUGS (lupa sobre bicho, verde) y
+ *    CREADOR (cámara de video violeta). Todos SVG estáticos, fondo
+ *    transparente, mismo estilo de la corona.
  *  v4 — reset de arquitectura. Expone SB.repaint(uid) para que el system
  *    repinte perfiles al instante tras otorgar/quitar. Sin cambios visuales.
  *  v3 — FIX corona sin color (IDs de gradiente únicos por instancia).
@@ -44,6 +48,54 @@
         '<rect x="5.7" y="19.4" width="12.6" height="1.9" rx=".95" fill="url(#{G})" stroke="#92400e" stroke-width=".7"/>' +
         '<circle cx="12" cy="14.3" r="1.7" fill="#a78bfa" stroke="#6d28d9" stroke-width=".8"/></svg>';
 
+    /* ==== DEV (v5) — brackets </> morados, estilo Active Developer de Discord ==== */
+    const DEV_SVG =
+        '<svg xmlns="http://www.w3.org/2000/svg" width="{S}" height="{S}" viewBox="0 0 24 24" aria-hidden="true">' +
+        '<defs><linearGradient id="{G}" x1="0" y1="0" x2="1" y2="1">' +
+        '<stop offset="0" stop-color="#ede9fe"/><stop offset=".55" stop-color="#a78bfa"/><stop offset="1" stop-color="#7c3aed"/>' +
+        '</linearGradient></defs>' +
+        '<path d="M8.6 6.7 3.8 12l4.8 5.3" fill="none" stroke="url(#{G})" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>' +
+        '<path d="M15.4 6.7 20.2 12l-4.8 5.3" fill="none" stroke="url(#{G})" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>' +
+        '<path d="M13.4 4.6 10.6 19.4" fill="none" stroke="url(#{G})" stroke-width="2.3" stroke-linecap="round"/>' +
+        '<circle cx="20.9" cy="4.9" r="1.25" fill="#c4b5fd" stroke="#5b21b6" stroke-width=".6"/></svg>';
+
+    /* ==== OG (v5) — estrella bronce vintage con cintas, "estuvo desde el principio" ==== */
+    const OG_SVG =
+        '<svg xmlns="http://www.w3.org/2000/svg" width="{S}" height="{S}" viewBox="0 0 24 24" aria-hidden="true">' +
+        '<defs><linearGradient id="{G}" x1="0" y1="0" x2="1" y2="1">' +
+        '<stop offset="0" stop-color="#fdeaca"/><stop offset=".5" stop-color="#d9a441"/><stop offset="1" stop-color="#9a6310"/>' +
+        '</linearGradient></defs>' +
+        '<path d="M6.3 13.6 4.2 20.2l3.3-1.2 1.4 2.7 1.8-5" fill="url(#{G})" stroke="#7c4a04" stroke-width=".8" stroke-linejoin="round"/>' +
+        '<path d="M17.7 13.6 19.8 20.2l-3.3-1.2-1.4 2.7-1.8-5" fill="url(#{G})" stroke="#7c4a04" stroke-width=".8" stroke-linejoin="round"/>' +
+        '<path d="M12 2.2l2.7 5.4 6 .9-4.3 4.2 1 6L12 15.9l-5.4 2.8 1-6L3.3 8.5l6-.9Z" fill="url(#{G})" stroke="#7c4a04" stroke-width=".9" stroke-linejoin="round"/>' +
+        '<circle cx="10.1" cy="8.2" r="1" fill="#fff3d6" opacity=".9"/></svg>';
+
+    /* ==== CAZABUGS (v5) — lupa esmeralda sobre un bichito, para los del Discord oficial ==== */
+    const BUG_SVG =
+        '<svg xmlns="http://www.w3.org/2000/svg" width="{S}" height="{S}" viewBox="0 0 24 24" aria-hidden="true">' +
+        '<defs><linearGradient id="{G}" x1="0" y1="0" x2="1" y2="1">' +
+        '<stop offset="0" stop-color="#d9f99d"/><stop offset=".5" stop-color="#4ade80"/><stop offset="1" stop-color="#15803d"/>' +
+        '</linearGradient></defs>' +
+        '<circle cx="10.4" cy="9.9" r="6.1" fill="rgba(74,222,128,.13)" stroke="url(#{G})" stroke-width="2"/>' +
+        '<path d="M15 14.7 20.4 20" fill="none" stroke="url(#{G})" stroke-width="2.6" stroke-linecap="round"/>' +
+        '<path d="M8.4 9.6 6.7 8.7M8.5 11.3 6.8 12M12.4 9.6 14.1 8.7M12.3 11.3 14 12" stroke="#166534" stroke-width=".9" stroke-linecap="round" fill="none"/>' +
+        '<path d="M9.7 7.5 8.9 6.3M11.1 7.5 11.9 6.3" stroke="#166534" stroke-width=".9" stroke-linecap="round" fill="none"/>' +
+        '<ellipse cx="10.4" cy="10.7" rx="2.2" ry="2.7" fill="#4ade80" stroke="#14532d" stroke-width=".7"/>' +
+        '<circle cx="10.4" cy="8.1" r="1.2" fill="#86efac" stroke="#14532d" stroke-width=".7"/>' +
+        '<path d="M10.4 9.4v3.2M9.2 10.2h2.4M9.1 11.1h2.6" stroke="#14532d" stroke-width=".6" fill="none"/>' +
+        '<circle cx="17.6" cy="3.9" r="1.1" fill="#bbf7d0" stroke="#15803d" stroke-width=".5"/></svg>';
+
+    /* ==== CREADOR (v5) — cámara de video violeta, para creadores de contenido ==== */
+    const CAM_SVG =
+        '<svg xmlns="http://www.w3.org/2000/svg" width="{S}" height="{S}" viewBox="0 0 24 24" aria-hidden="true">' +
+        '<defs><linearGradient id="{G}" x1="0" y1="0" x2="1" y2="1">' +
+        '<stop offset="0" stop-color="#f3e8ff"/><stop offset=".55" stop-color="#c084fc"/><stop offset="1" stop-color="#7c3aed"/>' +
+        '</linearGradient></defs>' +
+        '<rect x="2.6" y="6.9" width="12.4" height="10.2" rx="2.6" fill="url(#{G})" stroke="#5b21b6" stroke-width=".9"/>' +
+        '<path d="M15 10.6 19.9 7.9a.98.98 0 0 1 1.5.86v6.5a.98.98 0 0 1-1.5.86L15 13.4Z" fill="url(#{G})" stroke="#5b21b6" stroke-width=".9" stroke-linejoin="round"/>' +
+        '<circle cx="7.4" cy="12" r="2" fill="#f5d0fe" stroke="#6d28d9" stroke-width=".8"/>' +
+        '<circle cx="12.6" cy="9.2" r="1" fill="#f5d0fe" opacity=".85"/></svg>';
+
     /* ==== CATÁLOGO (el único lugar donde se declaran badges) ==== */
     SB.CATALOG = {
         owner: {
@@ -55,6 +107,42 @@
             glow: 'drop-shadow(0 0 5px rgba(251,191,36,.5)) drop-shadow(0 0 13px rgba(139,92,246,.4))',
             svg: CROWN_SVG
             /* manageBy: sin declarar -> lo manejan Owner/Admin (ver badges_system.js) */
+        },
+        dev: {
+            id: 'dev',
+            order: 1,
+            label: 'DEV',
+            desc: 'Developer de Stevscon — del equipo que construye la web 💜',
+            color: '#a78bfa',
+            glow: 'drop-shadow(0 0 5px rgba(167,139,250,.55))',
+            svg: DEV_SVG
+        },
+        og: {
+            id: 'og',
+            order: 2,
+            label: 'OG',
+            desc: 'Miembro OG — se unió a Stevscon desde el principio 🏅',
+            color: '#d9a441',
+            glow: 'drop-shadow(0 0 5px rgba(217,164,65,.5))',
+            svg: OG_SVG
+        },
+        cazabugs: {
+            id: 'cazabugs',
+            order: 3,
+            label: 'CAZABUGS',
+            desc: 'Encontró bugs en el Discord oficial de Stevscon.com 🐛',
+            color: '#4ade80',
+            glow: 'drop-shadow(0 0 5px rgba(74,222,128,.5))',
+            svg: BUG_SVG
+        },
+        creador: {
+            id: 'creador',
+            order: 4,
+            label: 'CREADOR',
+            desc: 'Creador de contenido oficial de Stevscon.com 🎬',
+            color: '#c084fc',
+            glow: 'drop-shadow(0 0 5px rgba(192,132,252,.55))',
+            svg: CAM_SVG
         }
     };
 
@@ -244,5 +332,5 @@
     SB.staticIcon = function (id, size) { return badgeFor(id, null, size || 22); };
     SB.staticPill = SB.staticIcon; /* alias de compatibilidad v1 */
 
-    console.log('[Stevscon] badges_core.js listo (v4) — LA CARA: catálogo + render, solo lectura 👑');
+    console.log('[Stevscon] badges_core.js listo (v5) — LA CARA: 5 badges (Owner, Dev, OG, Cazabugs, Creador) 👑');
 })(window, document);

@@ -1,29 +1,31 @@
 /**
  * ====
- * STEVSCON.COM — profiles/manage/badges/badges_system.js (v4) · NUEVO
+ * STEVSCON.COM — profiles/manage/badges/badges_system.js (v5)
  * BADGES · EL CEREBRO: ÚNICA puerta hacia Firebase. Toda escritura de badges
  *   pasa por aquí (panel, consola, reglas automáticas futuras…).
  *  ARQUITECTURA (v4): core (cara) -> SYSTEM (cerebro) -> manage (panel).
+ *  v5 — matriz de permisos actualizada con los 4 badges nuevos (dev, og,
+ *    cazabugs, creador -> Owner/Admins). Sin más cambios.
  *  - MATRIZ DE PERMISOS (coincide con tus reglas de Firebase, cero
  *    PERMISSION_DENIED sorpresas):
  *        badge 'owner' → SOLO steven23hd@gmail.com
- *        badge 'admin' → Owner + Admins
- *        badge 'mod'   → Owner + Admins
+ *        badge 'dev'   → Owner + Admins
+ *        badge 'og'    → Owner + Admins
+ *        badge 'cazabugs' → Owner + Admins
+ *        badge 'creador'  → Owner + Admins
+ *        badge 'admin' / 'mod' → Owner + Admins
  *        futuros badges (sin entrada en WHO) → Owner + Admins
  *        (un badge puede declarar `manageBy: ['owner','admin','mod']` en el
  *         catálogo de core para ampliar quién lo maneja)
  *    Mods ven el panel y el directorio, pero NO pueden otorgar/quitar.
  *  - LOG DE AUDITORÍA: cada grant/revoke guarda en
  *    social/badges_log/{uid}/{entryId} = { action, badge, by, byEmail, at }
- *    (best-effort: si aún no publicaste las reglas del log, los badges
- *    funcionan igual y solo se pierde el registro).
  *  - REGLAS AUTOMÁTICAS (preparado a futuro): SB.system.addRule(nombre, fn)
  *    registra una función que se ejecuta en cada SB.system.emit(evento, datos).
- *    Nada la llama todavía — es el gancho para cosas tipo "badge OG a los
- *    primeros 20 registros" cuando lo queramos.
+ *    Gancho listo para cosas tipo "OG automático a las cuentas más antiguas".
  *  - API: SB.system = { who, canManage, roleCan, grant, revoke, has, list,
  *    logFor, addRule, emit }
- *    Ejemplo de consola: StevsconBadges.system.grant(uid, 'owner')
+ *    Ejemplo de consola: StevsconBadges.system.grant(uid, 'og')
  * ====
  */
 (function (window, document) {
@@ -41,7 +43,11 @@
     const WHO = {
         owner: ['owner'],
         admin: ['owner', 'admin'],
-        mod:   ['owner', 'admin']
+        mod:   ['owner', 'admin'],
+        dev:   ['owner', 'admin'],
+        og:    ['owner', 'admin'],
+        cazabugs: ['owner', 'admin'],
+        creador:  ['owner', 'admin']
         /* badges futuros sin entrada aquí -> ['owner','admin'] */
     };
 
@@ -88,8 +94,8 @@
                 return {
                     ok: false,
                     reason: (badgeId === 'owner' && w.role !== 'owner')
-                        ? 'Solo el Owner (' + OWNER_EMAIL + ') puede manejar el badge Owner.'
-                        : 'Solo Owner/Admins pueden manejar este badge.'
+                    ? 'Solo el Owner (' + OWNER_EMAIL + ') puede manejar el badge Owner.'
+                    : 'Solo Owner/Admins pueden manejar este badge.'
                 };
             }
             return { ok: true };
@@ -146,7 +152,7 @@
         }).catch(function () { return []; });
     }
 
-    /* ==== REGRAS AUTOMÁTICAS (gancho a futuro, hoy sin uso) ==== */
+    /* ==== REGLAS AUTOMÁTICAS (gancho a futuro, hoy sin uso) ==== */
     const _rules = [];
     function addRule(name, fn) {
         _rules.push({ name: name, fn: fn });
@@ -169,5 +175,5 @@
     };
     SB.addRule = addRule; /* alias corto */
 
-    console.log('[Stevscon] badges_system.js listo (v4) — EL CEREBRO: permisos + escrituras + auditoría 🧠');
+    console.log('[Stevscon] badges_system.js listo (v5) — EL CEREBRO: permisos + escrituras + auditoría 🧠');
 })(window, document);
