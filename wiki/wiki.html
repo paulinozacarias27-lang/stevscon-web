@@ -1,20 +1,19 @@
 <!DOCTYPE html>
 <!--
   ====
-  STEVSCON.WIKI — wiki/wiki.html (v2)
+  STEVSCON.WIKI — wiki/wiki.html (v3)
   Página HTML propia de la categoría WIKI.
   URL: https://www.stevscon.com/wiki/wiki.html
 
-  v2 — FIX arranque:
-  - Firebase IDÉNTICO a social.html: SDKs 9.23.0 (gstatic) + tu
-    firebase_data.js real de la raíz (nada de config pegada).
-  - La señal 'sc:wiki-ready' se escucha ANTES de llamar a boot().
-  - Arranque con AUTODIAGNÓSTICO: si un file falta (404), carga
-    viejo o truena, el error en pantalla dice cuál y por qué.
-  - Fallback de primer pintado: la pantalla de carga NUNCA se queda
-    pegada (máx 8s tras boot).
-  - CSS: propiedad estándar line-clamp junto a la de webkit (adiós
-    al warning de VS Code).
+  v3 — FIX de arranque definitivo:
+  - El chequeo ya NO exige "W.page": wiki_page.js expone el boot
+    directo como WK.boot (route/render/setTitle incluidos), y eso
+    es exactamente lo que la página espera.
+  - El diagnóstico reporta wiki_page.js por su boot, no por "page".
+  - Firebase IDÉNTICO a social.html: SDKs 9.23.0 (gstatic) +
+    firebase_data.js real de la raíz.
+  - 'sc:wiki-ready' se escucha ANTES de llamar boot() + fallback
+    para que la pantalla de carga NUNCA se quede pegada.
   ====
 -->
 <html lang="es">
@@ -264,11 +263,13 @@
 (function () {
     'use strict';
     /* ====
-       Arranque de wiki.html (v2 — con autodiagnóstico):
-       1) Espera al motor (core + system + page + una función boot)
-       2) Escucha 'sc:wiki-ready' ANTES de llamar boot() (fix v2)
-       3) Fallback de primer pintado: la carga nunca se queda pegada
-       4) Si falla, el mensaje en pantalla dice QUÉ file y POR QUÉ
+       Arranque de wiki.html (v3):
+       1) Espera al motor: core + system + manage + una función boot().
+          (v3 FIX: ya NO se exige "W.page" — wiki_page.js expone el boot
+          directo como WK.boot, junto a WK.route / WK.render.)
+       2) Escucha 'sc:wiki-ready' ANTES de llamar boot().
+       3) Fallback de primer pintado: la carga nunca se queda pegada.
+       4) Si falla, el mensaje en pantalla dice QUÉ file y POR QUÉ.
        ==== */
     var boot = document.getElementById('wk-boot');
     var booted = false;
@@ -294,7 +295,7 @@
 
     function coreReady() {
         var W = window.StevsconWiki;
-        return !!(W && W.core && W.system && W.page && getBootFn(W));
+        return !!(W && W.core && W.system && W.manage && getBootFn(W));
     }
 
     function hideBoot() {
@@ -310,22 +311,20 @@
         var diag = window.__wkDiag || { jsErrors: [], failed: {} };
         var L = ['La wiki no pudo arrancar. Diagnóstico:'];
 
-        [['wiki_core.js', 'core'], ['wiki_system.js', 'system'],
-         ['wiki_page.js', 'page'], ['wiki_manage.js', 'manage']].forEach(function (r) {
+        [['wiki_core.js',   function (w) { return !!(w && w.core); },   '/wiki/manage/output/'],
+         ['wiki_system.js', function (w) { return !!(w && w.system); }, '/wiki/manage/output/'],
+         ['wiki_page.js',   function (w) { return !!(w && typeof w.boot === 'function'); }, '/wiki/manage/pages/'],
+         ['wiki_manage.js', function (w) { return !!(w && w.manage); }, '/wiki/manage/output/']
+        ].forEach(function (r) {
             if (diag.failed[r[0]]) {
-                L.push('✘ ' + r[0] + ': NO SE ENCONTRÓ (404). Revisa nombre y carpeta EXACTOS: ' +
-                    (r[0] === 'wiki_page.js' ? '/wiki/manage/pages/' : '/wiki/manage/output/') + r[0]);
-            } else if (W[r[1]]) {
+                L.push('✘ ' + r[0] + ': NO SE ENCONTRÓ (404). Revisa nombre y carpeta EXACTOS: ' + r[2] + r[0]);
+            } else if (r[1](W)) {
                 L.push('✔ ' + r[0] + ': cargó bien.');
             } else {
-                L.push('⚠ ' + r[0] + ': el file cargó pero no definió su parte ("' + r[1] +
-                    '"). Puede ser caché vieja (sube el ?v= del tag) o el file quedó vacío/incompleto.');
+                L.push('⚠ ' + r[0] + ': el file cargó pero quedó vacío/incompleto o es una versión vieja (caché). Vuelve a pegar el contenido correcto y recarga con Ctrl+Shift+R.');
             }
         });
 
-        if (W.core && W.system && W.page && !getBootFn(W)) {
-            L.push('⚠ Los files cargan pero NINGUNO expone boot(). Pásame wiki_core.js y te lo devuelvo arreglado.');
-        }
         if (diag.jsErrors && diag.jsErrors.length) {
             L.push('Error de JS capturado: ' + diag.jsErrors[0]);
         }
@@ -341,7 +340,7 @@
         if (hint) hint.textContent = 'Algo falló:';
     }
 
-    /* Señal ANTES del boot (fix v2: antes se escuchaba DESPUÉS de llamar boot()) */
+    /* Señal ANTES del boot */
     document.addEventListener('sc:wiki-ready', hideBoot);
 
     function tryBoot() {
@@ -374,6 +373,8 @@
         if (++tries > 75) return fail();   /* 15 s y nada -> diagnóstico visible */
         setTimeout(waitCore, 200);
     })();
+
+    console.log('[Wiki] wiki.html v3 lista — chequeo de arranque corregido.');
 })();
 </script>
 </body>
