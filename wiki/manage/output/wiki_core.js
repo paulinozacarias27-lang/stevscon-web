@@ -1,12 +1,13 @@
 /**
  * ====
- * STEVSCON.WIKI — wiki/manage/output/wiki_core.js (v1)
+ * STEVSCON.WIKI — wiki/manage/output/wiki_core.js (v2)
  * CORE: LECTURA y RENDER (nada de escritura).
+ * - v2: el motor de formato vive en formats.js (WK.formats). Aquí solo
+ *   se llama: WK.formats.md() para el cuerpo, WK.formats.safeUrl() para
+ *   portadas y WK.formats.enhance() para spoilers/color de código.
  * - Portada estilo Fandom: banner, N PAGES, destacados, categorías, últimas.
- * - Artículo: meta con autor (data-scsoc-profile), portada, markdown
- *   seguro (escape PRIMERO, formato DESPUÉS), vistas e historial.
- * - Categorías y buscador. TODO con textContent (innerHTML solo para
- *   el markdown ya escapado y componentes estáticos).
+ * - Artículo: meta con autor (data-scsoc-profile), portada, vistas, historial.
+ * - TODO con textContent (innerHTML solo para el markdown ya escapado).
  * ====
  */
 (function (window, document) {
@@ -16,12 +17,7 @@
 
     const db = function () { return firebase.database(); };
 
-    /* ================= HELPERS ================= */
-    function esc(s) {
-        return String(s == null ? '' : s)
-            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-    }
+    /* ==== HELPERS ==== */
     function fmtDate(ts) {
         const n = Number(ts);
         if (!n) return '—';
@@ -37,57 +33,7 @@
         return e;
     }
 
-    /* ============ MARKDOWN SEGURO (escape -> formato) ============ */
-    function safeUrl(u) {
-        u = String(u || '').trim();
-        if (/^https:\/\//i.test(u)) return u;
-        if (/^data:image\/[a-zA-Z0-9.+-]+;base64,/.test(u)) return u;
-        return null;
-    }
-    function inline(md) {
-        let s = esc(md);
-        s = s.replace(/`([^`\n]+)`/g, '<code>$1</code>');
-        s = s.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
-        s = s.replace(/(^|[^*\w])\*([^*\n]+)\*/g, '$1<em>$2</em>');
-        s = s.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, function (m, alt, url) {
-            const ok = safeUrl(url);
-            return ok ? '<img src="' + esc(ok) + '" alt="' + alt + '" loading="lazy">' : alt;
-        });
-        s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, function (m, txt, url) {
-            const ok = safeUrl(url);
-            return ok ? '<a href="' + esc(ok) + '" target="_blank" rel="noopener noreferrer">' + txt + '</a>' : txt;
-        });
-        return s;
-    }
-    function md(src) {
-        const lines = String(src || '').split(/\r?\n/);
-        let out = '', list = null; /* 'ul' | 'ol' | null */
-        const closeList = function () { if (list) { out += '</' + list + '>'; list = null; } };
-        for (let i = 0; i < lines.length; i++) {
-            const L = lines[i];
-            const t = L.trim();
-            if (!t) { closeList(); continue; }
-            if (t === '---') { closeList(); out += '<hr>'; continue; }
-            if (t.indexOf('### ') === 0) { closeList(); out += '<h3>' + inline(t.slice(4)) + '</h3>'; continue; }
-            if (t.indexOf('## ') === 0) { closeList(); out += '<h2>' + inline(t.slice(3)) + '</h2>'; continue; }
-            if (t.indexOf('# ') === 0) { closeList(); out += '<h2>' + inline(t.slice(2)) + '</h2>'; continue; }
-            if (t.indexOf('- ') === 0) {
-                if (list !== 'ul') { closeList(); out += '<ul>'; list = 'ul'; }
-                out += '<li>' + inline(t.slice(2)) + '</li>'; continue;
-            }
-            if (/^\d+\.\s/.test(t)) {
-                if (list !== 'ol') { closeList(); out += '<ol>'; list = 'ol'; }
-                out += '<li>' + inline(t.replace(/^\d+\.\s/, '')) + '</li>'; continue;
-            }
-            if (t.indexOf('&gt; ') === 0) { closeList(); out += '<blockquote>' + inline(t.slice(5)) + '</blockquote>'; continue; }
-            closeList();
-            out += '<p>' + inline(t) + '</p>';
-        }
-        closeList();
-        return out;
-    }
-
-    /* ================= ESTADO ================= */
+    /* ==== ESTADO ==== */
     WK.core = {
         cats: {}, arts: {}, pages: 0, avatars: {}, started: false,
 
@@ -169,7 +115,7 @@
             }).catch(function () { return null; });
         },
 
-        /* ================= BARRA DE CATEGORÍAS ================= */
+        /* ==== BARRA DE CATEGORÍAS ==== */
         paintCatNav: function (activeSlug) {
             const nav = document.getElementById('wk-catnav');
             if (!nav) return;
@@ -209,7 +155,7 @@
             return found[0] || null;
         },
 
-        /* ================= VISTAS (bloques) ================= */
+        /* ==== VISTAS (bloques) ==== */
         typeChip: function (t) {
             const map = {
                 proyecto: ['fa-rocket', 'Proyecto'],
@@ -267,7 +213,7 @@
             return box;
         },
 
-        /* ================= PORTADA ================= */
+        /* ==== PORTADA ==== */
         renderHome: function (main) {
             const self = this;
 
@@ -367,7 +313,7 @@
             }
         },
 
-        /* ================= CATEGORÍA ================= */
+        /* ==== CATEGORÍA ==== */
         renderCategory: function (main, slug) {
             const c = this.catBySlug(slug);
             if (!c) return this.emptyBox(main, 'fa-folder-xmark', 'Categoría no encontrada', 'Quizá fue renombrada o borrada.');
@@ -386,7 +332,7 @@
             return h;
         },
 
-        /* ================= BUSCADOR ================= */
+        /* ==== BUSCADOR ==== */
         renderSearch: function (main, q) {
             const self = this;
             const qq = String(q || '').trim().toLowerCase();
@@ -408,7 +354,7 @@
             sec.appendChild(grid);
         },
 
-        /* ================= ARTÍCULO ================= */
+        /* ==== ARTÍCULO ==== */
         renderArticle: function (main, key) {
             const self = this;
             const hit = this.resolveArticle(key);
@@ -475,8 +421,8 @@
                 avWrap.querySelector('.wk-author-name').textContent = info.name + (info.handler ? ' (' + info.handler + ')' : '');
             });
 
-            /* Portada del artículo */
-            const cover = safeUrl(a.cover || '');
+            /* Portada del artículo (URL validada por formats.js) */
+            const cover = WK.formats.safeUrl(a.cover || '');
             if (cover) {
                 const cwrap = el('div', 'wk-cover');
                 const im = document.createElement('img');
@@ -486,9 +432,10 @@
                 art.appendChild(cwrap);
             }
 
-            /* Cuerpo (markdown YA escapado dentro de md()) */
+            /* Cuerpo (el motor vive en formats.js: escape primero, formato después) */
             const body = el('div', 'wk-body');
-            body.innerHTML = md(a.body || '');
+            body.innerHTML = WK.formats.md(a.body || '');
+            WK.formats.enhance(body, { id: id, a: a });
             art.appendChild(body);
 
             main.appendChild(art);
@@ -548,5 +495,5 @@
         }
     };
 
-    console.log('[Stevscon] wiki_core.js listo (v1) — núcleo de lectura y render.');
+    console.log('[Stevscon] wiki_core.js listo (v2) — núcleo de lectura y render (formato en formats.js).');
 })(window, document);

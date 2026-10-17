@@ -1,19 +1,15 @@
 <!DOCTYPE html>
 <!--
   ====
-  STEVSCON.WIKI — wiki/wiki.html (v3)
+  STEVSCON.WIKI — wiki/wiki.html (v4)
   Página HTML propia de la categoría WIKI.
   URL: https://www.stevscon.com/wiki/wiki.html
 
-  v3 — FIX de arranque definitivo:
-  - El chequeo ya NO exige "W.page": wiki_page.js expone el boot
-    directo como WK.boot (route/render/setTitle incluidos), y eso
-    es exactamente lo que la página espera.
-  - El diagnóstico reporta wiki_page.js por su boot, no por "page".
-  - Firebase IDÉNTICO a social.html: SDKs 9.23.0 (gstatic) +
-    firebase_data.js real de la raíz.
-  - 'sc:wiki-ready' se escucha ANTES de llamar boot() + fallback
-    para que la pantalla de carga NUNCA se quede pegada.
+  v4 — NUEVO MOTOR DE FORMATO:
+  - Se añade formats.js (formats -> core -> system -> page -> manage).
+  - wiki_core.js v2 ya no trae el markdown dentro: vive en formats.js.
+  - El chequeo de arranque y el diagnóstico ahora vigilan 5 files.
+  - Firebase IDÉNTICO a social.html: SDKs 9.23.0 + firebase_data.js.
   ====
 -->
 <html lang="es">
@@ -252,9 +248,10 @@
 <!-- ==== Dispatcher de perfiles (avatar/nombre del autor abre tu panel) ==== -->
 <script src="/social/manage/output/system/profiles_show.js?v=7"></script>
 
-<!-- ==== MOTOR DE LA WIKI (orden estricto: core -> system -> page -> manage)
+<!-- ==== MOTOR DE LA WIKI (orden estricto: formats -> core -> system -> page -> manage)
      Cada tag reporta su propio 404 al diagnóstico ==== -->
-<script src="/wiki/manage/output/wiki_core.js?v=1" onerror="window.__wkDiag.failed['wiki_core.js']=1"></script>
+<script src="/wiki/manage/output/formats.js?v=1" onerror="window.__wkDiag.failed['formats.js']=1"></script>
+<script src="/wiki/manage/output/wiki_core.js?v=2" onerror="window.__wkDiag.failed['wiki_core.js']=1"></script>
 <script src="/wiki/manage/output/wiki_system.js?v=1" onerror="window.__wkDiag.failed['wiki_system.js']=1"></script>
 <script src="/wiki/manage/pages/wiki_page.js?v=1" onerror="window.__wkDiag.failed['wiki_page.js']=1"></script>
 <script src="/wiki/manage/output/wiki_manage.js?v=1" onerror="window.__wkDiag.failed['wiki_manage.js']=1"></script>
@@ -263,10 +260,8 @@
 (function () {
     'use strict';
     /* ====
-       Arranque de wiki.html (v3):
-       1) Espera al motor: core + system + manage + una función boot().
-          (v3 FIX: ya NO se exige "W.page" — wiki_page.js expone el boot
-          directo como WK.boot, junto a WK.route / WK.render.)
+       Arranque de wiki.html (v4):
+       1) Espera al motor: formats + core + system + manage + boot().
        2) Escucha 'sc:wiki-ready' ANTES de llamar boot().
        3) Fallback de primer pintado: la carga nunca se queda pegada.
        4) Si falla, el mensaje en pantalla dice QUÉ file y POR QUÉ.
@@ -295,7 +290,7 @@
 
     function coreReady() {
         var W = window.StevsconWiki;
-        return !!(W && W.core && W.system && W.manage && getBootFn(W));
+        return !!(W && W.formats && W.core && W.system && W.manage && getBootFn(W));
     }
 
     function hideBoot() {
@@ -311,7 +306,8 @@
         var diag = window.__wkDiag || { jsErrors: [], failed: {} };
         var L = ['La wiki no pudo arrancar. Diagnóstico:'];
 
-        [['wiki_core.js',   function (w) { return !!(w && w.core); },   '/wiki/manage/output/'],
+        [['formats.js',    function (w) { return !!(w && w.formats); }, '/wiki/manage/output/'],
+         ['wiki_core.js',   function (w) { return !!(w && w.core); },   '/wiki/manage/output/'],
          ['wiki_system.js', function (w) { return !!(w && w.system); }, '/wiki/manage/output/'],
          ['wiki_page.js',   function (w) { return !!(w && typeof w.boot === 'function'); }, '/wiki/manage/pages/'],
          ['wiki_manage.js', function (w) { return !!(w && w.manage); }, '/wiki/manage/output/']
@@ -374,7 +370,7 @@
         setTimeout(waitCore, 200);
     })();
 
-    console.log('[Wiki] wiki.html v3 lista — chequeo de arranque corregido.');
+    console.log('[Wiki] wiki.html v4 lista — motor de formatos integrado.');
 })();
 </script>
 </body>
