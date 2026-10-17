@@ -6,7 +6,7 @@
  * - Pestañas: Artículos (editar/destacar/publicar/borrar),
  *   Nueva página (con PLANTILLAS: Proyecto, Devlog, Easter egg,
  *   Guía, Libre) y Categorías (crear con icono/color, borrar).
- * - Editor con subida de portada (se reescala sola a <300KB).
+ * * - Editor con subida de portada (hasta 20MB, se optimiza sola)..
  * TODO con textContent; innerHTML solo para esqueletos estáticos.
  * ====
  */
@@ -439,10 +439,10 @@
             form.appendChild(field('RESUMEN', summary));
             form.appendChild(field('ETIQUETAS (MÁX 8)', tags));
 
-            form.appendChild(field('PORTADA (URL O IMAGEN SUBIDA, MÁX 300KB)', cover));
+            form.appendChild(field('PORTADA (URL O IMAGEN SUBIDA, HASTA 20MB)', cover));
             form.appendChild(coverPrev);
             form.appendChild(coverFile);
-            form.appendChild(el('p', 'wk-hint', 'La imagen se reescala sola para que nunca rompa el límite.'));
+            form.appendChild(el('p', 'wk-hint', 'Puedes subir imágenes de hasta 20MB: se optimizan solas para que la wiki siga cargando rápido.'));
 
             form.appendChild(field('CUERPO (MARKDOWN SEGURO)', body));
 
@@ -488,17 +488,24 @@
                 else { coverPrev.style.display = 'none'; }
             });
 
-            /* Subida local -> canvas -> dataURI <300KB */
+            /* Subida local -> optimizador (hasta 20MB, canvas 1920px) */
             coverFile.addEventListener('change', function () {
                 const f = coverFile.files && coverFile.files[0];
                 if (!f) return;
-                shrink(f, function (dataURI, err) {
+                coverFile.disabled = true;
+                const finish = function (dataURI, err) {
+                    coverFile.disabled = false;
                     if (err) return toast(err, 'error');
                     cover.value = dataURI;
                     coverPrev.src = dataURI;
                     coverPrev.style.display = 'block';
                     toast('Imagen lista (' + Math.round(dataURI.length / 1024) + 'KB)', 'ok');
-                });
+                };
+                if (WK.system && typeof WK.system.shrinkImage === 'function') {
+                    WK.system.shrinkImage(f, { maxDim: 1920, targetStr: 2000000 }, finish);
+                } else {
+                    shrink(f, finish);
+                }
             });
 
             const bSave = el('button', 'wk-btn pri');
@@ -538,25 +545,26 @@
     }
 
     /* Reescala una imagen a dataURI liviano (máx 900px de ancho) */
+    /* Fallback: optimiza una imagen a dataURI liviano (si falta wiki_system v2) */
     function shrink(file, cb) {
         try {
             const fr = new FileReader();
             fr.onload = function () {
                 const im = new Image();
                 im.onload = function () {
-                    const maxW = 900;
+                    const maxW = 1920;
                     const sc = Math.min(1, maxW / im.width);
                     const cv = document.createElement('canvas');
                     cv.width = Math.round(im.width * sc);
                     cv.height = Math.round(im.height * sc);
                     cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
-                    let out = cv.toDataURL('image/jpeg', 0.82);
-                    let q = 0.82;
-                    while (out.length > 300000 && q > 0.35) {
+                    let out = cv.toDataURL('image/jpeg', 0.9);
+                    let q = 0.9;
+                    while (out.length > 2000000 && q > 0.35) {
                         q -= 0.15;
                         out = cv.toDataURL('image/jpeg', q);
                     }
-                    if (out.length > 300000) return cb(null, 'La imagen es demasiado grande incluso reescalada.');
+                    if (out.length > 2000000) return cb(null, 'La imagen es demasiado grande incluso reescalada.');
                     cb(out, null);
                 };
                 im.onerror = function () { cb(null, 'Ese archivo no parece una imagen válida.'); };
@@ -574,5 +582,5 @@
         WK.manage.init();
     }
 
-    console.log('[Stevscon] wiki_manage.js listo (v1) — panel de staff de la wiki.');
+    console.log('[Stevscon] wiki_manage.js listo (v2) — panel de staff (portadas de hasta 20MB optimizadas).');
 })(window, document);

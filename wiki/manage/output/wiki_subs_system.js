@@ -1,16 +1,18 @@
 /**
  * ====
- * STEVSCON.WIKI — wiki/manage/output/wiki_subs_system.js (v2)
+ * STEVSCON.WIKI — wiki/manage/output/wiki_subs_system.js (v3)
  * SUBS (SYSTEM): ESCRITURA de sub-artículos. Nada de UI.
- *  v2 — schema ampliado:
- *    · normal  → { body, image, imgPos: 'lado' | 'abajo' }
- *    · lista   → { colsStr, rows: [{t, img, d, x, c}] }
- *      5 columnas con títulos personalizables (la 2 es IMAGEN),
- *      filas con imagen opcional. Hasta 15 filas.
- *    · galeria → { rows: [{img, t, d}] } hasta 15 imágenes.
- *  - Valida TODO antes de tocar Firebase.
- *  - Historial: sub-created / sub-edited / sub-deleted (via WK.system).
- * ====
+ *  v3 — IMÁGENES GRANDES:
+ *    · imgStr: 30KB → 2000000 chars (~1.5MB por imagen guardada,
+ *      50x más que antes) e imgFile: 20MB de archivo fuente.
+ *    · El guardado de filas ahora es POR TROZOS (cada fila se
+ *      escribe en su propio set): una galería con imágenes pesadas
+ *      ya no choca contra el límite de 16MB por escritura de
+ *      Firebase. Al editar, las filas viejas sobrantes se limpian.
+ *    · Mensajes dinámicos (adiós al "300KB" clavado a mano).
+ *  v2 — schema: normal { body, image, imgPos }, lista { colsStr,
+ *    rows: [{t,img,d,x,c}] }, galeria { rows: [{img,t,d}] }.
+ * ==== 
  */
 (function (window, document) {
     'use strict';
@@ -25,7 +27,7 @@
         title: 120, body: 12000,
         rows: 15, rowT: 100, rowD: 160, rowC: 40, rowX: 2000,
         colN: 5, colT: 32,
-        imgStr: 300000, galT: 100, galD: 300
+        imgStr: 2000000, imgFile: 20971500, galT: 100, galD: 300
     };
 
     function isStaff() {
@@ -90,7 +92,7 @@
             if (d.type === 'normal') {
                 if (!d.body || !String(d.body).trim()) return 'El texto del sub-artículo no puede estar vacío.';
                 if (String(d.body).length > L.body) return 'El texto es demasiado largo (máx ' + L.body + ' caracteres).';
-                if (d.image && String(d.image).length > L.imgStr) return 'La imagen pesa demasiado (máx 300KB).';
+                if (d.image && String(d.image).length > L.imgStr) return 'La imagen es demasiado grande incluso optimizada (máx ' + Math.round(L.imgStr / 1024) + 'KB).';
                 if (d.image && !validImg(d.image)) return 'La imagen debe ser una URL https o una imagen válida.';
                 if (d.imgPos !== 'lado' && d.imgPos !== 'abajo') return 'Posición de imagen desconocida.';
                 return null;
@@ -108,15 +110,19 @@
                     if (cleanTxt(r.t, L.rowT + 1).length > L.rowT) return 'El título de la fila ' + (i + 1) + ' es demasiado largo.';
                     if (String(r.d || '').length > L.rowD) return 'El texto de la fila ' + (i + 1) + ' es demasiado largo.';
                     if (String(r.x || '').length > L.rowX) return 'Las notas de la fila ' + (i + 1) + ' son demasiado largas.';
+                    if (String(r.img || '').length > L.imgStr) return 'La imagen de la fila ' + (i + 1) + ' es demasiado grande incluso optimizada.';
                 } else {
                     if (!validImg(r.img || r.src || r.image)) return 'La imagen ' + (i + 1) + ' de la galería falta o no es válida.';
+                    if (String(r.img || '').length > L.imgStr) return 'La imagen ' + (i + 1) + ' es demasiado grande incluso optimizada.';
                     if (String(r.d || '').length > L.galD) return 'La descripción de la imagen ' + (i + 1) + ' es demasiado larga.';
                 }
             }
             return null;
         },
 
-        /* Crea (subId vacío) o edita (subId dado). Promise con el subId */
+        /* Crea (subId vacío) o edita (subId dado). Promise con el subId.
+         * v3: las filas se guardan UNA POR UNA (writes pequeños) para
+         * no chocar con el límite de 16MB por escritura de Firebase. */
         save: function (artId, data, subId) {
             if (!isStaff()) return Promise.reject(new Error('Solo el staff puede editar las sub-páginas.'));
             if (!artId) return Promise.reject(new Error('Falta el artículo padre.'));
@@ -151,13 +157,28 @@
                 } else {
                     rec.rows = mapRows(data.rows, cleanGal);
                 }
+
+                /* filas fuera del set grande; null borra las viejas */
+                const rowsOut = rec.rows || null;
+                if (rowsOut) rec.rows = null;
+
                 return ref.set(rec).then(function () {
-                    try {
-                        if (WK.system && WK.system.logHistory) {
-                            WK.system.logHistory(artId, { action: subId ? 'sub-edited' : 'sub-created', title: rec.title });
-                        }
-                    } catch (e) {}
-                    return ref.key;
+                    let chain = Promise.resolve();
+                    if (rowsOut) {
+                        rowsOut.forEach(function (row, i) {
+                            chain = chain.then(function () {
+                                return ref.child('rows').child(String(i)).set(row);
+                            });
+                        });
+                    }
+                    return chain.then(function () {
+                        try {
+                            if (WK.system && WK.system.logHistory) {
+                                WK.system.logHistory(artId, { action: subId ? 'sub-edited' : 'sub-created', title: rec.title });
+                            }
+                        } catch (e) {}
+                        return ref.key;
+                    });
                 });
             });
         },
@@ -180,5 +201,5 @@
         }
     };
 
-    console.log('[Stevscon] wiki_subs_system.js listo (v2) — escritura de sub-artículos.');
+    console.log('[Stevscon] wiki_subs_system.js listo (v3) — escritura de sub-artículos (imágenes de 20MB, guardado por trozos).');
 })(window, document);

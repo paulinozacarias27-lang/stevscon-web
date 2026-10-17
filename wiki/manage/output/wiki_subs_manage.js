@@ -1,18 +1,15 @@
 /**
  * ====
- * STEVSCON.WIKI — wiki/manage/output/wiki_subs_manage.js (v2)
+ * STEVSCON.WIKI — wiki/manage/output/wiki_subs_manage.js (v3)
  * SUBS (MANAGE): modal de staff para crear/editar sub-páginas.
- *  v2 — FIX del bug grande: los editores de FILAS y de IMÁGENES
- *    nunca se montaban dentro del modal, así que el estado llegaba
- *    vacío a "Crear" y por cada clic salía el toast 'Añade al menos
- *    una fila' (por eso se apilaban). Ahora el modal vive sobre un
- *    ESTADO LOCAL (st) y cada editor se re-pinta DESDE ese estado:
- *    escribir no repinta (no se pierde el foco), añadir/quitar sí.
- *  - Lista: 5 títulos de columna + filas con (nombre, imagen con
- *    miniatura, cómo conseguirlo, notas, etiqueta) + Añadir fila.
- *  - Galería: imágenes con vista previa (URL o archivo → base64),
- *    título y descripción + Añadir imagen.
- *  - Un solo toast por intento y el botón se bloquea al guardar.
+ *  v3 — IMÁGENES GRANDES: el selector de archivo ya NO rechaza
+ *    imágenes por peso: acepta hasta 20MB y las manda por
+ *    WK.system.shrinkImage (canvas 1920px + JPEG 0.9), igual que
+ *    social pero más generoso. Si la imagen ya es liviana, se
+ *    guarda original (PNG/GIF intactos). Toast con el peso final.
+ *  v2 — modal sobre ESTADO LOCAL (escribir no repinta; añadir o
+ *    quitar filas sí). Lista de 5 columnas + filas con imagen,
+ *    galería con previews y lightbox.
  * ====
  */
 (function (window, document) {
@@ -25,7 +22,7 @@
 
     const L = (WK.subsSystem && WK.subsSystem.LIMITS) || {
         title: 120, body: 12000, rows: 15, rowT: 100, rowD: 160, rowC: 40, rowX: 2000,
-        colT: 32, imgStr: 300000, galT: 100, galD: 300
+        colT: 32, imgStr: 2000000, imgFile: 20971500, galT: 100, galD: 300
     };
 
     function toast(m, k) { if (WK.toast) WK.toast(m, k); }
@@ -50,9 +47,9 @@
     function label(t) { return el('span', 'wksm-label', t); }
 
     const TYPE_HINTS = {
-        normal: 'Texto libre con todos los formatos (negrita, cursiva, código con color, spoilers…) e imagen opcional al lado o debajo.',
+        normal: 'Texto libre con todos los formatos (negrita, cursiva, código con color, spoilers…) e imagen opcional al lado o debajo. Puedes subir imágenes de hasta 20MB: se optimizan solas.',
         lista: 'Tabla estilo changelog: 5 columnas con títulos personalizables (nombre, imagen, cómo conseguirlo, notas y versión). Clic en un título de la tabla = ordenar. Hasta ' + L.rows + ' filas.',
-        galeria: 'Rejilla de imágenes con título y descripción. Clic en una imagen = vista grande con flechas. Hasta ' + L.rows + ' imágenes.'
+        galeria: 'Rejilla de imágenes con título y descripción. Clic en una imagen = vista grande con flechas. Hasta ' + L.rows + ' imágenes de hasta 20MB cada una (se optimizan solas).'
     };
 
     let ovl = null;
@@ -139,7 +136,8 @@
         document.addEventListener('keydown', ovl._key);
         document.body.appendChild(ovl);
 
-        /* ===== fila de imagen reutilizable (input + archivo + preview) ===== */
+        /* ==== fila de imagen reutilizable (input + archivo + preview) ====
+         * v3: el archivo se OPTIMIZA (hasta 20MB) en vez de rechazarse. */
         function imgRow(onVal, initVal, ph) {
             const wrap = el('div', 'wksm-imgrow');
             const inp = el('input', 'wksm-input');
@@ -148,7 +146,7 @@
             inp.value = initVal || '';
             const file = el('button', 'wksm-filebtn');
             file.type = 'button';
-            file.title = 'Elegir imagen del dispositivo';
+            file.title = 'Elegir imagen del dispositivo (hasta 20MB)';
             file.appendChild(fa('fa-folder-open'));
             const fi = document.createElement('input');
             fi.type = 'file';
@@ -158,18 +156,30 @@
             fi.addEventListener('change', function () {
                 const f = fi.files && fi.files[0];
                 if (!f) return;
-                const rd = new FileReader();
-                rd.onload = function () {
-                    const u = String(rd.result || '');
-                    if (u.length > L.imgStr) {
-                        toast('Esa imagen pesa demasiado (máx ' + Math.round(L.imgStr / 1024) + 'KB).', 'error');
-                        return;
-                    }
+                file.disabled = true;
+                const done = function () { file.disabled = false; };
+                const useIt = function (u) {
                     inp.value = u;
                     onVal(u);
                     preview(u);
+                    toast('Imagen lista (' + Math.round(u.length / 1024) + 'KB)', 'ok');
+                    done();
                 };
-                rd.readAsDataURL(f);
+                if (WK.system && typeof WK.system.shrinkImage === 'function') {
+                    WK.system.shrinkImage(f, { maxDim: 1920, targetStr: L.imgStr, fileMax: L.imgFile }, function (out, err) {
+                        if (err) { toast(err, 'error'); done(); return; }
+                        useIt(out);
+                    });
+                } else {
+                    const rd = new FileReader();
+                    rd.onload = function () {
+                        const u = String(rd.result || '');
+                        if (u.length > L.imgStr) { toast('Esa imagen pesa demasiado (máx ' + Math.round(L.imgStr / 1024) + 'KB).', 'error'); done(); return; }
+                        useIt(u);
+                    };
+                    rd.onerror = function () { toast('No se pudo leer la imagen.', 'error'); done(); };
+                    rd.readAsDataURL(f);
+                }
             });
             const pv = el('span', 'wksm-thumb');
             function preview(u) {
@@ -375,7 +385,7 @@
             renderRows();
         }
 
-        /* ===== guardar ===== */
+        /* ==== guardar ==== */
         function collect() {
             if (st.type === 'normal') {
                 return { type: 'normal', title: st.title, body: st.body, image: st.image, imgPos: st.imgPos };
@@ -461,6 +471,7 @@
         '.wksm-imgrow .wksm-input{flex:1;min-width:0}',
         '.wksm-filebtn{flex:none;width:38px;height:38px;border-radius:10px;border:1px solid var(--border-color,#2e2440);background:var(--bg-hover,#261f36);color:var(--text-muted,#94a3b8);cursor:pointer}',
         '.wksm-filebtn:hover{color:var(--purple-accent,#8b5cf6);border-color:var(--purple-accent,#8b5cf6)}',
+        '.wksm-filebtn[disabled]{opacity:.5;cursor:wait}',
         '.wksm-thumb{flex:none;width:38px;height:38px;border-radius:10px;border:1px solid var(--border-color,#2e2440);background:var(--bg-hover,#261f36);display:flex;align-items:center;justify-content:center;color:var(--text-muted,#94a3b8);overflow:hidden}',
         '.wksm-thumb img{width:100%;height:100%;object-fit:cover}',
         '.wksm-addbtn{display:inline-flex;align-items:center;gap:7px;border:1.5px dashed var(--purple-accent,#8b5cf6);background:rgba(139,92,246,.08);color:var(--purple-accent,#8b5cf6);border-radius:999px;padding:7px 15px;font:800 11.5px Inter,sans-serif;cursor:pointer;margin:2px 0 10px}',
@@ -486,5 +497,5 @@
         close: close
     };
 
-    console.log('[Stevscon] wiki_subs_manage.js listo (v2) — modal de sub-páginas rehecho (filas e imágenes ya se montan).');
+    console.log('[Stevscon] wiki_subs_manage.js listo (v3) — selector acepta imágenes de hasta 20MB y las optimiza.');
 })(window, document);
