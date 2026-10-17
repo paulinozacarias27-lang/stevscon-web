@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <!--
   ====
-  STEVSCON.WIKI — wiki/wiki.html (v4)
+  STEVSCON.WIKI — wiki/wiki.html (v5)
   Página HTML propia de la categoría WIKI.
   URL: https://www.stevscon.com/wiki/wiki.html
 
-  v4 — NUEVO MOTOR DE FORMATO:
-  - Se añade formats.js (formats -> core -> system -> page -> manage).
-  - wiki_core.js v2 ya no trae el markdown dentro: vive en formats.js.
-  - El chequeo de arranque y el diagnóstico ahora vigilan 5 files.
+  v5 — SUB-ARTÍCULOS:
+  - Se añaden wiki_subs_system.js, wiki_subs.js y wiki_subs_manage.js
+    (subs -> normal, lista y galería, debajo del artículo original).
+  - El diagnóstico ahora vigila 8 files.
   - Firebase IDÉNTICO a social.html: SDKs 9.23.0 + firebase_data.js.
   ====
 -->
@@ -248,19 +248,22 @@
 <!-- ==== Dispatcher de perfiles (avatar/nombre del autor abre tu panel) ==== -->
 <script src="/social/manage/output/system/profiles_show.js?v=7"></script>
 
-<!-- ==== MOTOR DE LA WIKI (orden estricto: formats -> core -> system -> page -> manage)
+<!-- ==== MOTOR DE LA WIKI (orden estricto: formats -> core -> system -> page -> manage -> subs)
      Cada tag reporta su propio 404 al diagnóstico ==== -->
 <script src="/wiki/manage/output/formats.js?v=1" onerror="window.__wkDiag.failed['formats.js']=1"></script>
-<script src="/wiki/manage/output/wiki_core.js?v=2" onerror="window.__wkDiag.failed['wiki_core.js']=1"></script>
+<script src="/wiki/manage/output/wiki_core.js?v=3" onerror="window.__wkDiag.failed['wiki_core.js']=1"></script>
 <script src="/wiki/manage/output/wiki_system.js?v=1" onerror="window.__wkDiag.failed['wiki_system.js']=1"></script>
 <script src="/wiki/manage/pages/wiki_page.js?v=1" onerror="window.__wkDiag.failed['wiki_page.js']=1"></script>
 <script src="/wiki/manage/output/wiki_manage.js?v=1" onerror="window.__wkDiag.failed['wiki_manage.js']=1"></script>
+<script src="/wiki/manage/output/wiki_subs_system.js?v=1" onerror="window.__wkDiag.failed['wiki_subs_system.js']=1"></script>
+<script src="/wiki/manage/output/wiki_subs.js?v=1" onerror="window.__wkDiag.failed['wiki_subs.js']=1"></script>
+<script src="/wiki/manage/output/wiki_subs_manage.js?v=1" onerror="window.__wkDiag.failed['wiki_subs_manage.js']=1"></script>
 
 <script>
 (function () {
     'use strict';
     /* ====
-       Arranque de wiki.html (v4):
+       Arranque de wiki.html (v5):
        1) Espera al motor: formats + core + system + manage + boot().
        2) Escucha 'sc:wiki-ready' ANTES de llamar boot().
        3) Fallback de primer pintado: la carga nunca se queda pegada.
@@ -306,11 +309,14 @@
         var diag = window.__wkDiag || { jsErrors: [], failed: {} };
         var L = ['La wiki no pudo arrancar. Diagnóstico:'];
 
-        [['formats.js',    function (w) { return !!(w && w.formats); }, '/wiki/manage/output/'],
-         ['wiki_core.js',   function (w) { return !!(w && w.core); },   '/wiki/manage/output/'],
-         ['wiki_system.js', function (w) { return !!(w && w.system); }, '/wiki/manage/output/'],
-         ['wiki_page.js',   function (w) { return !!(w && typeof w.boot === 'function'); }, '/wiki/manage/pages/'],
-         ['wiki_manage.js', function (w) { return !!(w && w.manage); }, '/wiki/manage/output/']
+        [['formats.js',          function (w) { return !!(w && w.formats); }, '/wiki/manage/output/'],
+         ['wiki_core.js',        function (w) { return !!(w && w.core); }, '/wiki/manage/output/'],
+         ['wiki_system.js',      function (w) { return !!(w && w.system); }, '/wiki/manage/output/'],
+         ['wiki_page.js',        function (w) { return !!(w && typeof w.boot === 'function'); }, '/wiki/manage/pages/'],
+         ['wiki_manage.js',      function (w) { return !!(w && w.manage); }, '/wiki/manage/output/'],
+         ['wiki_subs_system.js', function (w) { return !!(w && w.subsSystem); }, '/wiki/manage/output/'],
+         ['wiki_subs.js',        function (w) { return !!(w && w.subs); }, '/wiki/manage/output/'],
+         ['wiki_subs_manage.js', function (w) { return !!(w && w.subsManage); }, '/wiki/manage/output/']
         ].forEach(function (r) {
             if (diag.failed[r[0]]) {
                 L.push('✘ ' + r[0] + ': NO SE ENCONTRÓ (404). Revisa nombre y carpeta EXACTOS: ' + r[2] + r[0]);
@@ -370,7 +376,7 @@
         setTimeout(waitCore, 200);
     })();
 
-    console.log('[Wiki] wiki.html v4 lista — motor de formatos integrado.');
+    console.log('[Wiki] wiki.html v5 lista — motor + sub-artículos integrados.');
 })();
 </script>
 </body>

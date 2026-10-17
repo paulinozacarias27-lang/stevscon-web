@@ -1,14 +1,12 @@
 /**
  * ====
- * STEVSCON.WIKI — wiki/manage/output/wiki_core.js (v2)
+ * STEVSCON.WIKI — wiki/manage/output/wiki_core.js (v3)
  * CORE: LECTURA y RENDER (nada de escritura).
- * - v2: el motor de formato vive en formats.js (WK.formats). Aquí solo
- *   se llama: WK.formats.md() para el cuerpo, WK.formats.safeUrl() para
- *   portadas y WK.formats.enhance() para spoilers/color de código.
- * - Portada estilo Fandom: banner, N PAGES, destacados, categorías, últimas.
- * - Artículo: meta con autor (data-scsoc-profile), portada, vistas, historial.
- * - TODO con textContent (innerHTML solo para el markdown ya escapado).
- * ====
+ * - v3: monta los SUB-ARTÍCULOS (wiki_subs.js) debajo del artículo
+ *   y muestra en el Historial las acciones de sub-páginas
+ *   (creada/editada/eliminada) con su icono.
+ * - El formato vive en formats.js (escape PRIMERO, formato DESPUÉS).
+ * ==== 
  */
 (function (window, document) {
     'use strict';
@@ -443,6 +441,9 @@
             /* Vistas: +1 por sesión (solo usuarios logueados; las rules lo permiten) */
             if (WK.system && WK.system.bumpViews) WK.system.bumpViews(id);
 
+            /* Sub-artículos (viven en wiki_subs.js: normal, lista y galería) */
+            if (WK.subs && WK.subs.mount) WK.subs.mount(main, id);
+
             /* Historial (como las wikis de verdad) */
             this.renderHistory(main, id);
 
@@ -478,13 +479,25 @@
                     listWrap.appendChild(el('p', 'wk-hist-empty', 'Sin ediciones registradas todavía.'));
                     return;
                 }
+                const HUMAN = {
+                    'created': ['Creada', 'fa-seedling'],
+                    'edited': ['Editada', 'fa-pen'],
+                    'published': ['Publicada', 'fa-upload'],
+                    'drafted': ['Pasada a borrador', 'fa-box-archive'],
+                    'deleted': ['Eliminada', 'fa-trash'],
+                    'sub-created': ['Sub-página creada', 'fa-layer-group'],
+                    'sub-edited': ['Sub-página editada', 'fa-pen'],
+                    'sub-deleted': ['Sub-página eliminada', 'fa-trash-can']
+                };
                 rows.forEach(function (r) {
+                    const m = HUMAN[r.action] || ['Editada', 'fa-clock-rotate-left'];
+                    const isSub = String(r.action || '').indexOf('sub-') === 0;
                     const row = el('div', 'wk-hist-row');
                     const ic = document.createElement('i');
-                    ic.className = 'fa-solid ' + (r.action === 'created' ? 'fa-seedling' : r.action === 'edited' ? 'fa-pen' : 'fa-clock-rotate-left');
+                    ic.className = 'fa-solid ' + m[1];
                     row.appendChild(ic);
                     row.appendChild(el('span', 'wk-hist-txt',
-                        (r.action === 'created' ? 'Creada' : 'Editada') + ' por ' + (r.byName || 'Staff')));
+                        m[0] + (isSub && r.title ? ': ' + r.title : '') + ' por ' + (r.byName || 'Staff')));
                     row.appendChild(el('span', 'wk-hist-date', fmtDate(r.at)));
                     listWrap.appendChild(row);
                 });
@@ -495,5 +508,5 @@
         }
     };
 
-    console.log('[Stevscon] wiki_core.js listo (v2) — núcleo de lectura y render (formato en formats.js).');
+    console.log('[Stevscon] wiki_core.js listo (v3) — núcleo de lectura y render + sub-artículos.');
 })(window, document);
