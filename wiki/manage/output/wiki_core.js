@@ -1,12 +1,20 @@
 /**
  * ====
- * STEVSCON.WIKI — wiki/manage/output/wiki_core.js (v3)
+ * STEVSCON.WIKI — wiki/manage/output/wiki_core.js (v4)
  * CORE: LECTURA y RENDER (nada de escritura).
- * - v3: monta los SUB-ARTÍCULOS (wiki_subs.js) debajo del artículo
- *   y muestra en el Historial las acciones de sub-páginas
- *   (creada/editada/eliminada) con su icono.
- * - El formato vive en formats.js (escape PRIMERO, formato DESPUÉS).
- * ==== 
+ *  v4 — SUB-PÁGINAS + HISTORIAL ampliado:
+ *    · renderArticle monta la sección de sub-páginas (WK.subs
+ *      .mountSection) justo después del cuerpo del artículo.
+ *    · El historial entiende sub-created / sub-edited / sub-deleted
+ *      y muestra el título de cada entrada (artículo o sub-página).
+ *  v2/v3 — el markdown vive en formats.js (escape PRIMERO, formato
+ *    DESPUÉS): este file llama a WK.formats.md / safeUrl / enhance,
+ *    con un fallback mínimo propio por si formats.js no carga.
+ * - Portada estilo Fandom: banner, N PAGES, destacados, categorías,
+ *   últimas. Artículo: meta con autor (data-scsoc-profile), portada,
+ *   cuerpo, vistas e historial. Categorías y buscador. TODO con
+ *   textContent (innerHTML solo para el markdown ya escapado).
+ * ====
  */
 (function (window, document) {
     'use strict';
@@ -14,6 +22,8 @@
     const WK = window.StevsconWiki = window.StevsconWiki || {};
 
     const db = function () { return firebase.database(); };
+    const RE_HTTPS = new RegExp('^https://', 'i');
+    const RE_DATAIMG = new RegExp('^data:image/[a-zA-Z0-9.+-]+;base64,', 'i');
 
     /* ==== HELPERS ==== */
     function fmtDate(ts) {
@@ -31,9 +41,73 @@
         return e;
     }
 
+    /* ==== MARKDOWN: formats.js con fallback mínimo ==== */
+    function esc(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    function localInline(s) {
+        let h = esc(s);
+        h = h.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+        h = h.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+        h = h.replace(/(^|[^*\w])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+        h = h.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, function (m, alt, url) {
+            const ok = safeUrlAny(url);
+            return ok ? '<img src="' + ok + '" alt="' + alt + '" loading="lazy">' : alt;
+        });
+        h = h.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, function (m, txt, url) {
+            const ok = safeUrlAny(url);
+            return ok ? '<a href="' + ok + '" target="_blank" rel="noopener noreferrer">' + txt + '</a>' : txt;
+        });
+        return h;
+    }
+    function localMd(src) {
+        const lines = String(src || '').split(/\r?\n/);
+        let out = '', list = null; /* 'ul' | 'ol' | null */
+        const closeList = function () { if (list) { out += '</' + list + '>'; list = null; } };
+        for (let i = 0; i < lines.length; i++) {
+            const L = lines[i];
+            const t = L.trim();
+            if (!t) { closeList(); continue; }
+            if (t === '---') { closeList(); out += '<hr>'; continue; }
+            if (t.indexOf('### ') === 0) { closeList(); out += '<h3>' + localInline(t.slice(4)) + '</h3>'; continue; }
+            if (t.indexOf('## ') === 0) { closeList(); out += '<h2>' + localInline(t.slice(3)) + '</h2>'; continue; }
+            if (t.indexOf('# ') === 0) { closeList(); out += '<h2>' + localInline(t.slice(2)) + '</h2>'; continue; }
+            if (t.indexOf('- ') === 0) {
+                if (list !== 'ul') { closeList(); out += '<ul>'; list = 'ul'; }
+                out += '<li>' + localInline(t.slice(2)) + '</li>'; continue;
+            }
+            if (t.indexOf('&gt; ') === 0) { closeList(); out += '<blockquote>' + localInline(t.slice(5)) + '</blockquote>'; continue; }
+            closeList();
+            out += '<p>' + localInline(t) + '</p>';
+        }
+        closeList();
+        return out;
+    }
+    function renderMd(src) {
+        if (WK.formats && typeof WK.formats.md === 'function') {
+            try { return WK.formats.md(src); } catch (e) {}
+        }
+        return localMd(src);
+    }
+    function enhanceBody(box) {
+        if (WK.formats && typeof WK.formats.enhance === 'function') {
+            try { WK.formats.enhance(box); } catch (e) {}
+        }
+    }
+    function safeUrlAny(u) {
+        if (WK.formats && typeof WK.formats.safeUrl === 'function') {
+            try { return WK.formats.safeUrl(u) || ''; } catch (e) {}
+        }
+        u = String(u || '').trim();
+        if (RE_HTTPS.test(u)) return u;
+        if (RE_DATAIMG.test(u)) return u;
+        return '';
+    }
+
     /* ==== ESTADO ==== */
     WK.core = {
-        cats: {}, arts: {}, pages: 0, avatars: {}, started: false,
+        cats: {}, arts: {}, pages: 0, edits: 0, avatars: {}, started: false,
 
         start: function () {
             if (this.started) return;
@@ -419,8 +493,8 @@
                 avWrap.querySelector('.wk-author-name').textContent = info.name + (info.handler ? ' (' + info.handler + ')' : '');
             });
 
-            /* Portada del artículo (URL validada por formats.js) */
-            const cover = WK.formats.safeUrl(a.cover || '');
+            /* Portada del artículo */
+            const cover = safeUrlAny(a.cover || '');
             if (cover) {
                 const cwrap = el('div', 'wk-cover');
                 const im = document.createElement('img');
@@ -430,19 +504,21 @@
                 art.appendChild(cwrap);
             }
 
-            /* Cuerpo (el motor vive en formats.js: escape primero, formato después) */
+            /* Cuerpo (escape PRIMERO y formato DESPUÉS, via formats.js) */
             const body = el('div', 'wk-body');
-            body.innerHTML = WK.formats.md(a.body || '');
-            WK.formats.enhance(body, { id: id, a: a });
+            body.innerHTML = renderMd(a.body || '');
             art.appendChild(body);
 
             main.appendChild(art);
+            enhanceBody(body);
 
             /* Vistas: +1 por sesión (solo usuarios logueados; las rules lo permiten) */
             if (WK.system && WK.system.bumpViews) WK.system.bumpViews(id);
 
-            /* Sub-artículos (viven en wiki_subs.js: normal, lista y galería) */
-            if (WK.subs && WK.subs.mount) WK.subs.mount(main, id);
+            /* v4: SUB-PÁGINAS (normal / lista / galería) bajo el artículo */
+            if (WK.subs && typeof WK.subs.mountSection === 'function') {
+                try { WK.subs.mountSection(main, id, a); } catch (e) { console.warn('[Wiki] subs:', e); }
+            }
 
             /* Historial (como las wikis de verdad) */
             this.renderHistory(main, id);
@@ -479,25 +555,23 @@
                     listWrap.appendChild(el('p', 'wk-hist-empty', 'Sin ediciones registradas todavía.'));
                     return;
                 }
-                const HUMAN = {
-                    'created': ['Creada', 'fa-seedling'],
-                    'edited': ['Editada', 'fa-pen'],
-                    'published': ['Publicada', 'fa-upload'],
-                    'drafted': ['Pasada a borrador', 'fa-box-archive'],
-                    'deleted': ['Eliminada', 'fa-trash'],
-                    'sub-created': ['Sub-página creada', 'fa-layer-group'],
-                    'sub-edited': ['Sub-página editada', 'fa-pen'],
-                    'sub-deleted': ['Sub-página eliminada', 'fa-trash-can']
+                const ACTS = {
+                    created: ['fa-seedling', 'Creada'],
+                    edited: ['fa-pen', 'Editada'],
+                    published: ['fa-eye', 'Publicada'],
+                    drafted: ['fa-box-archive', 'Pasada a borrador'],
+                    deleted: ['fa-trash-can', 'Eliminada'],
+                    'sub-created': ['fa-file-circle-plus', 'Sub-página creada'],
+                    'sub-edited': ['fa-file-pen', 'Sub-página editada'],
+                    'sub-deleted': ['fa-file-xmark', 'Sub-página eliminada']
                 };
                 rows.forEach(function (r) {
-                    const m = HUMAN[r.action] || ['Editada', 'fa-clock-rotate-left'];
-                    const isSub = String(r.action || '').indexOf('sub-') === 0;
+                    const m = ACTS[r.action] || ACTS.edited;
                     const row = el('div', 'wk-hist-row');
                     const ic = document.createElement('i');
-                    ic.className = 'fa-solid ' + m[1];
+                    ic.className = 'fa-solid ' + m[0];
                     row.appendChild(ic);
-                    row.appendChild(el('span', 'wk-hist-txt',
-                        m[0] + (isSub && r.title ? ': ' + r.title : '') + ' por ' + (r.byName || 'Staff')));
+                    row.appendChild(el('span', 'wk-hist-txt', m[1] + (r.title ? ' · ' + r.title : '') + ' — por ' + (r.byName || 'Staff')));
                     row.appendChild(el('span', 'wk-hist-date', fmtDate(r.at)));
                     listWrap.appendChild(row);
                 });
@@ -508,5 +582,5 @@
         }
     };
 
-    console.log('[Stevscon] wiki_core.js listo (v3) — núcleo de lectura y render + sub-artículos.');
+    console.log('[Stevscon] wiki_core.js listo (v4) — lectura y render (formats.js) + sub-páginas.');
 })(window, document);
