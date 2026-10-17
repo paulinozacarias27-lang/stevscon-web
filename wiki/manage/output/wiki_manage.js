@@ -166,8 +166,10 @@
         },
 
         /* ---------- PANEL PRINCIPAL ---------- */
+         /* ---- PANEL PRINCIPAL ---- */
         openPanel: function () {
             const self = this;
+            if (!(WK.system && WK.system.session && WK.system.session.isStaff)) return; /* v3: solo Owner/Admins */
             if (document.getElementById('wk-panel-ovl')) return;
             const ovl = el('div', 'wk-ovl');
             ovl.id = 'wk-panel-ovl';
@@ -362,8 +364,10 @@
         },
 
         /* ---------- EDITOR (nueva o existente) ---------- */
+        /* ---- EDITOR (nueva o existente) ---- */
         openEditor: function (id, mount) {
             const self = this;
+            if (!(WK.system && WK.system.session && WK.system.session.isStaff)) { toast('Solo el Owner y los Administradores pueden editar la Wiki.', 'error'); return; } /* v3 */
             let ovl = null;
             if (!mount) {
                 ovl = el('div', 'wk-ovl');
@@ -582,5 +586,5 @@
         WK.manage.init();
     }
 
-    console.log('[Stevscon] wiki_manage.js listo (v2) — panel de staff (portadas de hasta 20MB optimizadas).');
+    console.log('[Stevscon] wiki_manage.js listo (v3) — panel solo visible para Owner y Admins.');
 })(window, document);
