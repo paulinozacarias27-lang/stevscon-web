@@ -170,17 +170,21 @@
             return !!(WK.system && WK.system.session && WK.system.session.isStaff);
         },
 
-        /* ==== AUTOR (avatar + nombre desde users/{uid}) ==== */
+        /* ==== AUTOR (avatar + nombre desde users/{uid}) ====
+         * v5 FIX: los campos reales son username/handler (raíz) y
+         * profile/avatarUrl (lo que edita Perfiles). avatarURL no existe. */
         avatar: function (uid) {
             if (!uid) return Promise.resolve(null);
             if (this.avatars[uid]) return Promise.resolve(this.avatars[uid]);
             const self = this;
             return db().ref('users/' + uid).once('value').then(function (s) {
                 const u = s.val() || {};
+                const p = (u.profile && typeof u.profile === 'object') ? u.profile : {};
+                const hd = String(u.handler || u.handle || p.handler || p.handle || '').replace(/^@/, '');
                 const info = {
-                    name: u.username || u.handle || 'Miembro',
-                    handler: u.handle ? ('@' + u.handle) : '',
-                    avatarURL: u.avatarURL || ''
+                    name: u.username || p.username || u.name || p.name || u.handle || 'Miembro',
+                    handler: hd ? ('@' + hd) : '',
+                    avatarURL: p.avatarUrl || p.avatar || u.avatarUrl || u.avatar || ''
                 };
                 self.avatars[uid] = info;
                 return info;
@@ -582,5 +586,5 @@
         }
     };
 
-    console.log('[Stevscon] wiki_core.js listo (v4) — lectura y render (formats.js) + sub-páginas.');
+    console.log('[Stevscon] wiki_core.js listo (v5) — lectura/render + avatares reales (profile/avatarUrl).');
 })(window, document);

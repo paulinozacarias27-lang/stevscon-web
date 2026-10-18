@@ -249,16 +249,23 @@
 <!-- ==== Dispatcher de perfiles (avatar/nombre del autor abre tu panel) ==== -->
 <script src="/social/manage/output/system/profiles_show.js?v=7"></script>
 
+<!-- ==== BADGES (catálogo + tooltips, lectura pública de social/badges) ==== -->
+<script src="/profiles/manage/badges/badges_core.js?v=7"></script>
+
+<!-- ==== PANEL DE PERFIL de la Wiki (reemplaza a profiles_show, que es de social) ==== -->
+<script src="/wiki/manage/wiki_profile.js?v=1"></script>
+
 <!-- ==== MOTOR DE LA WIKI (orden estricto: formats -> core -> system -> page -> manage -> subs)
      Cada tag reporta su propio 404 al diagnóstico ==== -->
 <script src="/wiki/manage/output/formats.js?v=1" onerror="window.__wkDiag.failed['formats.js']=1"></script>
-<script src="/wiki/manage/output/wiki_core.js?v=4" onerror="window.__wkDiag.failed['wiki_core.js']=1"></script>
+<script src="/wiki/manage/output/wiki_core.js?v=5" onerror="window.__wkDiag.failed['wiki_core.js']=1"></script>
 <script src="/wiki/manage/output/wiki_system.js?v=4" onerror="window.__wkDiag.failed['wiki_system.js']=1"></script>
 <script src="/wiki/manage/pages/wiki_page.js?v=1" onerror="window.__wkDiag.failed['wiki_page.js']=1"></script>
 <script src="/wiki/manage/output/wiki_manage.js?v=4" onerror="window.__wkDiag.failed['wiki_manage.js']=1"></script>
 <script src="/wiki/manage/output/wiki_subs_system.js?v=4" onerror="window.__wkDiag.failed['wiki_subs_system.js']=1"></script>
 <script src="/wiki/manage/output/wiki_subs.js?v=2" onerror="window.__wkDiag.failed['wiki_subs.js']=1"></script>
 <script src="/wiki/manage/output/wiki_subs_manage.js?v=4" onerror="window.__wkDiag.failed['wiki_subs_manage.js']=1"></script>
+
 
 <script>
 (function () {
