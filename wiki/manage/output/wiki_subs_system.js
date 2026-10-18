@@ -1,18 +1,19 @@
 /**
  * ====
- * STEVSCON.WIKI — wiki/manage/output/wiki_subs_system.js (v3)
+ * STEVSCON.WIKI — wiki/manage/output/wiki_subs_system.js (v4)
  * SUBS (SYSTEM): ESCRITURA de sub-artículos. Nada de UI.
- *  v3 — IMÁGENES GRANDES:
- *    · imgStr: 30KB → 2000000 chars (~1.5MB por imagen guardada,
- *      50x más que antes) e imgFile: 20MB de archivo fuente.
- *    · El guardado de filas ahora es POR TROZOS (cada fila se
- *      escribe en su propio set): una galería con imágenes pesadas
- *      ya no choca contra el límite de 16MB por escritura de
- *      Firebase. Al editar, las filas viejas sobrantes se limpian.
- *    · Mensajes dinámicos (adiós al "300KB" clavado a mano).
+ *  v4 — SIN ERRORES DE TAMAÑO:
+ *    · imgStr: 20000 → 9000000 (9MB por imagen, bajo el límite de
+ *      10MB por string de Firebase). El slice de limpieza ya no
+ *      puede romper imágenes reales.
+ *    · ÚNICO error posible: que el multimedia sea un VIDEO. Los
+ *      GIFs se dejan siempre (el optimizador de wiki_system v4 los
+ *      trata como originales mientras entren bajo el techo).
+ *  v3 — guardado de filas POR TROZOS (una galería con imágenes
+ *    pesadas ya no choca contra el límite de 16MB por escritura).
  *  v2 — schema: normal { body, image, imgPos }, lista { colsStr,
  *    rows: [{t,img,d,x,c}] }, galeria { rows: [{img,t,d}] }.
- * ==== 
+ * ====
  */
 (function (window, document) {
     'use strict';
@@ -22,12 +23,13 @@
 
     const RE_HTTPS = new RegExp('^https://', 'i');
     const RE_DATAIMG = new RegExp('^data:image/[a-zA-Z0-9.+-]+;base64,', 'i');
+    const VIDEO_MSG = 'Los videos no están permitidos: solo imágenes (los GIFs sí valen, hasta 20MB).';
 
     const LIMITS = {
         title: 120, body: 12000,
         rows: 15, rowT: 100, rowD: 160, rowC: 40, rowX: 2000,
         colN: 5, colT: 32,
-        imgStr: 2000000, imgFile: 20971500, galT: 100, galD: 300
+        imgStr: 9000000, imgFile: 20971500, galT: 100, galD: 300
     };
 
     function isStaff() {
@@ -92,7 +94,8 @@
             if (d.type === 'normal') {
                 if (!d.body || !String(d.body).trim()) return 'El texto del sub-artículo no puede estar vacío.';
                 if (String(d.body).length > L.body) return 'El texto es demasiado largo (máx ' + L.body + ' caracteres).';
-                if (d.image && String(d.image).length > L.imgStr) return 'La imagen es demasiado grande incluso optimizada (máx ' + Math.round(L.imgStr / 1024) + 'KB).';
+                if (d.image && /^data:video\//i.test(String(d.image))) return VIDEO_MSG;
+                if (d.image && String(d.image).length > L.imgStr) return 'La imagen pasa de 9MB incluso optimizada. Prueba con otra.';
                 if (d.image && !validImg(d.image)) return 'La imagen debe ser una URL https o una imagen válida.';
                 if (d.imgPos !== 'lado' && d.imgPos !== 'abajo') return 'Posición de imagen desconocida.';
                 return null;
@@ -107,13 +110,15 @@
                 if (d.type === 'lista') {
                     const has = cleanTxt(r.t, 1) || validImg(r.img) || cleanTxt(r.d, 1) || cleanTxt(r.x, 1) || cleanTxt(r.c, 1);
                     if (!has) return 'La fila ' + (i + 1) + ' está vacía: rellénala o bórrala.';
+                    if (/^data:video\//i.test(String(r.img || ''))) return VIDEO_MSG;
                     if (cleanTxt(r.t, L.rowT + 1).length > L.rowT) return 'El título de la fila ' + (i + 1) + ' es demasiado largo.';
                     if (String(r.d || '').length > L.rowD) return 'El texto de la fila ' + (i + 1) + ' es demasiado largo.';
                     if (String(r.x || '').length > L.rowX) return 'Las notas de la fila ' + (i + 1) + ' son demasiado largas.';
-                    if (String(r.img || '').length > L.imgStr) return 'La imagen de la fila ' + (i + 1) + ' es demasiado grande incluso optimizada.';
+                    if (String(r.img || '').length > L.imgStr) return 'La imagen de la fila ' + (i + 1) + ' pasa de 9MB incluso optimizada.';
                 } else {
+                    if (/^data:video\//i.test(String(r.img || r.src || r.image || ''))) return VIDEO_MSG;
                     if (!validImg(r.img || r.src || r.image)) return 'La imagen ' + (i + 1) + ' de la galería falta o no es válida.';
-                    if (String(r.img || '').length > L.imgStr) return 'La imagen ' + (i + 1) + ' es demasiado grande incluso optimizada.';
+                    if (String(r.img || '').length > L.imgStr) return 'La imagen ' + (i + 1) + ' pasa de 9MB incluso optimizada.';
                     if (String(r.d || '').length > L.galD) return 'La descripción de la imagen ' + (i + 1) + ' es demasiado larga.';
                 }
             }
@@ -121,10 +126,10 @@
         },
 
         /* Crea (subId vacío) o edita (subId dado). Promise con el subId.
-         * v3: las filas se guardan UNA POR UNA (writes pequeños) para
-         * no chocar con el límite de 16MB por escritura de Firebase. */
+         * Las filas se guardan UNA POR UNA (writes pequeños) para no
+         * chocar con el límite de 16MB por escritura de Firebase. */
         save: function (artId, data, subId) {
-            if (!isStaff()) return Promise.reject(new Error('Solo el staff puede editar las sub-páginas.'));
+            if (!isStaff()) return Promise.reject(new Error('Solo el Owner y los Administradores pueden editar las sub-páginas.'));
             if (!artId) return Promise.reject(new Error('Falta el artículo padre.'));
             const err = this.validate(data);
             if (err) return Promise.reject(new Error(err));
@@ -184,7 +189,7 @@
         },
 
         remove: function (artId, subId) {
-            if (!isStaff()) return Promise.reject(new Error('Solo el staff puede borrar.'));
+            if (!isStaff()) return Promise.reject(new Error('Solo el Owner y los Administradores pueden borrar.'));
             if (!artId || !subId) return Promise.reject(new Error('Falta qué sub-página borrar.'));
             const ref = db().ref('wiki/subs/' + artId + '/' + subId);
             return ref.once('value').then(function (s) {
@@ -201,5 +206,5 @@
         }
     };
 
-    console.log('[Stevscon] wiki_subs_system.js listo (v3) — escritura de sub-artículos (imágenes de 20MB, guardado por trozos).');
+    console.log('[Stevscon] wiki_subs_system.js listo (v4) — imágenes de subs sin errores de tamaño (solo se rechazan videos).');
 })(window, document);

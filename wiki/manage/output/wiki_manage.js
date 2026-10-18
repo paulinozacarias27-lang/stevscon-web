@@ -506,7 +506,7 @@
                     toast('Imagen lista (' + Math.round(dataURI.length / 1024) + 'KB)', 'ok');
                 };
                 if (WK.system && typeof WK.system.shrinkImage === 'function') {
-                    WK.system.shrinkImage(f, { maxDim: 1920, targetStr: 2000000 }, finish);
+                    WK.system.shrinkImage(f, { maxDim: 1920, targetStr: 2000000, hardStr: 9000000 }, finish);
                 } else {
                     shrink(f, finish);
                 }
@@ -564,7 +564,7 @@
                     cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
                     let out = cv.toDataURL('image/jpeg', 0.9);
                     let q = 0.9;
-                    while (out.length > 2000000 && q > 0.35) {
+                    while (out.length > 9000000 && q > 0.35) {
                         q -= 0.15;
                         out = cv.toDataURL('image/jpeg', q);
                     }
@@ -586,5 +586,5 @@
         WK.manage.init();
     }
 
-    console.log('[Stevscon] wiki_manage.js listo (v3) — panel solo visible para Owner y Admins.');
+    console.log('[Stevscon] wiki_manage.js listo (v4) — portadas: cualquier imagen hasta 20MB, cero errores de tamaño.');
 })(window, document);

@@ -166,7 +166,7 @@
                     done();
                 };
                 if (WK.system && typeof WK.system.shrinkImage === 'function') {
-                    WK.system.shrinkImage(f, { maxDim: 1920, targetStr: L.imgStr, fileMax: L.imgFile }, function (out, err) {
+                    WK.system.shrinkImage(f, { maxDim: 1920, targetStr: 2000000, hardStr: L.imgStr, fileMax: L.imgFile }, function (out, err) {
                         if (err) { toast(err, 'error'); done(); return; }
                         useIt(out);
                     });
@@ -497,5 +497,5 @@
         close: close
     };
 
-    console.log('[Stevscon] wiki_subs_manage.js listo (v3) — selector acepta imágenes de hasta 20MB y las optimiza.');
+    console.log('[Stevscon] wiki_subs_manage.js listo (v4) — cualquier imagen hasta 20MB, cero errores de tamaño.');
 })(window, document);

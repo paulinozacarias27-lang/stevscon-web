@@ -1,23 +1,21 @@
 /**
  * ====
- * STEVSCON.WIKI — wiki/manage/output/wiki_system.js (v3)
+ * STEVSCON.WIKI — wiki/manage/output/wiki_system.js (v4)
  * SYSTEM: AUTENTICACIÓN y ESCRITURA. Nada de UI salvo validación.
+ *  v4 — IMÁGENES SIN ERRORES DE TAMAÑO:
+ *    · cover: 20000 → 9000000 (9MB, bajo el límite de 10MB por
+ *      string de Firebase). La validación ya no mata portadas.
+ *    · shrinkImage v2: acepta cualquier imagen hasta 20MB y NUNCA
+ *      falla por tamaño: escalera de tamaños (1920→64px) x
+ *      calidades (0.9→0.35) hasta que SIEMPRE converge bajo 9MB.
+ *    · ÚNICO error posible: que el multimedia sea un VIDEO
+ *      (mensaje claro). Los GIFs se guardan originales (animados)
+ *      siempre que entren bajo el techo de 9MB.
  *  v3 — PERMISOS DUROS:
  *    · Solo el OWNER (steven23hd@gmail.com) y los ADMIN editan la
- *      Wiki. Los MOD y las cuentas sin rango quedan FUERA:
- *      session.isStaff ahora SOLO es true para owner/admin (antes
- *      cualquier entrada de social/staff — mods incluidos — contaba
- *      como staff, y por eso una multicuenta podía editar).
- *    · session.role = 'owner' | 'admin' | '' (útil a futuro).
- *    · Como TODOS los botones (FAB, Editar, sub-páginas) leen
- *      session.isStaff, se ocultan solos para quien no sea
- *      owner/admin — sin tocar wiki_core, wiki_subs ni manage.
- *  v2 — IMÁGENES GRANDES:
- *    · WK.system.shrinkImage(file, opts, cb): acepta archivos de
- *      hasta 20MB y los optimiza en canvas (1920px, JPEG 0.9). Si
- *      la imagen ya entra en el límite, se guarda ORIGINAL.
- * - Crea/edita/borra artículos con SLUG ÚNICO, HISTORIAL automático
- *   (wiki/history) y CONTADOR de páginas (wiki/counters).
+ *      Wiki. session.isStaff SOLO es true para owner/admin.
+ *    · session.role = 'owner' | 'admin' | ''.
+ *  v2 — WK.system.shrinkImage + historial + counters + slugs.
  * ====
  */
 (function (window, document) {
@@ -26,10 +24,12 @@
     const WK = window.StevsconWiki = window.StevsconWiki || {};
     const OWNER_EMAIL = 'steven23hd@gmail.com';
     const LIMITS = {
-        title: 120, summary: 300, body: 20000, tags: 8, tagLen: 24, cover: 20000,
+        title: 120, summary: 300, body: 20000, tags: 8, tagLen: 24,
+        cover: 9000000, /* 9MB: bajo el límite de 10MB por string de Firebase */
         catName: 32, catIcon: 4,
-        imgFile: 20971500 /* 20MB de archivo fuente */
+        imgFile: 20971500 /* 20MB de archivo fuente: EL único límite */
     };
+    const VIDEO_MSG = 'Eso es un video: solo se permiten imágenes (hasta 20MB). Los GIFs sí cuentan como imágenes.';
 
     const db = function () { return firebase.database(); };
     const toast = function (m, k) { if (window.StevsconWiki && window.StevsconWiki.toast) window.StevsconWiki.toast(m, k); };
@@ -39,50 +39,65 @@
             .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'pagina';
     }
 
-    /* ==== OPTIMIZADOR DE IMÁGENES (hasta 20MB de entrada) ====
+    /* ==== OPTIMIZADOR DE IMÁGENES v2 (20MB de entrada, cero errores de tamaño) ====
      * cb(out, err): out = dataURI lista para guardar, err = mensaje.
-     * - Archivo > imgFile → error claro.
-     * - Si el base64 original ya cabe en targetStr → se usa tal cual
-     *   (transparencia PNG y GIFs animados intactos).
-     * - Si no: canvas a maxDim + JPEG q0.9 bajando hasta que quepa. */
+     * - Video → VIDEO_MSG (el único rechazo que no sea el límite de 20MB).
+     * - Archivo > 20MB → error (límite aprobado).
+     * - Si el original ya cabe en targetStr → tal cual (PNG/GIF intactos).
+     * - GIF grande pero bajo el techo → original (animación respetada).
+     * - Resto: escalera de tamaños x calidades que SIEMPRE converge
+     *   bajo hardStr (9MB). Nunca "demasiado grande incluso optimizada". */
     function shrinkImage(file, opts, cb) {
-        const o = Object.assign({ maxDim: 1920, targetStr: 20000, fileMax: LIMITS.imgFile }, opts || {});
+        const o = Object.assign({
+            maxDim: 1920,
+            targetStr: 2000000, /* objetivo de calidad (~1.4MB reales) */
+            hardStr: 9000000,   /* techo duro: nunca por encima */
+            fileMax: LIMITS.imgFile
+        }, opts || {});
         if (typeof cb !== 'function') cb = opts;
         if (!file) return cb(null, 'No hay archivo.');
+        if (file.type && /^video\//i.test(file.type)) return cb(null, VIDEO_MSG);
         if (file.size && file.size > o.fileMax) {
-            return cb(null, 'Esa imagen pasa de ' + Math.round(o.fileMax / 1048576) + 'MB (pesa ' + (file.size / 1048576).toFixed(1) + 'MB).');
+            return cb(null, 'Esa imagen pasa de ' + Math.round(o.fileMax / 1048576) + 'MB (pesa ' + (file.size / 1048576).toFixed(1) + 'MB). Ese es el único límite.');
         }
         const fr = new FileReader();
         fr.onerror = function () { cb(null, 'No se pudo leer la imagen.'); };
         fr.onload = function () {
             const raw = String(fr.result || '');
-            if (!/^data:image\/[a-zA-Z0-9.+-]+;base64,/.test(raw)) return cb(null, 'Ese archivo no parece una imagen válida.');
+            if (/^data:video\//i.test(raw)) return cb(null, VIDEO_MSG);
+            if (!/^data:image\/[a-zA-Z0-9.+-]+;base64,/.test(raw)) return cb(null, 'Ese archivo no es una imagen válida (solo imágenes; los GIFs sí valen).');
             if (raw.length <= o.targetStr) return cb(raw, null); /* ya cabe: original intacto */
+            const isGif = /^data:image\/gif;base64,/i.test(raw);
 
             const im = new Image();
-            im.onerror = function () { cb(null, 'Ese archivo no parece una imagen válida.'); };
+            im.onerror = function () { cb(null, 'Ese archivo no es una imagen válida.'); };
             im.onload = function () {
                 try {
-                    let dim = o.maxDim, q = 0.9, tries = 0;
-                    const step = function () {
+                    /* GIF bajo el techo se queda TAL CUAL (animación respetada) */
+                    if (isGif && raw.length <= o.hardStr) return cb(raw, null);
+
+                    const Qs = [0.9, 0.75, 0.6, 0.45, 0.35];
+                    let best = null;
+                    /* Escalera que SIEMPRE converge: al llegar a 64px con
+                     * q0.35 el JPEG pesa unos KB — imposible no caber. */
+                    for (let dim = o.maxDim; dim >= 64; dim = Math.round(dim * 0.7)) {
                         const sc = Math.min(1, dim / Math.max(im.width, im.height, 1));
                         const cv = document.createElement('canvas');
                         cv.width = Math.max(1, Math.round(im.width * sc));
                         cv.height = Math.max(1, Math.round(im.height * sc));
                         cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
-                        let out = cv.toDataURL('image/jpeg', q);
-                        while (out.length > o.targetStr && q > 0.35) {
-                            q -= 0.15;
-                            out = cv.toDataURL('image/jpeg', q);
+                        for (let qi = 0; qi < Qs.length; qi++) {
+                            const out = cv.toDataURL('image/jpeg', Qs[qi]);
+                            if (out.length <= o.targetStr) return cb(out, null); /* calidad ideal */
+                            if (out.length <= o.hardStr) { best = out; break; } /* la mejor que cabe */
                         }
-                        if (out.length > o.targetStr && dim > 480 && tries < 4) {
-                            tries++; dim = Math.round(dim * 0.7); q = 0.9;
-                            return step();
-                        }
-                        if (out.length > o.targetStr) return cb(null, 'La imagen es demasiado grande incluso optimizada.');
-                        cb(out, null);
-                    };
-                    step();
+                        if (best) break;
+                    }
+                    if (best) {
+                        if (isGif) toast('Ese GIF era gigante: se guardó como imagen fija para que la wiki pudiera almacenarlo.', 'ok');
+                        return cb(best, null);
+                    }
+                    cb(null, 'No se pudo procesar la imagen (caso extremo). Prueba con otra.');
                 } catch (e) { cb(null, 'No se pudo procesar la imagen.'); }
             };
             im.src = raw;
@@ -121,10 +136,7 @@
 
                     if (isOwner) { document.dispatchEvent(new CustomEvent('sc:wiki-auth')); return; }
 
-                    /* v3: SOLO role 'admin' gana permisos de Wiki.
-                     * El nodo de staff puede ser { role: 'admin' } o
-                     * directamente el string 'admin' — se aceptan ambas
-                     * formas. Un mod (o cualquier otra cosa) NO cuenta. */
+                    /* v3: SOLO role 'admin' gana permisos de Wiki. Un mod NO cuenta. */
                     db().ref('social/staff/' + user.uid).once('value').then(function (s) {
                         const node = s.val();
                         const role = (node && typeof node === 'object' && node.role)
@@ -146,7 +158,8 @@
             if (d.summary && d.summary.length > LIMITS.summary) return 'El resumen no puede pasar de ' + LIMITS.summary + ' caracteres.';
             if (!d.body || !d.body.trim()) return 'El cuerpo del artículo no puede estar vacío.';
             if (d.body.length > LIMITS.body) return 'El cuerpo es demasiado largo (máx ' + LIMITS.body + ' caracteres).';
-            if (d.cover && d.cover.length > LIMITS.cover) return 'La portada quedó demasiado grande incluso optimizada. Prueba con otra imagen.';
+            if (d.cover && /^data:video\//i.test(d.cover)) return 'La portada no puede ser un video: solo imágenes (los GIFs sí valen).';
+            if (d.cover && d.cover.length > LIMITS.cover) return 'La portada pasa de 9MB incluso optimizada. Prueba con otra imagen.';
             if (d.cover && !/^data:image\/[a-zA-Z0-9.+-]+;base64,/.test(d.cover) && !/^https:\/\//i.test(d.cover)) return 'La portada debe ser una imagen válida.';
             if (d.tags && d.tags.length > LIMITS.tags) return 'Máximo ' + LIMITS.tags + ' etiquetas.';
             if (!d.category) return 'Elige una categoría.';
@@ -323,5 +336,5 @@
         }
     };
 
-    console.log('[Stevscon] wiki_system.js listo (v3) — permisos: solo Owner y Admins editan la Wiki.');
+    console.log('[Stevscon] wiki_system.js listo (v4) — cualquier imagen hasta 20MB, cero errores de tamaño (solo se rechazan videos).');
 })(window, document);
