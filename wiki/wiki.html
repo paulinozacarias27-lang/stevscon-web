@@ -23,6 +23,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+
 <style>
 
     /* ---- Portada ---- */
@@ -159,8 +161,48 @@
         .wk-back span{display:none}
         #wk-main{padding:18px 12px 70px}
     }
+
+    /* ==== TEMA CLARO · mismas variables que el Social + fijos corregidos ==== */
+    html[data-theme="light"]{
+        --bg-main:#f4f2fa; --bg-card:#ffff; --border-color:#ddd5f0; --bg-hover:#ece7f8;
+        --purple-accent:#7c3aed; --purple-dark:#6d28d9; --purple-glow:rgba(124,58,237,.18);
+        --gold:#b45309; --text-main:#1e1b2e; --text-muted:#5b5570;
+    }
+    html[data-theme="light"] body{background:#f4f2fa;color:#1e1b2e}
+    html[data-theme="light"] .wk-header{background:rgba(244,242,250,.92)}
+    html[data-theme="light"] #wk-catnav{background:rgba(244,242,250,.9)}
+    html[data-theme="light"] .wk-card:hover,
+    html[data-theme="light"] .wk-catcard:hover{box-shadow:0 12px 30px rgba(30,27,46,.14)}
+    html[data-theme="light"] .wk-body h3{color:#6d28d9}
+    html[data-theme="light"] .wk-body code{color:#b45309}
+    html[data-theme="light"] .wk-type-guia{color:#6d28d9}
+    html[data-theme="light"] .wk-toast{box-shadow:0 14px 40px rgba(30,27,46,.18)}
 </style>
 <script src="/social/move.js?v=1"></script>
+
+<script>
+/* TEMA · aplica al instante el Oscuro/Claro guardado desde Preferencias */
+(function () {
+    var meta = document.querySelector('meta[name="theme-color"]');
+    function paint(v) {
+        document.documentElement.setAttribute('data-theme', v);
+        if (meta) meta.setAttribute('content', v === 'light' ? '#f4f2fa' : '#0d0b14');
+    }
+    var t = 'dark';
+    try { t = localStorage.getItem('stevscon_theme') || 'dark'; } catch (e) {}
+    paint(t);
+    document.addEventListener('sc:theme-applied', function (e) {
+        var v = (e && e.detail && e.detail.theme) || 'dark';
+        paint(v);
+        try { localStorage.setItem('stevscon_theme', v); } catch (er) {}
+    });
+    /* Otra pestaña cambió el tema -> la wiki lo sigue al instante */
+    window.addEventListener('storage', function (e) {
+        if (e.key === 'stevscon_theme' && (e.newValue === 'light' || e.newValue === 'dark')) paint(e.newValue);
+    });
+})();
+</script>
+
 <script>
     /* ==== DIAGNÓSTICO DE CARGA · se llena ANTES de que los files del motor
        carguen (o fallen), para decirte en pantalla EXACTAMENTE qué pasó ==== */
@@ -243,18 +285,14 @@
     };
 </script>
 
-  <script defer src="accounts/manage/settings/output/ui_settings.js?v=7"></script>
-  <script defer src="accounts/manage/settings/output/ui_preferences.js?v=2"></script>
-  <script defer src="accounts/manage/settings/output/ui_privacy.js?v=1"></script>
-  <script defer src="accounts/manage/settings/output/ui_data.js?v=2"></script>
-  <script defer src="accounts/manage/settings/buttons/set_preferences.js?v=2"></script>
-
-<!-- PREFERENCIAS arriba tambien -->
-  <script defer src="accounts/manage/settings/output/ui_settings.js?v=7"></script>
-  <script defer src="accounts/manage/settings/output/ui_preferences.js?v=1"></script>
-  <script defer src="accounts/manage/settings/output/ui_privacy.js?v=1"></script>
-  <script defer src="accounts/manage/settings/output/ui_data.js?v=2"></script>
-  <script defer src="accounts/manage/settings/buttons/set_preferences.js?v=1"></script>
+<!-- ==== SETTINGS · rutas ABSOLUTAS (en /wiki/ las relativas dan 404), UN solo bloque ==== -->
+<script defer src="/accounts/manage/settings/output/ui_settings.js?v=8"></script>
+<script defer src="/accounts/manage/settings/output/ui_preferences.js?v=2"></script>
+<script defer src="/accounts/manage/settings/output/ui_privacy.js?v=1"></script>
+<script defer src="/accounts/manage/settings/output/ui_data.js?v=2"></script>
+<script defer src="/accounts/manage/settings/buttons/set_preferences.js?v=3"></script>
+<script defer src="/accounts/manage/settings/buttons/set_privacy.js?v=1"></script>
+<script defer src="/accounts/manage/settings/buttons/set_data.js?v=1"></script>
 
 <!-- ==== CANDADO DE BANS (misma versión que index y social) ==== -->
 <script src="/banned.js?v=4"></script>

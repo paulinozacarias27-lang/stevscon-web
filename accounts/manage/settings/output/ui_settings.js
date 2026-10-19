@@ -297,6 +297,10 @@
         }
     };
 
+    /* v8: aplicador del core expuesto — el puente de set_preferences
+       lo busca al USARLO, así el orden de carga ya no puede romper el claro */
+    SCSET._applyThemeCore = SCSET.applyTheme;
+
     /* ==== ENGRANAJE JUNTO AL AVATAR (cluster horizontal) ==== */
 
     function findHeaderAvatar(host) {
@@ -386,7 +390,11 @@
 
     function watchHeader() {
         const host = document.getElementById('user-header-actions');
-        if (!host) { setTimeout(watchHeader, 300); return; }
+        if (!host) {
+            watchHeader._tries = (watchHeader._tries || 0) + 1;
+            if (watchHeader._tries < 100) setTimeout(watchHeader, 300);
+            return;
+        }
         injectGear();
         new MutationObserver(injectGear).observe(host, { childList: true, subtree: true });
         let n = 0;

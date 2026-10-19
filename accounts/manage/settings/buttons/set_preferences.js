@@ -1,14 +1,25 @@
 /**
  * STEVSCON.COM - accounts/manage/settings/buttons/set_preferences.js
- * LÓGICA: PREFERENCIAS (v2) · guarda en users/{uid}/settings y aplica al instante
- *  - NUEVO: preferencias de MD (mdAllow, mdRequests, mdSound, mdPreview, mdBadge).
- *  - NUEVO: puente de tema — Oscuro/Claro ahora funciona en TODA la web
- *    (index + social.html): body class + data-theme + localStorage + evento.
+ * LÓGICA: PREFERENCIAS (v3) · guarda en users/{uid}/settings y aplica al instante
+ *  - TEMA A PRUEBA DE BALAS (v3):
+ *    · Puente LAZY: busca el aplicador del core (SCSET._applyThemeCore)
+ *      al MOMENTO de usarlo, no al cargar -> el orden de carga jamás
+ *      rompe el modo claro.
+ *    · Aplica body class + html[data-theme] + localStorage + evento
+ *      'sc:theme-applied' (social.html y wiki.html lo escuchan).
+ *    · SINCRONIZACIÓN: al iniciar sesión lee users/{uid}/settings/theme
+ *      y aplica el tema de tu CUENTA — el tema te sigue en index,
+ *      social y wiki aunque el navegador esté limpio.
+ *    · Antidoble-montaje: si este file carga dos veces, no se envuelve dos veces.
  */
 (function (window, document) {
     'use strict';
 
     const SCSET = window.StevsconSettings = window.StevsconSettings || {};
+
+    /* Antidoble-montaje (por si el HTML llegara a cargar dos bloques) */
+    if (SCSET._prefV3) return;
+    SCSET._prefV3 = true;
 
     function db() {
         if (typeof firebase !== 'undefined' && firebase.database) return firebase.database();
@@ -55,15 +66,15 @@
         }
     };
 
-    /* ==== PUENTE DE TEMA (toda la web) ====
-       Conserva el comportamiento original del index (si existía) y AÑADE:
-       data-theme en <html> + localStorage('stevscon_theme') + evento
-       'sc:theme-applied' que social.html escucha para pintarse claro/oscuro. */
+    /* ==== PUENTE DE TEMA v3 (lazy + a prueba de orden de carga) ==== */
     const _origTheme = (typeof SCSET.applyTheme === 'function') ? SCSET.applyTheme : null;
     SCSET.applyTheme = function (v) {
         const val = (v === 'light') ? 'light' : 'dark';
-        if (_origTheme) { try { _origTheme(val); } catch (e) {} }
-        else {
+        const core = (typeof SCSET._applyThemeCore === 'function') ? SCSET._applyThemeCore : _origTheme;
+        if (core) {
+            try { core(val); } catch (e) {}
+        } else {
+            /* Fallback si el core no existe aún: clase al menos */
             try {
                 document.body.classList.remove('theme-dark', 'theme-light');
                 document.body.classList.add('theme-' + val);
@@ -74,5 +85,20 @@
         document.dispatchEvent(new CustomEvent('sc:theme-applied', { detail: { theme: val } }));
     };
 
-    console.log('[Stevscon] set_preferences.js listo (v2 · botones + puente de tema para toda la web).');
+    /* ==== SINCRONIZACIÓN · el tema guardado en tu CUENTA manda ==== */
+    (function syncThemeFromFirebase() {
+        if (typeof firebase === 'undefined' || !firebase.auth || !firebase.database) return;
+        firebase.auth().onAuthStateChanged(function (u) {
+            if (!u || !firebase.database) return;
+            firebase.database().ref('users/' + u.uid + '/settings/theme').once('value').then(function (s) {
+                const t = s.val();
+                if (t !== 'light' && t !== 'dark') return;
+                let cur = null;
+                try { cur = localStorage.getItem('stevscon_theme'); } catch (e) {}
+                if (t !== cur) SCSET.applyTheme(t);
+            }).catch(function () {});
+        });
+    })();
+
+    console.log('[Stevscon] set_preferences.js listo (v3 · tema lazy + sincronizado con la cuenta).');
 })(window, document);
