@@ -445,7 +445,7 @@
     /* ==== CSS del modal ==== */
     const CSS = [
         '.wksm-ovl{position:fixed;inset:0;z-index:4500;background:rgba(5,3,10,.78);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:18px}',
-        '.wksm-panel{width:100%;max-width:660px;max-height:88vh;display:flex;flex-direction:column;background:#17131f;border:1px solid var(--border-color,#2e2440);border-radius:18px;box-shadow:0 30px 90px rgba(0,0,0,.65);overflow:hidden}',
+        '.wksm-panel{width:100%;max-width:660px;max-height:88vh;display:flex;flex-direction:column;background:var(--bg-card,#17131f);border:1px solid var(--border-color,#2e2440);border-radius:18px;box-shadow:0 30px 90px rgba(0,0,0,.65);overflow:hidden}',
         '.wksm-head{display:flex;align-items:center;gap:10px;padding:16px 18px 0}',
         '.wksm-title{margin:0;font-size:18px}',
         '.wksm-x{margin-left:auto;width:34px;height:34px;flex:none;border-radius:50%;border:1px solid var(--border-color,#2e2440);background:var(--bg-hover,#261f36);color:var(--text-main,#f8fafc);cursor:pointer;font-size:13px}',
@@ -483,6 +483,11 @@
         '.wksm-save{background:linear-gradient(135deg,#8b5cf6,#6d28d9);border-color:transparent;color:#fff}',
         '.wksm-save:hover{box-shadow:0 8px 22px rgba(139,92,246,.4)}',
         '.wksm-save[disabled]{opacity:.6;cursor:wait}',
+        '/* ---- TEMA CLARO · ajustes del modal ---- */',
+        'html[data-theme="light"] .wksm-ovl{background:rgba(30,27,46,.42)}',
+        'html[data-theme="light"] .wksm-panel{box-shadow:0 30px 90px rgba(30,27,46,.3)}',
+        'html[data-theme="light"] .wksm-rowcard{background:rgba(124,58,237,.035)}',
+        'html[data-theme="light"] .wksm-rownum{background:rgba(124,58,237,.1);border-color:rgba(124,58,237,.35);color:#6d28d9}',
         '@media (max-width:560px){.wksm-cgrid{grid-template-columns:1fr}}'
     ].join('\n');
     if (!document.getElementById('wksm-style')) {
