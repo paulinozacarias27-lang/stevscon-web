@@ -1,21 +1,22 @@
 /**
  * ====
- * STEVSCON.WIKI — wiki/manage/pages/edit_page.js (v1)
+ * STEVSCON.WIKI — wiki/manage/pages/edit_page.js (v2)
  * EDITOR DEL INICIO: bloques personalizados para la portada.
- *  - El staff (Owner/Admins) añade bloques: TEXTO (título + cuerpo
- *    con TODOS los formatos de formats.js), AVISO (anuncio
- *    destacado), IMAGEN (URL o subida, se optimiza sola) y BOTONES
- *    (enlaces internos #a/... o externos https).
- *  - Botones de editar/subir/bajar/borrar SOLO para Owner y Admins;
- *    mods y usuarios normales solo ven el contenido.
- *  - Quita la sección "Últimas páginas" de la portada y deja
- *    "Explorar por categoría" intacta (override seguro de
- *    WK.core.renderHome — wiki_core.js y wiki_page.js NO se tocan).
+ *  v2 — AVISO arreglado: ahora es un callout DENTRO de la sección
+ *       (caja con padding, degradado y borde morado), ya no pinta
+ *       sobre la sección sin padding. Se ve bien en claro y oscuro.
+ *  v2 — BOTONES rehechos: editor visual de filas (texto + enlace,
+ *       sin markdown) y render estilo "redes sociales": cada botón
+ *       detecta su plataforma y muestra su icono y color (Discord,
+ *       YouTube, X, TikTok, Twitch, Instagram, GitHub, Steam...).
+ *       Enlaces internos (#a/pagina) salen como botón morado.
+ *  - Tipos: TEXTO (formatos completos), AVISO (callout destacado),
+ *    IMAGEN (URL o subida optimizada) y BOTONES (hasta 10).
+ *  - Botones de editar/subir/bajar/borrar SOLO para Owner y Admins.
+ *  - Quita "Últimas páginas" y deja "Explorar por categoría" intacta
+ *    (override seguro de WK.core.renderHome — el core NO se toca).
  *  - Datos: wiki/home/{blockId} = {type, title, body, img, cap,
- *    order, createdAt, updatedAt, by}.
- *  - Botones de edición con variables de tema: se ven bien en claro
- *    y oscuro. Todo con textContent (XSS fuera; innerHTML solo para
- *    el markdown ya escapado por formats.js).
+ *    order, createdAt, updatedAt, by} — SIN cambios de rules.
  * ====
  */
 (function (window, document) {
@@ -51,6 +52,30 @@
         }
         return /^https:\/\//i.test(u) ? u : '';
     }
+    function isInternal(u) { return /^#(a|c|s)\//.test(String(u || '')); }
+
+    /* ---- Marcas reconocidas para los botones (icono + color) ---- */
+    const BRANDS = [
+        { re: /discord\.(com|gg|me)/i,        icon: 'fa-brands fa-discord',    color: '#5865F2' },
+        { re: /youtube\.com|youtu\.be/i,      icon: 'fa-brands fa-youtube',    color: '#FF0000' },
+        { re: /x\.com|twitter\.com/i,         icon: 'fa-brands fa-x-twitter',  color: 'var(--text-main)' },
+        { re: /tiktok\.com/i,                 icon: 'fa-brands fa-tiktok',     color: 'var(--text-main)' },
+        { re: /twitch\.tv/i,                  icon: 'fa-brands fa-twitch',     color: '#9146FF' },
+        { re: /instagram\.com/i,              icon: 'fa-brands fa-instagram',  color: '#E1306C' },
+        { re: /github\.com/i,                 icon: 'fa-brands fa-github',     color: 'var(--text-main)' },
+        { re: /steamcommunity\.com|steampowered\.com/i, icon: 'fa-brands fa-steam', color: '#66c0f4' },
+        { re: /reddit\.com/i,                 icon: 'fa-brands fa-reddit',     color: '#FF4500' },
+        { re: /t\.me|telegram\.org/i,         icon: 'fa-brands fa-telegram',   color: '#26A5E4' },
+        { re: /whatsapp\.com|wa\.me/i,        icon: 'fa-brands fa-whatsapp',   color: '#25D366' },
+        { re: /facebook\.com|fb\.com/i,       icon: 'fa-brands fa-facebook',   color: '#1877F2' },
+        { re: /spotify\.com/i,                icon: 'fa-brands fa-spotify',    color: '#1DB954' },
+        { re: /kick\.com/i,                   icon: 'fa-brands fa-kickstarter', color: '#53FC18' },
+        { re: /patreon\.com/i,                icon: 'fa-brands fa-patreon',    color: '#FF424D' }
+    ];
+    function brandFor(url) {
+        for (let i = 0; i < BRANDS.length; i++) { if (BRANDS[i].re.test(url)) return BRANDS[i]; }
+        return null;
+    }
 
     const TYPES = {
         texto:   { label: 'Texto',   icon: 'fa-align-left' },
@@ -59,11 +84,13 @@
         enlaces: { label: 'Botones', icon: 'fa-link' }
     };
 
-    /* ==== CSS (bloques + botones de edición, tema claro y oscuro) ==== */
+    /* ==== CSS (bloques + editor, tema claro y oscuro) ==== */
     const CSS = `
     .wkh-block{position:relative}
     .wkh-has-tools h2{padding-right:150px}
     .wkh-tools{position:absolute;top:-6px;right:0;display:inline-flex;gap:6px;z-index:5}
+    .wkh-toolrow{display:flex;justify-content:flex-end;margin:0 0 10px}
+    .wkh-toolrow .wkh-tools{position:static}
     .wkh-tbtn{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--border-color,#2e2440);background:var(--bg-card,#16121f);color:var(--text-muted,#94a3b8);border-radius:9px;cursor:pointer;font-size:12px;transition:color .15s,border-color .15s,background .15s}
     .wkh-tbtn:hover{color:var(--purple-accent,#8b5cf6);border-color:var(--purple-accent,#8b5cf6)}
     .wkh-tbtn.danger:hover{color:#f87171;border-color:rgba(239,68,68,.55)}
@@ -72,16 +99,36 @@
     .wkh-addbtn{display:inline-flex;align-items:center;gap:8px;border:1px dashed var(--purple-accent,#8b5cf6);background:rgba(139,92,246,.10);color:var(--purple-accent,#8b5cf6);border-radius:999px;padding:8px 16px;font:800 12px Inter,sans-serif;cursor:pointer;transition:.15s}
     .wkh-addbtn:hover{background:var(--purple-accent,#8b5cf6);color:#fff;border-style:solid}
     .wkh-addhint{color:var(--text-muted,#94a3b8);font:600 12px Inter,sans-serif}
-    .wkh-aviso{background:rgba(139,92,246,.09);border:1px solid rgba(139,92,246,.35);border-left:4px solid var(--purple-accent,#8b5cf6);border-radius:14px}
-    html[data-theme="light"] .wkh-aviso{background:rgba(139,92,246,.07)}
+
+    /* ---- AVISO · callout limpio (v2) ---- */
+    .wkh-callout{position:relative;overflow:hidden;background:linear-gradient(135deg,rgba(139,92,246,.16),rgba(109,40,217,.05));border:1px solid rgba(139,92,246,.38);border-left:4px solid var(--purple-accent,#8b5cf6);border-radius:14px;padding:15px 18px}
+    .wkh-callout .wk-body{font-size:14px}
+    .wkh-callout .wk-body>:first-child{margin-top:0}
+    .wkh-callout .wk-body>:last-child{margin-bottom:0}
+    html[data-theme="light"] .wkh-callout{background:linear-gradient(135deg,rgba(124,58,237,.09),rgba(109,40,217,.04));border-color:rgba(124,58,237,.30)}
+
+    /* ---- BOTONES · estilo redes sociales (v2) ---- */
+    .wkh-links{display:flex;flex-wrap:wrap;gap:10px}
+    .wkh-linkbtn{display:inline-flex;align-items:center;gap:9px;border:1px solid var(--border-color,#2e2440);background:var(--bg-card,#16121f);color:var(--text-main,#f8fafc);border-radius:999px;padding:10px 18px;font:700 13px Inter,sans-serif;cursor:pointer;text-decoration:none;transition:transform .15s,border-color .15s,box-shadow .15s}
+    .wkh-linkbtn i{color:var(--bkc,var(--purple-accent,#8b5cf6));font-size:15px}
+    .wkh-linkbtn.ext:hover{border-color:var(--bkc,var(--purple-accent,#8b5cf6));transform:translateY(-2px);box-shadow:0 8px 22px rgba(0,0,0,.28)}
+    .wkh-linkbtn.int{background:linear-gradient(135deg,var(--purple-accent,#8b5cf6),var(--purple-dark,#6d28d9));border-color:transparent;color:#fff}
+    .wkh-linkbtn.int i{color:#fff}
+    .wkh-linkbtn.int:hover{filter:brightness(1.12);transform:translateY(-2px)}
+    html[data-theme="light"] .wkh-linkbtn.ext:hover{box-shadow:0 8px 22px rgba(30,27,46,.16)}
+
+    /* ---- Editor visual de botones (v2) ---- */
+    .wkh-rows{display:flex;flex-direction:column;gap:8px}
+    .wkh-row{display:flex;gap:8px;align-items:center}
+    .wkh-row input{flex:1;min-width:0}
+    .wkh-rowdel{flex:none;width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--border-color,#2e2440);background:none;color:var(--text-muted,#94a3b8);border-radius:9px;cursor:pointer;font-size:12px;transition:.15s}
+    .wkh-rowdel:hover{color:#f87171;border-color:rgba(239,68,68,.55)}
+    .wkh-addrow{align-self:flex-start;display:inline-flex;align-items:center;gap:7px;border:1px dashed var(--purple-accent,#8b5cf6);background:rgba(139,92,246,.10);color:var(--purple-accent,#8b5cf6);border-radius:999px;padding:7px 14px;font:800 11.5px Inter,sans-serif;cursor:pointer;transition:.15s}
+    .wkh-addrow:hover{background:var(--purple-accent,#8b5cf6);color:#fff;border-style:solid}
+
     .wkh-fig{margin:0}
     .wkh-fig img{width:100%;max-height:460px;object-fit:cover;border-radius:14px;border:1px solid var(--border-color,#2e2440);display:block}
     .wkh-cap{margin-top:8px;color:var(--text-muted,#94a3b8);font:600 12px Inter,sans-serif;text-align:center}
-    .wkh-links{display:flex;flex-wrap:wrap;gap:10px}
-    .wkh-linkbtn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border-color,#2e2440);background:var(--bg-card,#16121f);color:var(--text-main,#f8fafc);border-radius:999px;padding:9px 16px;font:700 13px Inter,sans-serif;cursor:pointer;text-decoration:none;transition:.15s}
-    .wkh-linkbtn:hover{border-color:var(--purple-accent,#8b5cf6);color:var(--purple-accent,#8b5cf6)}
-    .wkh-linkbtn.int{background:linear-gradient(135deg,var(--purple-accent,#8b5cf6),var(--purple-dark,#6d28d9));border-color:transparent;color:#fff}
-    .wkh-linkbtn.int:hover{color:#fff;filter:brightness(1.12)}
     .wkh-imgprev{max-height:150px;border-radius:12px;border:1px solid var(--border-color,#2e2440);display:block;margin-top:8px}
     `;
     function injectStyles() {
@@ -108,7 +155,7 @@
                     let out = cv.toDataURL('image/jpeg', 0.9);
                     let q = 0.9;
                     while (out.length > 90000 && q > 0.35) { q -= 0.15; out = cv.toDataURL('image/jpeg', q); }
-                    if (out.length > 9000000) return cb(null, 'La imagen es demasiado grande incluso reescalada.');
+                    if (out.length > 90000) return cb(null, 'La imagen es demasiado grande incluso reescalada.');
                     cb(out, null);
                 };
                 im.onerror = function () { cb(null, 'Ese archivo no parece una imagen válida.'); };
@@ -247,6 +294,55 @@
 
             const hint = el('p', 'wk-hint', '');
 
+            /* ==== BOTONES · editor visual de filas (v2) ==== */
+            const rowsBox = el('div', 'wkh-rows');
+            function makeRow(txt, url) {
+                const row = el('div', 'wkh-row');
+                const t = document.createElement('input');
+                t.type = 'text'; t.maxLength = 40;
+                t.placeholder = 'Texto (ej: Discord)';
+                t.value = txt || '';
+                const u = document.createElement('input');
+                u.type = 'text';
+                u.placeholder = 'https://… o #a/pagina';
+                u.value = url || '';
+                const del = el('button', 'wkh-rowdel');
+                del.type = 'button';
+                del.title = 'Quitar botón';
+                del.setAttribute('aria-label', 'Quitar botón');
+                del.appendChild(icon('fa-xmark'));
+                del.addEventListener('click', function () {
+                    if (rowsBox.children.length > 1) row.parentNode.removeChild(row);
+                    else { t.value = ''; u.value = ''; }
+                });
+                row.appendChild(t); row.appendChild(u); row.appendChild(del);
+                return row;
+            }
+            function parseLinkLines(src) {
+                const out = [];
+                String(src || '').split(/\r?\n/).forEach(function (line) {
+                    const parts = line.split('|');
+                    if (parts.length < 2) return;
+                    const txt = String(parts[0] || '').trim();
+                    const url = parts.slice(1).join('|').trim();
+                    if (txt && url) out.push([txt, url]);
+                });
+                return out;
+            }
+            const addRow = el('button', 'wkh-addrow');
+            addRow.type = 'button';
+            addRow.appendChild(icon('fa-plus'));
+            addRow.appendChild(document.createTextNode(' Añadir botón'));
+            addRow.addEventListener('click', function () {
+                if (rowsBox.children.length >= 10) return toast('Máximo 10 botones por bloque.', 'error');
+                rowsBox.appendChild(makeRow('', ''));
+            });
+            const linksW = el('div');
+            linksW.appendChild(el('label', null, 'BOTONES (HASTA 10)'));
+            linksW.appendChild(rowsBox);
+            linksW.appendChild(addRow);
+            linksW.appendChild(hint);
+
             /* Campos de IMAGEN */
             const img = document.createElement('input');
             img.type = 'text';
@@ -278,14 +374,19 @@
 
             function syncType() {
                 const t = typeSel.value;
-                bodyW.style.display = (t === 'imagen') ? 'none' : '';
+                bodyW.style.display = (t === 'texto' || t === 'aviso') ? '' : 'none';
+                linksW.style.display = (t === 'enlaces') ? '' : 'none';
                 imgW.style.display = (t === 'imagen') ? '' : 'none';
                 capW.style.display = (t === 'imagen') ? '' : 'none';
-                hint.textContent = t === 'enlaces'
-                    ? 'Un botón por línea: Texto | https://enlace — o interno: Texto | #a/mi-pagina'
-                    : (t === 'imagen'
-                        ? 'Puedes subir imágenes de hasta 20MB: se optimizan solas.'
-                        : 'Tienes TODOS los formatos de la wiki: ## títulos, **negrita**, listas, `código` con color, ||spoiler||, imágenes y enlaces.');
+                if (t === 'enlaces') {
+                    hint.textContent = 'Cada botón detecta su icono y color solo: Discord, YouTube, X, TikTok, Twitch y más. Para páginas internas de la wiki usa #a/nombre-pagina.';
+                } else if (t === 'aviso') {
+                    hint.textContent = 'Anuncio destacado en caja morada. Mismos formatos que Texto: ## títulos, **negrita**, listas, `código` con color, ||spoiler||.';
+                } else if (t === 'imagen') {
+                    hint.textContent = 'Puedes subir imágenes de hasta 20MB: se optimizan solas.';
+                } else {
+                    hint.textContent = 'Tienes TODOS los formatos de la wiki: ## títulos, **negrita**, listas, `código` con color, ||spoiler||, imágenes y enlaces.';
+                }
             }
             typeSel.addEventListener('change', syncType);
 
@@ -293,7 +394,7 @@
             img.addEventListener('change', function () {
                 const u = String(img.value || '').trim();
                 if (/^https:\/\//i.test(u) || /^data:image\//.test(u)) {
-                    if (u.length > 9000000) { toast('La imagen pasa de 9MB guardada; sube una más ligera.', 'error'); return; }
+                    if (u.length > 90000) { toast('La imagen pasa de 9MB guardada; sube una más ligera.', 'error'); return; }
                     imgPrev.src = u;
                     imgPrev.style.display = 'block';
                 } else {
@@ -328,9 +429,11 @@
             form.appendChild(el('label', null, 'TÍTULO'));
             form.appendChild(title);
             form.appendChild(bodyW);
+            form.appendChild(linksW);
             form.appendChild(imgW);
             form.appendChild(capW);
 
+            /* Cargar datos existentes */
             if (cur) {
                 typeSel.value = TYPES[cur.type] ? cur.type : 'texto';
                 title.value = cur.title || '';
@@ -338,9 +441,12 @@
                 img.value = cur.img || '';
                 cap.value = cur.cap || '';
                 if (cur.img) { imgPrev.src = cur.img; imgPrev.style.display = 'block'; }
+                const existing = parseLinkLines(cur.body);
+                existing.forEach(function (p) { rowsBox.appendChild(makeRow(p[0], p[1])); });
             } else {
                 typeSel.value = 'texto';
             }
+            if (!rowsBox.children.length) rowsBox.appendChild(makeRow('', ''));
             syncType();
 
             const bSave = el('button', 'wk-btn pri');
@@ -352,21 +458,37 @@
                 const data = {
                     type: t,
                     title: String(title.value || '').trim().slice(0, 120),
-                    body: t === 'imagen' ? '' : String(body.value || '').slice(0, 20000),
+                    body: '',
                     img: '',
                     cap: '',
                     updatedAt: Date.now(),
                     by: (WK.system && WK.system.session && (WK.system.session.name || WK.system.session.username)) || 'Staff'
                 };
+                if (t === 'enlaces') {
+                    const lines = [];
+                    let bad = false;
+                    Array.prototype.forEach.call(rowsBox.children, function (row) {
+                        const ins = row.querySelectorAll('input');
+                        const txt = String(ins[0].value || '').trim().replace(/\|/g, '').slice(0, 40);
+                        const url = String(ins[1].value || '').trim();
+                        if (!txt && !url) return;
+                        if (!txt || !safeLink(url)) { bad = true; return; }
+                        lines.push(txt + ' | ' + url);
+                    });
+                    if (bad) return toast('Revisa los botones: cada uno necesita texto y un enlace válido (https:// o #a/pagina).', 'error');
+                    if (!lines.length) return toast('Añade al menos un botón con texto y enlace.', 'error');
+                    data.body = lines.join('\n');
+                } else if (t !== 'imagen') {
+                    data.body = String(body.value || '').slice(0, 20000);
+                    if (!data.body.trim()) return toast('Escribe el contenido del bloque.', 'error');
+                }
                 if (t === 'imagen') {
                     const u = String(img.value || '').trim();
                     if (u.charAt(0) === '#') return toast('Para imágenes usa una URL https o sube un archivo.', 'error');
                     if (!safeLink(u)) return toast('Pon una URL https o sube una imagen.', 'error');
-                    if (u.length > 9000000) return toast('La imagen es demasiado grande incluso optimizada.', 'error');
+                    if (u.length > 90000) return toast('La imagen es demasiado grande incluso optimizada.', 'error');
                     data.img = u;
                     data.cap = String(cap.value || '').trim().slice(0, 240);
-                } else if (!String(data.body).trim()) {
-                    return toast(t === 'enlaces' ? 'Escribe al menos un botón: Texto | https://enlace' : 'Escribe el contenido del bloque.', 'error');
                 }
                 bSave.disabled = true;
                 const p = id ? self.save(id, data) : self.create(data);
@@ -452,13 +574,13 @@
                 } else if (type === 'enlaces') {
                     const wrapL = el('div', 'wkh-links');
                     const lines = String(bk.body || '').split(/\r?\n/);
-                    for (let i = 0; i < lines.length && wrapL.children.length < 8; i++) {
+                    for (let i = 0; i < lines.length && wrapL.children.length < 10; i++) {
                         const parts = lines[i].split('|');
                         if (parts.length < 2) continue;
                         const txt = String(parts[0] || '').trim();
                         const url = safeLink(parts.slice(1).join('|').trim());
                         if (!txt || !url) continue;
-                        if (url.charAt(0) === '#') {
+                        if (isInternal(url)) {
                             const b = el('button', 'wkh-linkbtn int');
                             b.type = 'button';
                             b.appendChild(icon('fa-angle-right'));
@@ -471,14 +593,30 @@
                             a.href = url;
                             a.target = '_blank';
                             a.rel = 'noopener noreferrer';
-                            a.appendChild(icon('fa-arrow-up-right-from-square'));
+                            const br = brandFor(url);
+                            if (br) a.style.setProperty('--bkc', br.color);
+                            a.appendChild(icon(br ? br.icon : 'fa-arrow-up-right-from-square'));
                             a.appendChild(el('span', null, txt));
                             wrapL.appendChild(a);
                         }
                     }
                     if (wrapL.children.length) { sec.appendChild(wrapL); has = true; }
+                    else if (staff) { sec.appendChild(el('p', 'wkh-addhint', 'Este bloque de botones está vacío: edítalo para añadir botones.')); has = true; }
+                } else if (type === 'aviso') {
+                    /* AVISO v2: callout limpio dentro de la sección */
+                    if (String(bk.body || '').trim()) {
+                        const co = el('div', 'wkh-callout');
+                        const bd = el('div', 'wk-body');
+                        bd.innerHTML = renderMd(bk.body || '');
+                        co.appendChild(bd);
+                        if (WK.formats && typeof WK.formats.enhance === 'function') {
+                            try { WK.formats.enhance(bd); } catch (e) {}
+                        }
+                        sec.appendChild(co);
+                        has = true;
+                    }
                 } else {
-                    /* TEXTO y AVISO: todo el poder de formats.js */
+                    /* TEXTO: todo el poder de formats.js */
                     const bd = el('div', 'wk-body');
                     bd.innerHTML = renderMd(bk.body || '');
                     sec.appendChild(bd);
@@ -489,8 +627,16 @@
                 }
 
                 if (staff) {
-                    sec.classList.add('wkh-has-tools');
-                    sec.appendChild(self.tools(bk, idx, blocks.length));
+                    const t = self.tools(bk, idx, blocks.length);
+                    if (bk.title) {
+                        sec.classList.add('wkh-has-tools');
+                        sec.appendChild(t);
+                    } else {
+                        /* Sin título: los botones van en fila propia para no tapar nada */
+                        const row = el('div', 'wkh-toolrow');
+                        row.appendChild(t);
+                        sec.appendChild(row);
+                    }
                 }
 
                 if (has || staff) main.appendChild(sec);
@@ -526,5 +672,5 @@
         setTimeout(boot, 0);
     }
 
-    console.log('[Stevscon] edit_page.js listo (v1) — bloques del inicio editables (solo staff).');
+    console.log('[Stevscon] edit_page.js listo (v2) — aviso callout + botones estilo redes sociales (solo staff edita).');
 })(window, document);
