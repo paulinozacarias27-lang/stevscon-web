@@ -293,21 +293,23 @@
         renderHome: function (main) {
             const self = this;
 
-            /* Banner */
-            const hero = el('section', 'wk-hero');
-            const h1 = el('h1');
-            h1.appendChild(document.createTextNode('Stevscon'));
-            const dot = el('span', 'wk-tld', '.wiki');
-            h1.appendChild(dot);
-            hero.appendChild(h1);
-            hero.appendChild(el('p', 'wk-hero-sub', 'Toda la Enciclopedia de Stevscon: proyectos, devlogs, easter eggs y guías, escritas por el staff.'));
-            const stats = el('div', 'wk-stats');
-            stats.appendChild(el('strong', null, fmtNum(this.pages || this.published().length)));
-            stats.appendChild(el('span', null, 'PÁGINAS'));
-            stats.appendChild(el('i', null, '·'));
-            stats.appendChild(el('strong', null, String(this.sortedCats().length)));
-            stats.appendChild(el('span', null, 'CATEGORÍAS'));
-            hero.appendChild(stats);
+            /* Banner (imagen oficial — wiki/manage/StevsconWiki.png) */
+            const hero = el('section', 'wk-hero wk-hero-img');
+            const hImg = document.createElement('img');
+            hImg.className = 'wk-hero-banner';
+            hImg.alt = 'Stevscon.wiki';
+            hImg.src = '/wiki/manage/StevsconWiki.png';
+            hImg.addEventListener('error', function () {
+                /* Fallback: si la imagen no está, vuelve el banner de texto */
+                hero.classList.remove('wk-hero-img');
+                if (hImg.parentNode) hImg.parentNode.removeChild(hImg);
+                const fb = el('h1');
+                fb.appendChild(document.createTextNode('Stevscon'));
+                fb.appendChild(el('span', 'wk-tld', '.wiki'));
+                hero.appendChild(fb);
+                hero.appendChild(el('p', 'wk-hero-sub', 'Toda la Enciclopedia de Stevscon: proyectos, devlogs, easter eggs y guías, escritas por el staff.'));
+            });
+            hero.appendChild(hImg);
             main.appendChild(hero);
 
             /* Sobre la wiki */
@@ -316,9 +318,9 @@
             const ai = document.createElement('i');
             ai.className = 'fa-solid fa-circle-info';
             at.appendChild(ai);
-            at.appendChild(document.createTextNode(' Acerca de'));
+            at.appendChild(document.createTextNode(' Acerca de Stevscon.wiki'));
             about.appendChild(at);
-            about.appendChild(el('p', null, 'Esta wiki es la casa oficial de los proyectos de Stevscon: aquí anunciamos lo terminado, contamos los devlogs, escondimos easter eggs y documentamos todo lo que construye la web.'));
+            about.appendChild(el('p', null, 'Esta es la wiki oficial y real de Stevscon.com, donde toda la informacion de nuestros proyectos o mas conocidos, PotForce, se anunciara TODO sobre ello, skins, devlogs, uptades, versiones, alphas y pruebas y mucho mas! No olvides visitar mucho la wiki, porque casi todos los dias, se anuncia MUCHAS cosas mas!!'));
             main.appendChild(about);
 
             /* Destacados */

@@ -32,6 +32,8 @@
     .wk-hero h1{margin:0;font-size:34px;letter-spacing:-.02em}
     .wk-hero .wk-tld{color:var(--purple-accent)}
     .wk-hero-sub{color:var(--text-muted);font-weight:600;font-size:14px;max-width:560px;margin:8px auto 16px}
+    .wk-hero.wk-hero-img{padding:0;background:none;overflow:hidden}
+    .wk-hero-banner{display:block;width:100%;height:auto}
     .wk-stats{display:flex;gap:9px;align-items:baseline;justify-content:center}
     .wk-stats strong{font-size:26px;color:var(--purple-accent)}
     .wk-stats span{font:800 10px Inter,sans-serif;letter-spacing:.16em;color:var(--text-muted);padding-top:6px}
@@ -309,7 +311,7 @@
 <!-- ==== MOTOR DE LA WIKI (orden estricto: formats -> core -> system -> page -> manage -> subs)
      Cada tag reporta su propio 404 al diagnóstico ==== -->
 <script src="/wiki/manage/output/formats.js?v=1" onerror="window.__wkDiag.failed['formats.js']=1"></script>
-<script src="/wiki/manage/output/wiki_core.js?v=5" onerror="window.__wkDiag.failed['wiki_core.js']=1"></script>
+<script src="/wiki/manage/output/wiki_core.js?v=6" onerror="window.__wkDiag.failed['wiki_core.js']=1"></script>
 <script src="/wiki/manage/output/wiki_system.js?v=4" onerror="window.__wkDiag.failed['wiki_system.js']=1"></script>
 <script src="/wiki/manage/pages/wiki_page.js?v=1" onerror="window.__wkDiag.failed['wiki_page.js']=1"></script>
 <script src="/wiki/manage/output/wiki_manage.js?v=4" onerror="window.__wkDiag.failed['wiki_manage.js']=1"></script>
