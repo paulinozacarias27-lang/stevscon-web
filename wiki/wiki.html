@@ -353,6 +353,7 @@
 <script src="/wiki/manage/pages/wiki_page.js?v=1" onerror="window.__wkDiag.failed['wiki_page.js']=1"></script>
 <script src="/wiki/manage/pages/wiki_categorys.js?v=1" onerror="window.__wkDiag.failed['wiki_categorys.js']=1"></script>
 <script src="/wiki/manage/pages/wiki_sub_categorys.js?v=1" onerror="window.__wkDiag.failed['wiki_sub_categorys.js']=1"></script>
+<script src="/wiki/manage/pages/edit_page.js?v=1" onerror="window.__wkDiag.failed['edit_page.js']=1"></script>
 <script src="/wiki/manage/output/wiki_manage.js?v=4" onerror="window.__wkDiag.failed['wiki_manage.js']=1"></script>
 <script src="/wiki/manage/output/wiki_subs_system.js?v=4" onerror="window.__wkDiag.failed['wiki_subs_system.js']=1"></script>
 <script src="/wiki/manage/output/wiki_subs.js?v=2" onerror="window.__wkDiag.failed['wiki_subs.js']=1"></script>
@@ -417,6 +418,7 @@
          ['wiki_subs_system.js', function (w) { return !!(w && w.subsSystem); }, '/wiki/manage/output/'],
          ['wiki_subs.js',        function (w) { return !!(w && w.subs); }, '/wiki/manage/output/'],
          ['wiki_subs_manage.js', function (w) { return !!(w && w.subsManage); }, '/wiki/manage/output/']
+         ['edit_page.js',         function (w) { return !!(w && w.homeblocks); }, '/wiki/manage/pages/'],
         ].forEach(function (r) {
             if (diag.failed[r[0]]) {
                 L.push('✘ ' + r[0] + ': NO SE ENCONTRÓ (404). Revisa nombre y carpeta EXACTOS: ' + r[2] + r[0]);
