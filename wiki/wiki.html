@@ -140,12 +140,49 @@
     .wk-back{flex:none;display:flex;align-items:center;gap:7px;border:1px solid var(--border-color);background:var(--bg-card);color:var(--text-main);border-radius:999px;padding:8px 15px;font:700 12px Inter,sans-serif;cursor:pointer;transition:.2s}
     .wk-back:hover{border-color:var(--purple-accent);color:var(--purple-accent)}
 
-    /* ---- Barra de categorías ---- */
-    #wk-catnav{position:sticky;top:60px;z-index:99;display:flex;gap:8px;align-items:center;padding:10px 18px;background:rgba(13,11,20,.9);backdrop-filter:blur(10px);border-bottom:1px solid var(--border-color);overflow-x:auto;scrollbar-width:none}
-    #wk-catnav::-webkit-scrollbar{display:none}
-    .wk-chip{flex:none;display:flex;align-items:center;gap:7px;padding:7px 14px;border-radius:999px;border:1px solid var(--border-color);background:var(--bg-card);color:var(--text-muted);font:700 12px Inter,sans-serif;cursor:pointer;transition:.2s;white-space:nowrap}
-    .wk-chip:hover{color:var(--text-main);border-color:var(--purple-accent)}
-    .wk-chip.is-active{background:linear-gradient(135deg,var(--purple-accent),var(--purple-dark));border-color:transparent;color:#fff}
+    /* ---- Barra de categorías (estilo Fandom · wiki_categorys.js) ---- */
+    #wk-catnav{position:sticky;top:60px;z-index:99;padding:0 18px;background:rgba(13,11,20,.9);backdrop-filter:blur(10px);border-bottom:1px solid var(--border-color)}
+    .wkc-bar{display:flex;align-items:center;gap:2px;max-width:1080px;margin:0 auto;flex-wrap:wrap}
+    .wkc-wrap{position:relative}
+    .wkc-item{display:flex;align-items:center;gap:8px;padding:14px 13px 11px;border:0;border-bottom:3px solid transparent;background:none;color:var(--text-muted);font:800 12px Inter,sans-serif;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;white-space:nowrap;transition:color .15s,border-color .15s}
+    .wkc-item .wkc-ico{font-size:13px}
+    .wkc-item:hover{color:var(--text-main)}
+    .wkc-item.is-active{color:var(--text-main);border-bottom-color:var(--purple-accent)}
+    .wkc-item.is-open{color:var(--purple-accent)}
+    .wkc-caret{font-size:9px;margin-left:2px;transition:transform .18s}
+    .wkc-item.is-open .wkc-caret{transform:rotate(180deg)}
+    .wkc-count{margin-left:auto;padding-left:14px;color:var(--text-muted);font:800 10.5px Inter,sans-serif;letter-spacing:.16em;white-space:nowrap}
+    .wkc-drop{position:absolute;top:100%;left:50%;transform:translateX(-50%);width:min(560px,92vw);background:var(--bg-card);border:1px solid var(--border-color);border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,.5);padding:12px;z-index:130;animation:wkc-drop-in .16s ease;text-align:left}
+    @keyframes wkc-drop-in{from{opacity:0;transform:translateX(-50%) translateY(-6px)}}
+    .wkc-viewall{display:flex;align-items:center;gap:9px;width:100%;border:0;background:linear-gradient(135deg,rgba(139,92,246,.16),rgba(109,40,217,.10));color:var(--purple-accent);border-radius:10px;padding:10px 12px;font:800 12.5px Inter,sans-serif;cursor:pointer}
+    .wkc-viewall:hover{background:linear-gradient(135deg,var(--purple-accent),var(--purple-dark));color:#fff}
+    .wkc-cols{display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;margin-top:10px}
+    .wkc-col h4{margin:2px 0 6px;color:var(--text-muted);font:800 10px Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase}
+    .wkc-link{display:flex;align-items:center;gap:9px;width:100%;text-align:left;border:0;background:none;border-radius:9px;padding:7px 9px;color:var(--text-main);font:600 13px Inter,sans-serif;cursor:pointer}
+    .wkc-link:hover{background:var(--bg-hover)}
+    .wkc-linkico{width:20px;text-align:center;font-size:12px;color:var(--text-muted)}
+    .wkc-linktxt{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .wkc-link small{color:var(--text-muted);font:600 11px Inter,sans-serif;white-space:nowrap}
+    .wkc-empty{margin:4px 9px;color:var(--text-muted);font:600 12px Inter,sans-serif}
+    .wkc-dropfoot{display:flex;justify-content:flex-end;margin-top:10px;padding-top:10px;border-top:1px solid var(--border-color)}
+    .wkc-addbtn{display:inline-flex;align-items:center;gap:7px;border:1px dashed var(--purple-accent);background:rgba(139,92,246,.10);color:var(--purple-accent);border-radius:999px;padding:6px 13px;font:800 11.5px Inter,sans-serif;cursor:pointer}
+    .wkc-addbtn:hover{background:var(--purple-accent);color:#fff;border-style:solid}
+    @media(max-width:640px){.wkc-cols{grid-template-columns:1fr}.wkc-item{padding:11px 10px 9px;font-size:11px}}
+
+    /* ---- Sub-categorías (wiki_sub_categorys.js) ---- */
+    .wk-subbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:-2px 0 20px}
+    .wk-subchip{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border-color);background:var(--bg-card);color:var(--text-muted);border-radius:999px;padding:6px 13px;font:700 12px Inter,sans-serif;cursor:pointer;transition:.2s}
+    .wk-subchip:hover{color:var(--text-main);border-color:var(--purple-accent)}
+    .wk-subchip.is-active{background:linear-gradient(135deg,var(--purple-accent),var(--purple-dark));border-color:transparent;color:#fff}
+    .wk-subchip small{font:600 10.5px Inter,sans-serif;opacity:.8}
+    .wk-subchip.add{border-style:dashed;color:var(--purple-accent);border-color:var(--purple-accent)}
+    .wk-subhead{flex-wrap:wrap}
+    .wk-subhead .wk-subcrumb{width:100%;margin-bottom:2px}
+    .wk-subcrumb{display:inline-flex;align-items:center;gap:7px;border:0;background:none;color:var(--purple-accent);font:800 12px Inter,sans-serif;cursor:pointer;padding:0}
+    .wk-subcrumb:hover{text-decoration:underline}
+    .wk-subcount{margin:2px 0 16px;color:var(--text-muted);font:600 12.5px Inter,sans-serif}
+    .wk-subtools{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 20px}
+    html[data-theme="light"] .wkc-drop{box-shadow:0 24px 60px rgba(30,27,46,.18)}
 
     /* ---- Main ---- */
     #wk-main{max-width:1080px;margin:0 auto;padding:26px 18px 80px}
@@ -314,6 +351,8 @@
 <script src="/wiki/manage/output/wiki_core.js?v=6" onerror="window.__wkDiag.failed['wiki_core.js']=1"></script>
 <script src="/wiki/manage/output/wiki_system.js?v=4" onerror="window.__wkDiag.failed['wiki_system.js']=1"></script>
 <script src="/wiki/manage/pages/wiki_page.js?v=1" onerror="window.__wkDiag.failed['wiki_page.js']=1"></script>
+<script src="/wiki/manage/pages/wiki_categorys.js?v=1" onerror="window.__wkDiag.failed['wiki_categorys.js']=1"></script>
+<script src="/wiki/manage/pages/wiki_sub_categorys.js?v=1" onerror="window.__wkDiag.failed['wiki_sub_categorys.js']=1"></script>
 <script src="/wiki/manage/output/wiki_manage.js?v=4" onerror="window.__wkDiag.failed['wiki_manage.js']=1"></script>
 <script src="/wiki/manage/output/wiki_subs_system.js?v=4" onerror="window.__wkDiag.failed['wiki_subs_system.js']=1"></script>
 <script src="/wiki/manage/output/wiki_subs.js?v=2" onerror="window.__wkDiag.failed['wiki_subs.js']=1"></script>
