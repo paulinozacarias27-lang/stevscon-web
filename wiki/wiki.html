@@ -422,6 +422,9 @@
          ['wiki_subs.js',        function (w) { return !!(w && w.subs); }, '/wiki/manage/output/'],
          ['wiki_subs_manage.js', function (w) { return !!(w && w.subsManage); }, '/wiki/manage/output/'],
          ['edit_page.js',         function (w) { return !!(w && w.homeblocks); }, '/wiki/manage/pages/'],
+         ['wiki_categorys.js',   function (w) { return !!(w && w.catsNav); }, '/wiki/manage/pages/'],
+         ['wiki_sub_categorys.js', function (w) { return !!(w && w.subcats); }, '/wiki/manage/pages/'],
+         ['wiki_likes.js',       function () { return true; }, '/wiki/manage/output/'],
         ].forEach(function (r) {
             if (diag.failed[r[0]]) {
                 L.push('✘ ' + r[0] + ': NO SE ENCONTRÓ (404). Revisa nombre y carpeta EXACTOS: ' + r[2] + r[0]);
