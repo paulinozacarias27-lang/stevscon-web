@@ -1,22 +1,26 @@
 /**
  * ====
- * STEVSCON.COM — social/move.js (v1)
+ * STEVSCON.COM — social/move.js (v2)
  * MOVE — La barra de scroll del sitio (adiós línea blanca del navegador)
  *
  *  - Cárgalo en TODAS las páginas (index, social, profiles…). Pinta la
  *    barra del documento al estilo de la web: púrpura, redondeada, con glow.
+ *  - NUEVO v2: si la página no scrollea en el documento sino en una capa
+ *    interna GRANDE (como la página Social de social.html), MOVE la ADOPTA:
+ *    esconde su barra nativa y la misma barra púrpura sigue al feed.
  *  - Animación fluida: el pulido PERSIGUE el scroll con easing suave,
  *    aparece al scroll y se desvanece solo; crece y brilla al hover.
  *  - Interactiva: se puede ARRASTRAR, y clic en la pista salta de página
  *    con desplazamiento suave.
- *  - Los contenedores internos (modales, drawers de security, listas)
+ *  - Los contenedores internos pequeños (modales, drawers, listas)
  *    conservan su barra nativa pero re-pintada al tema (fina, púrpura al hover).
  *  - CERO dependencias: sin SCSOC ni Firebase. En móvil/touch no dibuja
  *    nada (el scroll de toque no tiene barra). Respeta prefers-reduced-motion.
  *  - A prueba de fallos: la barra nativa del documento SOLO se oculta
  *    cuando move.js ya montó todo. Si el script falla, nunca te quedas
  *    sin scrollbar.
- * ==== */
+ * ====
+ */
 (function (window, document) {
     'use strict';
 
@@ -44,6 +48,9 @@
             /* -- La barra del DOCUMENTO se oculta solo cuando MOVE ya corre -- */
             + 'html.scm-on::-webkit-scrollbar{display:none!important;width:0!important;height:0!important;}'
             + 'html.scm-on{scrollbar-width:none;-ms-overflow-style:none;}'
+            /* -- v2: la capa interna ADOPTADA también esconde su barra nativa -- */
+            + '.scm-hidesb{scrollbar-width:none!important;-ms-overflow-style:none!important;}'
+            + '.scm-hidesb::-webkit-scrollbar{display:none!important;width:0!important;height:0!important;}'
             /* -- Barra personalizada del documento -- */
             + '.scm-bar{position:fixed;top:0;right:0;bottom:0;width:14px;z-index:2147483020;opacity:0;transition:opacity .35s ease;pointer-events:none;will-change:opacity;}'
             + '.scm-bar.scm-vis{opacity:1;pointer-events:auto;}'
@@ -59,7 +66,8 @@
 
     /* ==== ESTADO ==== */
     var bar, thumb;
-    var sc = null;                       /* el scroller del documento */
+    var sc = null, doc = null;        /* scroller activo y el del documento */
+    var adopted = false;              /* v2: sc es una capa interna adoptada */
     var awake = false, rafId = 0;        /* bucle de animación bajo demanda */
     var visible = false, hover = false, dragging = false, active = false;
     var curY = -1, targetY = 0, thumbH = 46;
@@ -80,15 +88,48 @@
         if (!active && !hover && !dragging) setVis(false);
     }
 
+    /* ==== v2 · ADOPCIÓN DE CAPAS INTERNAS ==== */
+    function docMax() { return doc.scrollHeight - doc.clientHeight; }
+    function adoptable(el) {
+        if (!el || el.nodeType !== 1 || el === doc || el === document.body) return false;
+        try {
+            var r = el.getBoundingClientRect();
+            if (r.height < window.innerHeight * 0.45) return false;  /* solo capas principales */
+        } catch (e) { return false; }
+        return el.scrollHeight - el.clientHeight > 2;
+    }
+    function adopt(el) {
+        if (sc === el) return;
+        if (sc && adopted) sc.classList.remove('scm-hidesb');
+        adopted = !!el;
+        sc = el || doc;
+        if (adopted) sc.classList.add('scm-hidesb');
+        curY = -1;   /* recoloca el pulido sin animación heredada */
+    }
+    function onScroll(e) {
+        var t = e.target;
+        var isDoc = (t === document || t === document.documentElement || t === window);
+        if (isDoc) {
+            if (adopted && docMax() > 2) adopt(null);          /* el documento volvió a vivir */
+        } else if (!adopted && docMax() <= 2 && adoptable(t)) {
+            adopt(t);                                          /* capa principal interna -> ADOPTADA */
+        } else if (adopted && t === sc && !adoptable(sc)) {
+            adopt(null);                                       /* la capa adoptada se quedó sin scroll */
+        }
+        wake(); pulse();
+    }
+
     /* ==== MEDIR + ANIMAR (lerp: el pulido persigue al scroll) ==== */
     function compute() {
         if (!sc) return;
+        if (adopted && sc.scrollHeight - sc.clientHeight <= 2) adopt(null);
+
         var view = sc.clientHeight;
         var total = sc.scrollHeight;
         var max = total - view;
         if (max <= 2) { setVis(false); return; }   /* no hay nada que scrollear */
 
-        var hMax = view - 12;                       /* pista: 6px arriba y abajo */
+        var hMax = view - 12;                    /* pista: 6px arriba y abajo */
         var h = view * (view / Math.max(total, 1)); /* pulido proporcional */
         h = Math.max(46, Math.min(hMax, h));
         if (Math.abs(h - thumbH) > 0.5) { thumbH = h; thumb.style.height = h.toFixed(2) + 'px'; }
@@ -108,7 +149,7 @@
         rafId = 0;
         compute();
         if (visible || hover || dragging) rafId = requestAnimationFrame(tick);
-        else awake = false;                      /* a dormir: cero CPU en reposo */
+        else awake = false;                    /* a dormir: cero CPU en reposo */
     }
     function wake() {
         awake = true;
@@ -157,9 +198,9 @@
             if (max <= 2) return;
             var rect = bar.getBoundingClientRect();
             var dir = e.clientY > rect.top + rect.height / 2 ? 1 : -1;
-            try {
-                window.scrollBy({ top: dir * sc.clientHeight * 0.85, behavior: reduced ? 'auto' : 'smooth' });
-            } catch (err) { window.scrollBy(0, dir * sc.clientHeight * 0.85); }
+            var step = dir * sc.clientHeight * 0.85;
+            try { sc.scrollBy({ top: step, behavior: reduced ? 'auto' : 'smooth' }); }
+            catch (err) { sc.scrollTop += step; }
             pulse();
         });
 
@@ -168,7 +209,8 @@
     }
 
     function bind() {
-        window.addEventListener('scroll', function () { wake(); pulse(); }, { passive: true });
+        /* v2: capture -> pilla el scroll del documento Y de cualquier capa interna */
+        document.addEventListener('scroll', onScroll, { passive: true, capture: true });
         window.addEventListener('resize', function () { wake(); pulse(); });
         /* API mínima para tus files: SCSOC no requerido, pero se lleva bien */
         window.SCMOVE = { refresh: function () { wake(); pulse(); } };
@@ -190,14 +232,15 @@
         bar.appendChild(thumb);
         document.body.appendChild(bar);
 
-        sc = document.scrollingElement || root;
+        doc = document.scrollingElement || root;
+        sc = doc;
 
         /* Recién AHORA escondemos la barra nativa del documento */
         root.classList.add('scm-on');
 
         bind(); bindDrag();
         wake();   /* posiciona el pulido si el navegador restauró el scroll */
-        console.log('[Stevscon] move.js listo (v1) — barra MOVE activa en todo el sitio.');
+        console.log('[Stevscon] move.js listo (v2) — barra MOVE activa (documento + capas internas).');
     }
     init();
 })(window, document);
