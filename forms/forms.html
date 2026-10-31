@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<!--
+  ====
+  STEVSCON.COM — forms/forms.html (v1)
+  Página HTML propia de APOSTULACIONES.
+  URL: https://www.stevscon.com/forms/forms.html
+
+  ESTRUCTURA EXACTA del repo (como está en tu carpeta forms/):
+
+  forms/
+  ├─ panel/
+  │  ├─ admin/
+  │  │  ├─ create_form/    ← el CREADOR: panels, sub_panels,
+  │  │  │                     editor_panels, editor_sub_panels,
+  │  │  │                     form_main_panel, submit_form_panels,
+  │  │  │                     view_panel (7 files)
+  │  │  ├─ data_save/      ← gmail_profile, public_forms,
+  │  │  │                     data_panel, accept_decline (4 files)
+  │  │  └─ create_button.js ← el botón de la esquina (Owner/Admins)
+  │  └─ public/            ← main_panel, see_form, submit_form
+  │                          y connect_form (el CONECTADOR)
+  ├─ category_forms.js     ← la puerta desde el index
+  ├─ fonts.js              ← tipografía (Inter + Font Awesome)
+  ├─ forms_core.js         ← helper base: namespace FM + helpers
+  └─ forms.html            ← este file
+
+  CÓMO FUNCIONA (misma arquitectura que social.html):
+  - Este file NO dibuja nada de las Apostulaciones por sí mismo.
+  - Carga el stack de /forms/panel/ en orden y le pasa el mando a
+    connect_form.js (el CONECTADOR, SIEMPRE el último script —
+    tu regla de siempre: coordinador al final), que monta TODO:
+    tarjetas, ver form, postularse, mis apostulaciones y el panel
+    de revisión del staff.
+  - Un formulario = paneles principales (categorías) + sub-paneles
+    (las preguntas). Una respuesta por usuario; si te RECHAZAN,
+    puedes volverte a postular.
+  - Deep links:  /forms/forms.html#form/{formId}
+                 /forms/forms.html#mis
+                 /forms/forms.html#staff   (solo Owner/Admins)
+
+  FIREBASE: cero config aquí — carga el firebase_data.js de la raíz
+  (el MISMO del index). Si solo expone el config, se inicializa solo.
+
+  TEMA: mismo sistema que social (data-theme + localStorage + Firebase).
+  MOVE: la barra de scroll del sitio (/social/move.js v2).
+
+  ROLLOUT POR PARTES: mientras no existan los files de panel/, la
+  página muestra un aviso de "en construcción" (NUNCA un error rojo
+  en la web pública). Cuando subas las partes 2, 3 y 4 arranca sola —
+  este HTML no se vuelve a tocar (solo subes el ?v= de un file
+  cuando lo actualices).
+  ====
+-->
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0d0b14">
+<title>Apostulaciones — Stevscon</title>
+<meta name="description" content="Apostulaciones oficiales de Stevscon.com: postúlate a Discord, PotForce Mod o Stevscon.com Mod. Formularios con revisión del staff, nota y calificación del 1 al 10.">
+<link rel="canonical" href="https://stevscon.com/forms/forms.html">
+<meta name="robots" content="index, follow">
+
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9309793094274052"
+     crossorigin="anonymous"></script>
+
+<link rel="icon" type="image/png" href="/SC-LOGO-20260825013121.png">
+<link rel="apple-touch-icon" href="/SC-LOGO-20260825013121.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+    /* Mismas variables que social (todo el stack de forms las hereda de aquí) */
+    :root{
+        --bg-main:#0d0b14; --border-color:#2e2440; --bg-hover:#261f36; --bg-card:#1a1625;
+        --purple-accent:#8b5cf6; --purple-dark:#6d28d9; --purple-glow:rgba(139,92,246,.35);
+        --text-main:#f8fafc; --text-muted:#94a3b8;
+    }
+    html[data-theme="light"]{
+        --bg-main:#f4f1fa; --border-color:#ddd6f0; --bg-hover:#eae4f6; --bg-card:#ffff;
+        --purple-accent:#7c3aed; --purple-dark:#6d28d9; --purple-glow:rgba(124,58,237,.22);
+        --text-main:#221e33; --text-muted:#6e6987;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0}
+    body{background:var(--bg-main);color:var(--text-main);font-family:Inter,system-ui,sans-serif;min-height:100vh}
+
+    /* ---- Raíz donde el CONECTADOR monta toda la página ---- */
+    #fm-root{max-width:980px;margin:0 auto;padding:26px 18px 70px;min-height:60vh}
+
+    /* ---- Pantalla de arranque (se apaga sola cuando el conector pinta) ---- */
+    #sc-boot{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:var(--bg-main);z-index:100}
+    #sc-boot .sc-boot-logo{font-size:26px;font-weight:800;letter-spacing:-.02em}
+    #sc-boot .sc-boot-logo span{color:var(--purple-accent)}
+    #sc-boot .sc-boot-hint{color:var(--text-muted);font-size:13px;font-weight:600}
+    .sc-boot-spin{width:20px;height:20px;border-radius:50%;border:2.5px solid var(--bg-hover);border-top-color:var(--purple-accent);animation:sc-boot-spin .7s linear infinite}
+    @keyframes sc-boot-spin{to{transform:rotate(360deg)}}
+    #sc-boot .sc-boot-error{display:none;max-width:540px;margin:0 20px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.08);color:#f87171;border-radius:12px;padding:14px 16px;font-size:13px;font-weight:600;line-height:1.6;text-align:center}
+
+    /* ---- Destello del form llegado por deep link ---- */
+    .fm-flash{animation:fmFlash 1.1s ease-in-out 2}
+    @keyframes fmFlash{50%{box-shadow:0 0 0 3px var(--purple-glow)}}
+</style>
+<!-- MOVE v2 · la barra de scroll del sitio (la misma de todo el sitio) -->
+<script src="/social/move.js?v=2"></script>
+<script>
+/* TEMA · aplica al instante el Oscuro/Claro guardado desde Preferencias */
+(function () {
+    var t = 'dark';
+    try { t = localStorage.getItem('stevscon_theme') || 'dark'; } catch (e) {}
+    if (t === 'light') document.documentElement.setAttribute('data-theme', 'light');
+    document.addEventListener('sc:theme-applied', function (e) {
+        var v = (e && e.detail && e.detail.theme) || 'dark';
+        document.documentElement.setAttribute('data-theme', v);
+        try { localStorage.setItem('stevscon_theme', v); } catch (er) {}
+    });
+})();
+</script>
+</head>
+<body>
+
+<!-- Arranque: se apaga solo cuando el CONECTADOR monta la página -->
+<div id="sc-boot" aria-live="polite">
+    <div class="sc-boot-logo">Stevscon<span>.</span></div>
+    <span class="sc-boot-spin"></span>
+    <div class="sc-boot-hint">Abriendo las Apostulaciones…</div>
+    <div class="sc-boot-error" id="sc-boot-error"></div>
+</div>
+
+<!-- Raíz de la página (el conector llena esto) -->
+<main id="fm-root"></main>
+
+<!-- Fallback sin-JS / crawlers: contenido legible sin esperar a nada -->
+<noscript>
+    <div style="max-width:720px;margin:40px auto;padding:0 20px;font-family:Inter,sans-serif;line-height:1.7">
+        <h1>Apostulaciones — Stevscon.com</h1>
+        <p>Estas son las apostulaciones oficiales de Stevscon.com (Discord, PotForce Mod, Stevscon.com Mod). Necesitas JavaScript activo para ver los formularios y postularte. Puedes volver al <a href="/">inicio de Stevscon.com</a> o leer los <a href="/services/terms.html">Términos y Condiciones</a>.</p>
+    </div>
+</noscript>
+
+<!-- ==== FIREBASE · SDK compat 9.23.0, LOS MISMOS de tu index y social ==== -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+
+<!-- ==== CONFIG · tu firebase_data.js de la raíz (el MISMO del index). Cero pegar configs. ==== -->
+<script src="/firebase_data.js?v=13"></script>
+<script>
+    /* Defensa: si firebase_data.js solo expone el config (window.StevsconFirebase)
+       y no llama a initializeApp, lo inicializamos aquí. Si ya inicializó, no se toca. */
+    try {
+        if (typeof firebase !== 'undefined' && !firebase.apps.length &&
+            window.StevsconFirebase && window.StevsconFirebase.apiKey) {
+            firebase.initializeApp(window.StevsconFirebase);
+        }
+    } catch (e) { console.warn('[Forms] Firebase config:', e && e.message); }
+    /* Namespace de Apostulaciones garantizado desde el arranque */
+    window.StevsconForms = window.StevsconForms || {};
+</script>
+
+<script>
+/* TEMA · al iniciar sesión, manda el guardado en Firebase (Preferencias) */
+firebase.auth().onAuthStateChanged(function (u) {
+    if (!u || !firebase.database) return;
+    firebase.database().ref('users/' + u.uid + '/settings/theme').once('value').then(function (s) {
+        var t = s.val();
+        if (t === 'light' || t === 'dark') {
+            document.documentElement.setAttribute('data-theme', t);
+            try { localStorage.setItem('stevscon_theme', t); } catch (e) {}
+        }
+    }).catch(function () {});
+});
+</script>
+
+<!-- ==== EL STACK DE APOSTULACIONES · TU ESTRUCTURA EXACTA ====
+     Orden de tu captura: create_form → data_save → create_button → public.
+     TU REGLA DE SIEMPRE: el coordinador (connect_form.js) va AL FINAL. ==== -->
+
+<!-- 1) BASE · tipografía + helpers compartidos (FM.core) -->
+<script src="/forms/fonts.js?v=1"></script>
+<script src="/forms/forms_core.js?v=1"></script>
+
+<!-- 2) EL CREADOR · /forms/panel/admin/create_form/ -->
+<script src="/forms/panel/admin/create_form/panels.js?v=1"></script>
+<script src="/forms/panel/admin/create_form/sub_panels.js?v=1"></script>
+<script src="/forms/panel/admin/create_form/editor_panels.js?v=1"></script>
+<script src="/forms/panel/admin/create_form/editor_sub_panels.js?v=1"></script>
+<script src="/forms/panel/admin/create_form/form_main_panel.js?v=1"></script>
+<script src="/forms/panel/admin/create_form/submit_form_panels.js?v=1"></script>
+<script src="/forms/panel/admin/create_form/view_panel.js?v=1"></script>
+
+<!-- 3) DATOS Y REVISIÓN · /forms/panel/admin/data_save/ -->
+<script src="/forms/panel/admin/data_save/gmail_profile.js?v=1"></script>
+<script src="/forms/panel/admin/data_save/public_forms.js?v=1"></script>
+<script src="/forms/panel/admin/data_save/data_panel.js?v=1"></script>
+<script src="/forms/panel/admin/data_save/accept_decline.js?v=1"></script>
+
+<!-- 4) BOTÓN DE LA ESQUINA · /forms/panel/admin/create_button.js (Owner/Admins) -->
+<script src="/forms/panel/admin/create_button.js?v=1"></script>
+
+<!-- 5) LADO PÚBLICO · /forms/panel/public/ -->
+<script src="/forms/panel/public/main_panel.js?v=1"></script>
+<script src="/forms/panel/public/see_form.js?v=1"></script>
+<script src="/forms/panel/public/submit_form.js?v=1"></script>
+
+<!-- 6) EL CONECTADOR · connect_form.js (SIEMPRE el último) -->
+<script src="/forms/panel/public/connect_form.js?v=1"></script>
+
+<!-- BAN · pantalla de baneado también aquí (los trolls no postulan) -->
+<script src="/banned.js?v=4"></script>
+<script src="/unban.js?v=1"></script>
+
+<script>
+(function () {
+    'use strict';
+    /* ====
+       Arranque de forms.html:
+       1) Espera al CONECTADOR (connect_form.js expone FM.connect.mount)
+       2) Espera a que Auth resuelva la sesión (o invitado)
+       3) FM.connect.mount(user) monta TODA la página dentro de #fm-root
+       4) Primer pintado -> se apaga la pantalla de carga -> rutea el hash
+       5) Deep links: #form/{id} · #mis · #staff
+       6) ROLLOUT: si forms_core.js cargó pero el conector no existe
+          todavía (partes 2-4 sin subir), muestra "en construcción" —
+          nunca un error rojo en la web pública.
+       ==== */
+    var boot = document.getElementById('sc-boot');
+
+    function coreReady() {
+        var F = window.StevsconForms;
+        return !!(F && F.connect && typeof F.connect.mount === 'function');
+    }
+    function coreOnly() {
+        var F = window.StevsconForms;
+        return !!(F && F.core);
+    }
+
+    function fail() {
+        var box = document.getElementById('sc-boot-error');
+        if (box) {
+            box.textContent = 'Las Apostulaciones no pudieron arrancar. Revisa que existan y se carguen EN ORDEN: ' +
+                '/forms/fonts.js y /forms/forms_core.js, los 7 de /forms/panel/admin/create_form/, los 4 de /forms/panel/admin/data_save/, ' +
+                '/forms/panel/admin/create_button.js, los 3 públicos de /forms/panel/public/ y /forms/panel/public/connect_form.js (el conector, siempre el último). ' +
+                'Pulsa F12 > Console/Network para ver qué file falló (404).';
+            box.style.display = 'block';
+        }
+        var spin = boot.querySelector('.sc-boot-spin');
+        var hint = boot.querySelector('.sc-boot-hint');
+        if (spin) spin.style.display = 'none';
+        if (hint) hint.textContent = 'Algo falló:';
+    }
+
+    function soon() {
+        var spin = boot.querySelector('.sc-boot-spin');
+        var hint = boot.querySelector('.sc-boot-hint');
+        if (spin) spin.style.display = 'none';
+        if (hint) hint.textContent = 'Muy pronto';
+        var box = document.getElementById('sc-boot-error');
+        if (box) {
+            box.textContent = 'Las Apostulaciones están en construcción — los módulos de panel/ todavía no se publican. Vuelve pronto; mientras tanto puedes volver al inicio.';
+            box.style.display = 'block';
+            box.style.borderColor = 'rgba(139,92,246,.4)';
+            box.style.background = 'rgba(139,92,246,.08)';
+            box.style.color = 'var(--text-main,#f8fafc)';
+        }
+        var back = document.createElement('a');
+        back.href = '/';
+        back.textContent = '← Volver a Stevscon.com';
+        back.style.cssText = 'color:var(--purple-accent,#8b5cf6);text-decoration:none;font-weight:700;font-size:14px';
+        boot.appendChild(back);
+    }
+
+    /* Auth resuelto (sesión guardada o invitado) con tope de 3.5s */
+    function warmAuth(cb) {
+        try {
+            var a = firebase.auth();
+            if (a.currentUser) { cb(a.currentUser); return; }
+            var done = false;
+            var off = a.onAuthStateChanged(function (u) {
+                if (done) return;
+                done = true;
+                try { if (off) off(); } catch (e) {}
+                cb(u || null);
+            });
+            setTimeout(function () {
+                if (!done) { done = true; try { if (off) off(); } catch (e) {} cb(null); }
+            }, 3500);
+        } catch (e) { cb(null); }
+    }
+
+    /* Espera (tope 6s) al primer pintado del conector dentro de #fm-root */
+    function waitFirstPaint(cb) {
+        var n = 0;
+        (function look() {
+            var root = document.getElementById('fm-root');
+            if ((root && root.childElementCount > 0) || n >= 30) return cb();
+            n++; setTimeout(look, 200);
+        })();
+    }
+
+    function hideBoot() {
+        if (!boot) return;
+        boot.style.transition = 'opacity .25s ease';
+        boot.style.opacity = '0';
+        setTimeout(function () { boot.style.display = 'none'; }, 260);
+    }
+
+    function bootFlow() {
+        warmAuth(function (u) {
+            try { window.StevsconForms.connect.mount(u || null); }
+            catch (e) { console.error('[Forms] mount():', e); fail(); return; }
+            waitFirstPaint(function () { hideBoot(); route(); });
+        });
+    }
+
+    var tries = 0;
+    (function waitCore() {
+        if (coreReady()) { bootFlow(); return; }
+        tries++;
+        /* core cargó pero el conector no -> módulos aún sin publicar */
+        if (tries > 30 && coreOnly()) return soon();
+        if (tries > 75) return coreOnly() ? soon() : fail();   /* 15s y nada */
+        setTimeout(waitCore, 200);
+    })();
+
+    /* Rutas -> el CONECTADOR decide qué abrir (#form/{id} · #mis · #staff) */
+    function route() {
+        var F = window.StevsconForms;
+        try { if (F && F.connect && typeof F.connect.route === 'function') F.connect.route(location.hash || ''); }
+        catch (e) { console.error('[Forms] route():', e); }
+    }
+    window.addEventListener('hashchange', route);
+})();
+</script>
+</body>
+</html>
