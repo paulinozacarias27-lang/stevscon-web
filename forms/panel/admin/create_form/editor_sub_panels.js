@@ -58,6 +58,7 @@ C.questionEditor = {
 
             /* 2 · texto de la pregunta */
             var inLabel = ui.input(q ? q.label : '', 'Ej: ¿Cuál es tu nombre de usuario en Discord?');
+            inLabel.maxLength = 500;
             body.appendChild(ui.field('Pregunta', inLabel, 'Máximo 500 caracteres.'));
 
             /* 3 · obligatoria */
