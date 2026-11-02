@@ -1,52 +1,39 @@
 /**
  * ====
- * STEVSCON.COM — social/manage/output/security/accounts/anti-bad.js (v2)
- * MÓDULO «ANTI-BAD» del panel de Seguridad (tercer box, bajo REPORTS).
+ * STEVSCON.COM — social/manage/output/security/accounts/anti-bad.js (v4)
+ * MÓDULO «ANTI-BAD» del panel de Seguridad.
  *
- *  v2: FIX de cierre (X / clic afuera / ESC), refresco en vivo de las
- *      pestañas y arranque del motor DESPUÉS del login.
- *
- *  - FILTRO DE PALABRAS: lista editable desde el panel. Detecta trampas
- *    (acentos, pu.u.ta, puuuta, p@uta, 9u74...) normalizando el texto.
- *  - ANTI-ENLACES: bloquea links en comentarios/respuestas, con lista de
- *    dominios permitidos (whitelist) editable.
- *  - ANTI-FLOOD: X mensajes en Y segundos => cooldown de Z segundos.
- *  - REGISTRO en vivo: todo intento bloqueado queda en
- *    security/moderation/logs (tipo, autor, cita, hora) para el staff.
- *  - El staff (Owner/Admin/Mod) publicar SIEMPRE libre de filtros.
- *  - CERO toques a comments.js/responses.js: los envuelve por fuera
- *    (wrap de SCSOC.comments.create y SCSOC.responses.create).
- *
- *  SEGURIDAD: Firebase Auth exclusivo · todo texto de usuario con
- *  textContent (NUNCA innerHTML con datos) · innerHTML solo iconos fijos.
- *  ESCAPE HATCH: hereda ?nosecurity=1 (el panel no monta y listo).
- * ====
- */
+ *  v4 — FIX "NO GUARDA NADA":
+ *   · addAllow() (whitelist) nunca llamaba saveCfg() -> ahora auto-guarda.
+ *   · Los interruptores de AJUSTES auto-guardan al instante (ya dependen
+ *     del botón 💾, que sigue ahí para los números del flood).
+ *   · saveSoon(): rebasado de 400ms para no martillar Firebase.
+ *   · RESPALDO LOCAL: si Firebase rechaza la escritura/lectura, la config
+ *     vive en localStorage y se reintenta a los 4s. Las palabras ya NO
+ *     desaparecen y el filtro sigue OPERATIVO aunque la BD falle.
+ *   · Errores claros con su código (PERMISSION_DENIED, etc.).
+ *  Todo lo demás idéntico a v2/v3 (cierre, refresco en vivo, motor tras
+ *  login, envoltura de comments/responses, logs para el staff).
+ * ==== */
 (function (window, document) {
     'use strict';
 
     const SCSOC = window.SCSOC = window.SCSOC || {};
     if (SCSOC.secAntiBad) return;
 
-    /* ==== RUTAS ==== */
-    const CFG = {
-        CONFIG: 'security/moderation/config',
-        LOGS: 'security/moderation/logs'
-    };
+    const CFG = { CONFIG: 'security/moderation/config', LOGS: 'security/moderation/logs' };
+    const LS_KEY = 'scsoc_antibad_cfg_v1';
     const OWNER_EMAIL = 'steven23hd@gmail.com';
-    const LOG_CAP = 300;              /* cuántos registros mantiene en vivo */
+    const LOG_CAP = 300;
 
     const A = SCSOC.secAntiBad = {
         open: function () { openWin(); },
         close: closeWin,
-        /* API pública: por si otros files quieren consultar el filtro */
         check: function (text) {
             const u = me();
             const v = verdict(u, 'contenido', String(text || ''), false);
             return { ok: v.ok, kind: v.kind || null, msg: v.msg || '' };
         },
-        /* v3 · para CHAT (MDs): palabras + enlaces sí, flood NO.
-           Escribir rápido en un chat es normal, no es spam. */
         checkChat: function (text) {
             const u = me();
             const v = verdict(u, 'contenido', String(text || ''), true);
@@ -54,27 +41,17 @@
         }
     };
 
-    /* ==== ESTADO ==== */
     let myRole = null;
     let mounted = false;
-    const S = {
-        cfg: DEFAULTS(), cfgOk: false,
-        logs: [], tab: 'registro', win: false
-    };
-    const FLOOD = {};        /* uid -> timestamps de intentos */
-    const lastLogAt = {};    /* anti-spam del propio log */
+    const S = { cfg: DEFAULTS(), cfgOk: false, logs: [], tab: 'registro', win: false };
+    const FLOOD = {};
+    const lastLogAt = {};
 
     let statTotal, statHoy, statWords;
     let winEl, bdEl, winBody, tabBtns = [];
 
-    /* ==== HELPERS ==== */
     function toast(m) { if (SCSOC.toast) try { SCSOC.toast(m); } catch (e) {} else console.log('[Anti-Bad] ' + m); }
-    function el(tag, css, cls) {
-        const n = document.createElement(tag);
-        if (css) n.style.cssText = css;
-        if (cls) n.className = cls;
-        return n;
-    }
+    function el(tag, css, cls) { const n = document.createElement(tag); if (css) n.style.cssText = css; if (cls) n.className = cls; return n; }
     function E(tag, cls) { return el(tag, '', cls); }
     function db() { return firebase.database(); }
     function me() { try { return firebase.auth().currentUser; } catch (e) { return null; } }
@@ -82,7 +59,6 @@
     function canCfg() { return isOwner() || myRole === 'admin' || myRole === 'owner'; }
     function plural(kind) { return kind === 'post' ? 'los posts' : (kind === 'respuesta' ? 'las respuestas' : 'los comentarios'); }
 
-    /* ==== DEFAULTS (se usan si aún no existe config en Firebase) ==== */
     function DEFAULTS() {
         return {
             filters: { words: true, links: true, flood: true },
@@ -91,6 +67,15 @@
             links: { allow: ['stevscon.com', 'youtube.com', 'youtu.be'] },
             flood: { max: 5, window: 30, cooldown: 60 }
         };
+    }
+    function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
+    function cleanWords(arr) {
+        const out = [], seen = {};
+        (arr || []).forEach(function (w) {
+            const s = String(w || '').trim().toLowerCase().slice(0, 40);
+            if (s && !seen[s]) { seen[s] = 1; out.push(s); }
+        });
+        return out.slice(0, 300);
     }
     function mergeCfg(v) {
         const d = DEFAULTS();
@@ -115,20 +100,14 @@
         }
         return d;
     }
-    function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
-    function cleanWords(arr) {
-        const out = [], seen = {};
-        (arr || []).forEach(function (w) {
-            const s = String(w || '').trim().toLowerCase().slice(0, 40);
-            if (s && !seen[s]) { seen[s] = 1; out.push(s); }
-        });
-        return out.slice(0, 300);
-    }
+
+    /* ==== RESPALDO LOCAL (v4): la config nunca se pierde ==== */
+    function lsLoad() { try { const r = localStorage.getItem(LS_KEY); return r ? JSON.parse(r) : null; } catch (e) { return null; } }
+    function lsSave(cfg) { try { localStorage.setItem(LS_KEY, JSON.stringify(cfg)); } catch (e) {} }
 
     /* ==== DETECCIÓN ==== */
     function norm(s) {
-        return String(s || '')
-            .toLowerCase()
+        return String(s || '').toLowerCase()
             .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
             .replace(/0/g, 'o').replace(/1/g, 'i').replace(/3/g, 'e')
             .replace(/4/g, 'a').replace(/5/g, 's').replace(/7/g, 't')
@@ -155,7 +134,7 @@
         const allow = (S.cfg.links && S.cfg.links.allow) || [];
         for (let i = 0; i < allow.length; i++) {
             const d = String(allow[i] || '').toLowerCase().trim();
-            if (d && low.indexOf(d) !== -1) return false;   /* dominio permitido */
+            if (d && low.indexOf(d) !== -1) return false;
         }
         return true;
     }
@@ -171,12 +150,11 @@
         return arr.length > max ? cd : 0;
     }
 
-    /* ==== VEREDICTO (núcleo, síncrono) ==== */
     function verdict(u, kind, text, noFlood) {
-        if (!S.cfgOk) return { ok: true };                    /* sin config: no frenar nada */
+        if (!S.cfgOk) return { ok: true };
         if (!text || !String(text).trim()) return { ok: true };
-        if (!u) return { ok: true };                    /* invitados no publican igual */
-        if (isOwner() || myRole) return { ok: true };         /* staff publicar libre */
+        if (!u) return { ok: true };
+        if (isOwner() || myRole) return { ok: true };
         const f = S.cfg.filters || {};
         if (f.flood !== false && !noFlood) {
             const wait = floodHit(u.uid);
@@ -195,7 +173,6 @@
         return { ok: true };
     }
 
-    /* ==== LOG del intento (con anti-flood del propio log) ==== */
     function logAttempt(u, kind, v) {
         try {
             if (!u) return;
@@ -204,18 +181,13 @@
             if (lastLogAt[key] && now - lastLogAt[key] < 10000) return;
             lastLogAt[key] = now;
             db().ref(CFG.LOGS).push({
-                by: u.uid,
-                name: u.displayName || '',
-                kind: v.kind,
-                where: kind,
-                match: String(v.match || '').slice(0, 40),
-                text: String(v.text || '').slice(0, 240),
+                by: u.uid, name: u.displayName || '', kind: v.kind, where: kind,
+                match: String(v.match || '').slice(0, 40), text: String(v.text || '').slice(0, 240),
                 at: firebase.database.ServerValue.TIMESTAMP
             });
         } catch (e) {}
     }
 
-    /* ==== ENVOLTURA de los publishes (sin tocar tus files) ==== */
     function wrapCreate(mod, kind) {
         if (!mod || typeof mod.create !== 'function' || mod.create.__scab) return false;
         const orig = mod.create;
@@ -235,8 +207,7 @@
                 }
                 return Promise.reject(new Error('[Anti-Bad] ' + v.msg));
             } catch (e) {
-                console.warn('[Anti-Bad] wrapper:', e);
-                return orig.apply(this, args);   /* jamás romper el flujo real */
+                return orig.apply(this, args);
             }
         };
         wrapped.__scab = true;
@@ -253,25 +224,32 @@
         } catch (e) {}
     })();
 
-    /* ==== ESCUCHAS EN VIVO (config para TODOS, logs para staff) ==== */
+    /* ==== ESCUCHAS EN VIVO (con respaldo local si Firebase falla) ==== */
     function startEngine() {
         db().ref(CFG.CONFIG).on('value', function (s) {
             S.cfg = mergeCfg(s.val());
             S.cfgOk = !!s.val();
+            if (S.cfgOk) lsSave(S.cfg);
             paintStats();
-            liveRefresh();          /* AJUSTES/PALABRAS se actualizan en vivo */
-        }, function () { S.cfgOk = false; });
+            liveRefresh();
+        }, function (err) {
+            /* v4: lectura rechazada -> respaldo local; el filtro NO se apaga */
+            const c = lsLoad();
+            S.cfg = c ? mergeCfg(c) : DEFAULTS();
+            S.cfgOk = true;
+            console.warn('[Anti-Bad] config no leíble de Firebase (' + ((err && err.code) || 'permisos') + '). Usando respaldo local.');
+            paintStats();
+        });
 
         db().ref(CFG.LOGS).limitToLast(LOG_CAP).on('value', function (s) {
             const out = [];
             s.forEach(function (c) { const v = c.val(); if (v) { v.id = c.key; out.push(v); } });
-            S.logs = out.reverse();   /* push keys van de viejo a nuevo */
+            S.logs = out.reverse();
             paintStats();
             liveRefresh();
-        }, function () { /* sin permiso de lectura: nada */ });
+        }, function () { /* sin permiso de lectura de logs: nada */ });
     }
 
-    /* ==== CSS ==== */
     function injectCss() {
         if (document.querySelector('style[data-scab]')) return;
         const css = document.createElement('style');
@@ -283,9 +261,7 @@
             + '.scab-tt{flex:1;min-width:0;}'
             + '.scab-tt h3{margin:0;font:800 13.5px Inter,sans-serif;color:var(--text-main,#f8fafc);letter-spacing:.02em;}'
             + '.scab-tt p{margin:2px 0 0;font:600 10.5px Inter,sans-serif;color:var(--text-muted,#94a3b8);}'
-            + '.scab-openbtn{flex:none;display:inline-flex;align-items:center;gap:7px;border:0;border-radius:10px;padding:9px 13px;background:linear-gradient(135deg,var(--purple-accent,#8b5cf6),var(--purple-dark,#6d28d9));color:#fff;font:800 11px Inter,sans-serif;letter-spacing:.06em;cursor:pointer;box-shadow:0 4px 14px rgba(139,92,246,.3);transition:transform .15s ease,box-shadow .15s ease;}'
-            + '.scab-openbtn:hover{transform:translateY(-1px);box-shadow:0 7px 20px rgba(139,92,246,.45);}'
-            + '.scab-openbtn:active{transform:scale(.97);}'
+            + '.scab-openbtn{flex:none;display:inline-flex;align-items:center;gap:7px;border:0;border-radius:10px;padding:9px 13px;background:linear-gradient(135deg,var(--purple-accent,#8b5cf6),var(--purple-dark,#6d28d9));color:#fff;font:800 11px Inter,sans-serif;letter-spacing:.06em;cursor:pointer;box-shadow:0 4px 14px rgba(139,92,246,.3);}'
             + '.scab-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px;}'
             + '.scab-cell{background:#0f0b1d;border:1px solid var(--border-color,#2e2440);border-radius:12px;padding:9px 10px;text-align:center;}'
             + '.scab-cell b{display:block;font:800 17px Inter,sans-serif;color:var(--purple-accent,#8b5cf6);}'
@@ -297,7 +273,6 @@
             + '.scab-winhead{display:flex;align-items:center;gap:10px;padding:16px 16px 12px;border-bottom:1px solid var(--border-color,#2e2440);}'
             + '.scab-winhead h2{margin:0;font:800 15px Inter,sans-serif;color:var(--text-main,#f8fafc);flex:1;}'
             + '.scab-x{flex:none;width:30px;height:30px;border-radius:9px;border:1px solid var(--border-color,#2e2440);background:transparent;color:var(--text-muted,#94a3b8);cursor:pointer;font-size:13px;}'
-            + '.scab-x:hover{color:var(--text-main,#f8fafc);background:var(--bg-hover,#261f36);}'
             + '.scab-tabs{display:flex;gap:6px;padding:12px 16px 0;}'
             + '.scab-tab{flex:1;border:1px solid var(--border-color,#2e2440);background:transparent;color:var(--text-muted,#94a3b8);border-radius:10px;padding:8px 4px;font:800 10.5px Inter,sans-serif;letter-spacing:.08em;cursor:pointer;}'
             + '.scab-tab.scab-ontab{background:rgba(139,92,246,.16);border-color:var(--purple-accent,#8b5cf6);color:#c4b5fd;}'
@@ -309,7 +284,6 @@
             + '.scab-who{font:700 12.5px Inter,sans-serif;color:var(--text-main,#f8fafc);}'
             + '.scab-quote{margin-top:6px;border-left:3px solid var(--border-color,#2e2440);padding:5px 9px;font:400 12px/1.5 Inter,sans-serif;color:var(--text-muted,#94a3b8);word-break:break-word;white-space:pre-wrap;}'
             + '.scab-uid{margin-top:6px;font:600 9.5px Inter,sans-serif;color:#6d5fa8;cursor:pointer;word-break:break-all;}'
-            + '.scab-uid:hover{color:var(--purple-accent,#8b5cf6);}'
             + '.scab-empty{text-align:center;padding:34px 16px;color:var(--text-muted,#94a3b8);font:600 12.5px Inter,sans-serif;line-height:1.7;}'
             + '.scab-empty i{display:block;margin:0 auto 10px;font-size:26px;color:var(--purple-accent,#8b5cf6);opacity:.7;}'
             + '.scab-addrow{display:flex;gap:8px;margin-bottom:12px;}'
@@ -332,23 +306,20 @@
             + '.scab-flood{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}'
             + '.scab-flood label{font:700 9.5px Inter,sans-serif;letter-spacing:.1em;color:var(--text-muted,#94a3b8);display:block;margin-bottom:5px;text-align:center;}'
             + '.scab-save{width:100%;border:0;border-radius:11px;padding:12px;background:linear-gradient(135deg,var(--purple-accent,#8b5cf6),var(--purple-dark,#6d28d9));color:#fff;font:800 12px Inter,sans-serif;letter-spacing:.06em;cursor:pointer;box-shadow:0 4px 14px rgba(139,92,246,.3);}'
-            + '.scab-save:hover{box-shadow:0 7px 20px rgba(139,92,246,.45);}'
             + '.scab-note{margin-top:10px;text-align:center;font:600 10.5px Inter,sans-serif;color:var(--text-muted,#94a3b8);line-height:1.6;}'
             + '.scab-clear{width:100%;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.08);color:#f87171;border-radius:10px;padding:9px;font:800 11px Inter,sans-serif;letter-spacing:.06em;cursor:pointer;margin-bottom:12px;}'
             + '.scab-clear:hover{background:rgba(239,68,68,.16);}'
+            + '.scab-auto{margin:2px 0 10px;text-align:center;font:600 9.5px Inter,sans-serif;color:#4ade80;letter-spacing:.08em;}'
             + '@media (max-width:640px){.scab-win{width:100vw;}}';
         document.head.appendChild(css);
     }
 
-    /* ==== BOX en el panel ==== */
     function mount() {
         if (mounted || !SCSOC.security || !SCSOC.security.body) return;
         mounted = true;
         injectCss();
 
         const bodyEl = SCSOC.security.body;
-
-        /* --- BOX ANTI-BAD (queda abajo de REPORTS por orden de carga) --- */
         const box = E('div', 'scab-box');
         const top = E('div', 'scab-boxtop');
         const ic = E('div', 'scab-ico');
@@ -373,7 +344,6 @@
         box.appendChild(grid);
         bodyEl.appendChild(box);
 
-        /* Escape cierra SOLO esta ventana */
         document.addEventListener('keydown', function (e) {
             if (e.key !== 'Escape' || !S.win) return;
             e.preventDefault(); e.stopPropagation();
@@ -381,11 +351,12 @@
         }, true);
 
         paintStats();
-        /* Primera vez del staff: si aún no existe config, se crea al momento */
         if (!S.cfgOk && canCfg()) {
-            try { db().ref(CFG.CONFIG).set(S.cfg); } catch (e) {}
+            const c = lsLoad();
+            const first = c ? mergeCfg(c) : S.cfg;
+            try { db().ref(CFG.CONFIG).set(first); } catch (e) {}
         }
-        console.log('[Stevscon][SEC] anti-bad.js listo (v2) — box ANTI-BAD montado, filtro activo en comentarios y respuestas.');
+        console.log('[Stevscon][SEC] anti-bad.js listo (v4) — guardado automático + respaldo local.');
     }
 
     function mkCell(host, label) {
@@ -406,7 +377,6 @@
         if (statWords) statWords.textContent = String((S.cfg.words || []).length);
     }
 
-    /* ==== VENTANA ==== */
     function openWin() {
         if (S.win) return;
         const bd = el('div', '', 'scab-backdrop');
@@ -432,8 +402,6 @@
         winBody = E('div', 'scab-body');
         win.appendChild(head); win.appendChild(tabs); win.appendChild(winBody);
         document.body.appendChild(bd); document.body.appendChild(win);
-
-        /* FIX v2: guardar referencias — sin esto closeWin() no podía cerrar nada */
         winEl = win; bdEl = bd;
 
         requestAnimationFrame(function () {
@@ -467,8 +435,6 @@
         else if (S.tab === 'palabras') renderWords();
         else renderAjustes();
     }
-    /* FIX v2: la pestaña abierta se refresca sola cuando llega config/logs nueva.
-       Nunca refresca si el usuario está escribiendo en un input de la ventana. */
     function liveRefresh() {
         if (!S.win || !winBody) return;
         const a = document.activeElement;
@@ -476,7 +442,6 @@
         renderTab();
     }
 
-    /* ==== TAB 1 · REGISTRO ==== */
     function fmtWhen(ts) {
         try {
             return new Date(ts).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -498,7 +463,7 @@
                 if (!window.confirm('¿Borrar TODO el registro de intentos bloqueados?')) return;
                 db().ref(CFG.LOGS).remove().then(function () {
                     toast('Registro limpio ✓');
-                }).catch(function () { toast('No se pudo limpiar el registro.'); });
+                }).catch(function (e) { toast('No se pudo limpiar (' + ((e && e.code) || 'permisos') + ').'); });
             });
             winBody.appendChild(clr);
         }
@@ -513,7 +478,6 @@
         S.logs.slice(0, 200).forEach(function (l) {
             const st = KIND_STYLE[l.kind] || KIND_STYLE.palabra;
             const item = E('div', 'scab-log');
-
             const row = E('div', 'scab-logrow');
             const k = el('span', 'background:' + st.bg + ';color:' + st.fg + ';', 'scab-kind');
             k.textContent = st.txt;
@@ -522,7 +486,6 @@
             const t = E('span', 'scab-when'); t.textContent = fmtWhen(l.at);
             row.appendChild(k); row.appendChild(w); row.appendChild(t);
             item.appendChild(row);
-
             if (l.match) {
                 const m = E('div', 'scab-who');
                 m.style.cssText = 'font-size:10.5px;color:#f87171;margin-top:2px;';
@@ -537,7 +500,6 @@
             if (l.by) {
                 const u = E('div', 'scab-uid');
                 u.textContent = 'UID: ' + l.by + ' · clic para copiar';
-                u.title = 'Copiar UID';
                 u.addEventListener('click', function () { copyTxt(l.by); });
                 item.appendChild(u);
             }
@@ -550,10 +512,13 @@
         } catch (e) {}
     }
 
-    /* ==== TAB 2 · PALABRAS ==== */
     function renderWords() {
         if (!winBody) return;
         winBody.textContent = '';
+
+        const auto = E('div', 'scab-auto');
+        auto.textContent = '✓ SE GUARDA SOLO — sin botón';
+        winBody.appendChild(auto);
 
         const addrow = E('div', 'scab-addrow');
         const inp = el('input', '', 'scab-inp');
@@ -588,7 +553,7 @@
                     x.title = 'Quitar';
                     x.addEventListener('click', function () {
                         S.cfg.words = S.cfg.words.filter(function (q) { return q !== w; });
-                        saveCfg();
+                        saveSoon();
                     });
                     c.appendChild(x);
                 }
@@ -613,10 +578,9 @@
         });
         if (!added) return;
         S.cfg.words = cleanWords(Object.keys(cur));
-        saveCfg();
+        saveSoon();
     }
 
-    /* ==== TAB 3 · AJUSTES ==== */
     function renderAjustes() {
         if (!winBody) return;
         winBody.textContent = '';
@@ -647,14 +611,14 @@
             host.appendChild(box);
         }
 
+        /* v4: los interruptores AUTO-GUARDAN al instante */
         setRow(winBody, 'Filtro de palabras', 'Bloquea las palabras de la lista PALABRAS', S.cfg.filters.words !== false,
-            function (v) { S.cfg.filters.words = v; });
+            function (v) { S.cfg.filters.words = v; saveSoon(); });
         setRow(winBody, 'Bloquear enlaces', 'Prohíbe links en comentarios y respuestas (respeta la lista permitida)', S.cfg.filters.links !== false,
-            function (v) { S.cfg.filters.links = v; });
+            function (v) { S.cfg.filters.links = v; saveSoon(); });
         setRow(winBody, 'Control de flood', 'Limita cuán rápido puede comentar una misma persona', S.cfg.filters.flood !== false,
-            function (v) { S.cfg.filters.flood = v; });
+            function (v) { S.cfg.filters.flood = v; saveSoon(); });
 
-        /* Flood: números */
         const fbox = E('div', 'scab-set');
         const flbl = E('b', ''); flbl.style.cssText = 'display:block;font:700 12.5px Inter,sans-serif;color:var(--text-main,#f8fafc);margin-bottom:9px;';
         flbl.textContent = 'Límites del flood';
@@ -674,7 +638,6 @@
         fbox.appendChild(grid);
         winBody.appendChild(fbox);
 
-        /* Whitelist de enlaces */
         const lbox = E('div', 'scab-set');
         const llbl = E('b', ''); llbl.style.cssText = 'display:block;font:700 12.5px Inter,sans-serif;color:var(--text-main,#f8fafc);margin-bottom:9px;';
         llbl.textContent = 'Dominios permitidos (enlaces)';
@@ -707,7 +670,7 @@
                     x.innerHTML = '<i class="fa-solid fa-xmark"></i>';
                     x.addEventListener('click', function () {
                         S.cfg.links.allow = S.cfg.links.allow.filter(function (q) { return q !== d; });
-                        saveCfg();
+                        saveSoon();   /* v4: esto era el bug — antes NUNCA guardaba */
                     });
                     c.appendChild(x);
                 }
@@ -725,7 +688,7 @@
         }
 
         const save = el('button', '', 'scab-save');
-        save.type = 'button'; save.textContent = '💾 GUARDAR AJUSTES';
+        save.type = 'button'; save.textContent = '💾 GUARDAR LÍMITES DEL FLOOD';
         save.addEventListener('click', function () {
             S.cfg.flood.max = clamp(parseInt(fInp.max.value, 10) || S.cfg.flood.max, 1, 30);
             S.cfg.flood.window = clamp(parseInt(fInp.window.value, 10) || S.cfg.flood.window, 5, 600);
@@ -740,12 +703,17 @@
         S.cfg.links.allow = S.cfg.links.allow || [];
         if (S.cfg.links.allow.indexOf(s) !== -1) return;
         S.cfg.links.allow.push(s);
+        saveSoon();   /* v4: faltaba ESTO — por eso los dominios se esfumaban */
         renderAjustes();
     }
 
-    /* ==== GUARDAR config (solo admin/owner; reglas lo refuerzan) ==== */
-    let saving = false;
-    function saveCfg() {
+    /* ==== GUARDAR (v4: rebasado + respaldo local + reintento) ==== */
+    let saving = false, saveT = null, retryT = null;
+    function saveSoon() {
+        if (saveT) clearTimeout(saveT);
+        saveT = setTimeout(saveCfg, 400);
+    }
+    function saveCfg(isRetry) {
         if (!canCfg() || saving) return;
         saving = true;
         const payload = {
@@ -754,24 +722,24 @@
             links: { allow: S.cfg.links.allow || [] },
             flood: S.cfg.flood
         };
+        lsSave(payload);   /* el respaldo local vive SIEMPRE */
         db().ref(CFG.CONFIG).set(payload).then(function () {
             saving = false;
-            toast('Anti-Bad actualizado ✓');
+            if (retryT) { clearTimeout(retryT); retryT = null; }
+            toast('Anti-Bad guardado ✓');
             paintStats();
             liveRefresh();
         }).catch(function (err) {
             saving = false;
-            toast('No se pudo guardar (' + ((err && err.code) || 'permisos') + ').');
+            toast('Firebase rechazó el guardado (' + ((err && err.code) || 'permisos') + '). Quedó en este navegador; reintento automático…');
+            console.warn('[Anti-Bad] fallo guardando config:', err);
+            if (!isRetry && !retryT) retryT = setTimeout(function () { retryT = null; saveCfg(true); }, 4000);
         });
     }
 
-    /* ==== ARRANQUE: motor (DESPUÉS del login; si se engancha antes,
-       los listeners mueren con "permission denied" y la sección nunca
-       se actualiza) + panel (solo staff) ==== */
     (function wait() {
         const ok = window.firebase;
         if (!ok) return setTimeout(wait, 150);
-
         let engineOn = false;
         try {
             firebase.auth().onAuthStateChanged(function (u) {
@@ -779,7 +747,6 @@
                 tryMount();
             });
         } catch (e) { if (!engineOn) { engineOn = true; startEngine(); } }
-
         const waitPanel = function () {
             const okP = SCSOC.security && SCSOC.security.body && SCSOC.staff;
             if (!okP) return setTimeout(waitPanel, 150);

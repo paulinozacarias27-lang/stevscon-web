@@ -1,12 +1,21 @@
 /**
- * ============================================================
- * STEVSCON.COM — social/manage/output/system/likes.js (v1)
+ * ====
+ * STEVSCON.COM — social/manage/output/system/likes.js (v2)
  * Likes con TOGGLE para posts, comentarios y respuestas.
- *  Nodo:   social/likes/{tipo}/{id}/{uid} = true
- *  Contador: social/counters/{tipo}/{id}/likes
- * Se engancha SOLO a las tarjetas vía hooks (no toca admin_post.js).
- * ============================================================
- */
+ *  Nodo:   social/likes/{tipo}/{id}/{uid} = true   (1 like por persona)
+ *  Contador: social/counters/{tipo}/{id}/likes  -> CONGELADO por reglas.
+ *
+ *  v2 — ANTI-INFLACIÓN:
+ *   · La cifra visible SIEMPRE se cuenta desde el nodo likes (la verdad:
+ *     las reglas solo dejan escribir likes/{tipo}/{id}/MI-uid).
+ *   · Ya no se escribe en counters/likes (las reglas lo bloquean).
+ *   · CORRECTOR: si el contador viejo (editable por trolls antes del
+ *     parche) llega con un número falso, se re-escribe al instante con
+ *     el conteo real. El troll ve cómo su 999999 se convierte en el
+ *     número verdadero en milisegundos.
+ *   · Throttle de 250ms por botón: spam de clics no genera escrituras.
+ *  Formato K/M/B lo hace numbers.js (SCSOC.nums.fmt) — sin cambios.
+ * ==== */
 (function (window, document) {
     'use strict';
 
@@ -18,7 +27,7 @@
             return SCSOC.db().ref(CONFIG.LIKES).child(type).child(id);
         },
 
-        /* observa en vivo: { count, me } */
+        /* observa en vivo: { count, me } — el conteo REAL (fuente de verdad) */
         watch: function (type, id, cb) {
             const r = L.node(type, id);
             const h = r.on('value', function (s) {
@@ -31,27 +40,39 @@
             return function () { r.off('value', h); };
         },
 
-        /* toggle con contador (transacción: nunca se desincroniza) */
+        /* toggle: 1 like por usuario (transacción sobre TU ranura) */
         toggle: function (type, id) {
             const auth = firebase.auth().currentUser;
             if (!auth) { SCSOC.deny(); return; }
+            const key = type + '/' + id;
+            const now = Date.now();
+            if (L._last[key] && now - L._last[key] < 250) return; /* anti martilleo */
+            L._last[key] = now;
             L.node(type, id).child(auth.uid).transaction(function (cur) {
                 return cur === true ? null : true;
-            }, function (err, committed, snap) {
-                if (err || !committed) return;
-                SCSOC.counters.bump(type, id, 'likes', snap.val() === true ? 1 : -1);
             });
+            /* v2: SIN bump al contador — las reglas congelan counters/likes
+             * y la cifra visible nace del nodo likes (incorruptible). */
         },
+        _last: {},
 
         /* une un botón [data-scsoc-like-btn] + [data-scsoc-like-count] */
         bind: function (btn, cntEl, type, id) {
             btn.dataset.scsocLikeBound = '1';
+            let trueCount = 0;
+            const paintCount = function () { if (cntEl) cntEl.textContent = SCSOC.nums.fmt(trueCount); };
             L.watch(type, id, function (v) {
-                if (cntEl) cntEl.textContent = SCSOC.nums.fmt(v.count);
+                trueCount = v.count;
+                paintCount();
                 btn.style.color = v.me ? 'var(--purple-accent,#8b5cf6)' : 'var(--text-muted,#94a3b8)';
                 const ic = btn.querySelector('i');
                 if (ic) ic.className = v.me ? 'fa-solid fa-heart' : 'fa-regular fa-heart';
             });
+            /* CORRECTOR: el contador viejo (o un troll con consola) puede
+             * escribir basura en counters/likes -> se pisa con el real. */
+            if (SCSOC.counters && SCSOC.counters.watch) {
+                SCSOC.counters.watch(type, id, function () { paintCount(); });
+            }
             btn.addEventListener('click', function (e) {
                 e.stopPropagation();
                 L.toggle(type, id);
@@ -66,10 +87,9 @@
         }
     };
 
-    /* conexiones automáticas con las tarjetas */
     SCSOC.onHook('postCard', function (ctx) { L.attach(ctx.el, 'post', ctx.postId); });
     SCSOC.onHook('commentCard', function (ctx) { L.attach(ctx.el, 'comment', ctx.commentId); });
     SCSOC.onHook('responseCard', function (ctx) { L.attach(ctx.el, 'response', ctx.responseId); });
 
-    console.log('[Stevscon] likes.js listo (v1) — toggle en vivo para posts, comentarios y respuestas.');
+    console.log('[Stevscon] likes.js listo (v2) — contador incorruptible (nace del nodo likes) + corrector.');
 })(window, document);

@@ -1,62 +1,37 @@
 /**
  * ====
- * STEVSCON.COM — social/manage/output/security/reports/reports.js (v1)
+ * STEVSCON.COM — social/manage/output/security/reports/reports.js (v2)
  * MÓDULO «REPORTS» del panel de Seguridad — SEGUNDO BOX, abajo de ACCOUNTS.
  *
- *  - BOX en el panel (SEC.body) + VENTANA tipo panel (z 2147483040).
- *  - STAFF (Owner/Admin/Mod) ve la caja; Owner y Admin ejecutan baneos
- *    desde ACCOUNTS (botón «IR A LA CUENTA» que abre su detalle).
- *  - Lista en VIVO de security/reports: búsqueda + filtros de estado
- *    (Todos/Pendientes/Revisados/Descartados), contadores en la caja.
- *  - Acciones: marcar REVISADO / DESCARTADO / volver a PENDIENTE,
- *    eliminar reporte (con confirmación) e IR A LA CUENTA del reportado.
- *  - Las reglas ya lo cubren: staff lee/escribe; usuarios solo crean.
- *  - NOTA DE REGLAS: solo se puede cambiar 'status' — el resto de campos
- *    quedan congelados ($other:false). No inventar campos extra aquí.
- *
- *  SEGURIDAD: Firebase Auth exclusivo · todo texto de usuario con
- *  textContent (NUNCA innerHTML con datos) · innerHTML solo para iconos.
- * ====
- */
+ *  v2 — NUEVA ESTRUCTURA con límite de 5/día:
+ *   · Los reportes viven en security/reports/{byUid}/r0..r4.
+ *   · objToReports() aplana los 2 niveles Y sigue entendiendo los
+ *     reportes VIEJOS de formato plano (no se pierde ninguno).
+ *   · doStatus/doDelete escriben en la ruta correcta (byUid + id).
+ *   · Badge por tipo: COMENTARIO / RESPUESTA / POST.
+ *  El resto idéntico a v1: búsqueda, filtros, acciones, IR A LA CUENTA.
+ * ==== */
 (function (window, document) {
     'use strict';
 
     const SCSOC = window.SCSOC = window.SCSOC || {};
     if (SCSOC.secReports) return;
 
-    /* ==== RUTAS ==== */
-    const CFG = {
-        REPORTS: (SCSOC.CONFIG && SCSOC.CONFIG.REPORTS) || 'security/reports'
-    };
+    const CFG = { REPORTS: (SCSOC.CONFIG && SCSOC.CONFIG.REPORTS) || 'security/reports' };
 
     const R = SCSOC.secReports = {
         open: function () { openWin(); },
         close: closeWin
     };
 
-    /* ==== ESTADO ==== */
     let myRole = null;
     let mounted = false;
-    const S = {
-        reports: [], permReports: false,
-        win: false, q: '', filter: 'todos', refocus: false
-    };
-
-    /* ==== DOM refs ==== */
+    const S = { reports: [], permReports: false, win: false, q: '', filter: 'todos', refocus: false };
     let statT, statP, statR, listHost, winEl, backdropEl, winBody, winCount;
 
-    /* ==== HELPERS ==== */
     function toast(m) { if (SCSOC.toast) try { SCSOC.toast(m); } catch (e) {} else console.log('[SEC reports] ' + m); }
-
-    /* el() LOCAL — cssText y className por separado (el bug clásico) */
-    function el(tag, css, cls) {
-        const n = document.createElement(tag);
-        if (css) n.style.cssText = css;
-        if (cls) n.className = cls;
-        return n;
-    }
+    function el(tag, css, cls) { const n = document.createElement(tag); if (css) n.style.cssText = css; if (cls) n.className = cls; return n; }
     function E(tag, cls) { return el(tag, '', cls); }
-
     function db() { return firebase.database(); }
     function me() { try { return firebase.auth().currentUser; } catch (e) { return null; } }
 
@@ -74,7 +49,6 @@
         setTimeout(function () { renderSoon._p = false; render(); }, 60);
     }
 
-    /* ==== METADATOS DE MOTIVOS Y ESTADOS ==== */
     const REASON_META = {
         'Ofensivo':     { icon: 'fa-face-angry',           color: '#f87171' },
         'Spam':         { icon: 'fa-envelope',             color: '#facc15' },
@@ -87,47 +61,65 @@
         'revisado':   { label: 'REVISADO',   color: '#22c55e' },
         'descartado': { label: 'DESCARTADO', color: '#6b7280' }
     };
+    const TYPE_LABEL = { comment: 'COMENTARIO', response: 'RESPUESTA', post: 'POST' };
     function reasonMeta(r) { return REASON_META[r] || { icon: 'fa-flag', color: '#94a3b8' }; }
     function statusMeta(s) { return STATUS_META[s] || { label: String(s || '—').toUpperCase(), color: '#6b7280' }; }
 
+    function mapRep(e, id, legacy) {
+        return {
+            id: id,
+            type: e.type || 'comment',
+            postId: e.postId || '',
+            commentId: e.commentId || '',
+            responseId: e.responseId || '',
+            reason: e.reason || 'Otros',
+            detail: e.detail || '',
+            contentUid: e.contentUid || '',
+            contentName: e.contentName || 'Usuario',
+            contentText: e.contentText || '',
+            byUid: e.byUid || (legacy ? id : ''),
+            byName: e.byName || '—',
+            status: e.status || 'pendiente',
+            at: e.at || 0,
+            _legacy: !!legacy
+        };
+    }
     function objToReports(v) {
         const out = [], o = v || {};
         Object.keys(o).forEach(function (k) {
             const e = o[k];
-            if (!e) return;
-            out.push({
-                id: k,
-                type: e.type || 'comment',
-                postId: e.postId || '',
-                commentId: e.commentId || '',
-                responseId: e.responseId || '',
-                reason: e.reason || 'Otros',
-                detail: e.detail || '',
-                contentUid: e.contentUid || '',
-                contentName: e.contentName || 'Usuario',
-                contentText: e.contentText || '',
-                byUid: e.byUid || '',
-                byName: e.byName || '—',
-                status: e.status || 'pendiente',
-                at: e.at || 0
+            if (!e || typeof e !== 'object') return;
+            /* formato VIEJO (plano): security/reports/{id} = reporte */
+            if (e.type || e.byUid) { out.push(mapRep(e, k, true)); return; }
+            /* formato NUEVO: security/reports/{byUid}/{slot} = reporte */
+            Object.keys(e).forEach(function (slot) {
+                const r = e[slot];
+                if (r && typeof r === 'object' && (r.type || r.byUid)) out.push(mapRep(r, slot, false));
             });
         });
         out.sort(function (a, b) { return (b.at || 0) - (a.at || 0); });
         return out;
     }
 
-    /* ==== ACCIONES (escrituras) ==== */
+    function repRef(rep) {
+        /* v2: ruta correcta según el formato del reporte */
+        return rep._legacy
+            ? db().ref(CFG.REPORTS).child(rep.id)
+            : db().ref(CFG.REPORTS).child(rep.byUid).child(rep.id);
+    }
+
     function doStatus(id, st) {
-        db().ref(CFG.REPORTS).child(id).update({ status: st })
-            .then(function () {
-                toast(st === 'pendiente' ? 'Devuelto a pendiente' : 'Marcado como ' + st + ' ✓');
-                render();
-            })
+        const rep = findRep(id);
+        if (!rep) return;
+        repRef(rep).update({ status: st })
+            .then(function () { toast(st === 'pendiente' ? 'Devuelto a pendiente' : 'Marcado como ' + st + ' ✓'); render(); })
             .catch(function (e) { toast('⚠️ No se pudo actualizar (' + (e && e.code || 'error') + ')'); });
     }
-    function doDelete(rep) {
+    function doDelete(repOrId) {
+        const rep = (typeof repOrId === 'object') ? repOrId : findRep(repOrId);
+        if (!rep) return;
         const kill = function () {
-            db().ref(CFG.REPORTS).child(rep.id).remove()
+            repRef(rep).remove()
                 .then(function () { toast('Reporte eliminado'); render(); })
                 .catch(function (e) { toast('⚠️ No se pudo eliminar (' + (e && e.code || 'error') + ')'); });
         };
@@ -138,17 +130,20 @@
             if (window.confirm('¿Eliminar este reporte? No se puede deshacer.')) kill();
         }
     }
+    function findRep(id) {
+        for (let i = 0; i < S.reports.length; i++) if (S.reports[i].id === id) return S.reports[i];
+        return null;
+    }
     function goAccount(uid) {
         if (!uid) return;
         if (SCSOC.secAccounts && typeof SCSOC.secAccounts.open === 'function') {
-            closeWin(); /* una ventana a la vez: la de accounts queda al frente */
+            closeWin();
             SCSOC.secAccounts.open(uid);
         } else {
             toast('ACCOUNTS no está cargado.');
         }
     }
 
-    /* ==== FILTRO / BÚSQUEDA ==== */
     function filtered() {
         const q = S.q.trim().toLowerCase();
         let list = S.reports.slice();
@@ -165,20 +160,14 @@
         return list;
     }
 
-    /* ==== RENDER MAESTRO ==== */
     function render() {
-        /* contadores de la caja (siempre, aunque la ventana esté cerrada) */
         const t = S.reports.length;
         let p = 0, done = 0;
-        S.reports.forEach(function (r) {
-            if (r.status === 'pendiente') p++;
-            else done++;
-        });
+        S.reports.forEach(function (r) { if (r.status === 'pendiente') p++; else done++; });
         if (statT) statT.textContent = String(t);
         if (statP) statP.textContent = String(p);
         if (statR) statR.textContent = String(done);
         if (winCount) winCount.textContent = t + ' rep.';
-
         if (!S.win) return;
         return renderList();
     }
@@ -189,7 +178,7 @@
         return b;
     }
     function iconBtn(icon, title, color, onClick) {
-        const b = el('button', 'flex:none;width:32px;height:32px;border-radius:9px;border:1px solid var(--border-color,#2e2440);background:var(--bg-main,#0d0b14);color:' + color + ';font-size:13px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:background .15s ease,transform .15s ease;');
+        const b = el('button', 'flex:none;width:32px;height:32px;border-radius:9px;border:1px solid var(--border-color,#2e2440);background:var(--bg-main,#0d0b14);color:' + color + ';font-size:13px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;');
         b.type = 'button'; b.title = title;
         b.setAttribute('aria-label', title);
         b.innerHTML = '<i class="fa-solid ' + icon + '" aria-hidden="true"></i>';
@@ -203,7 +192,7 @@
             purple: 'border:1px solid rgba(139,92,246,.55);background:rgba(139,92,246,.16);color:#c4b5fd;',
             danger: 'border:1px solid rgba(239,68,68,.5);background:rgba(239,68,68,.12);color:#f87171;'
         };
-        const b = el('button', (styles[kind] || styles.ghost) + 'font:800 10.5px Inter,sans-serif;letter-spacing:.06em;padding:7px 11px;border-radius:8px;cursor:pointer;transition:transform .15s ease;');
+        const b = el('button', (styles[kind] || styles.ghost) + 'font:800 10.5px Inter,sans-serif;letter-spacing:.06em;padding:7px 11px;border-radius:8px;cursor:pointer;');
         b.type = 'button'; b.textContent = txt;
         b.addEventListener('click', function (e) { e.stopPropagation(); onClick(); });
         return b;
@@ -214,7 +203,6 @@
         const scroll = listHost.scrollTop;
         while (listHost.firstChild) listHost.removeChild(listHost.firstChild);
 
-        /* barra de búsqueda + filtros */
         const bar = el('div', 'display:flex;flex-direction:column;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border-color,#2e2440);position:sticky;top:0;background:var(--bg-card,#16121f);z-index:1;');
         const search = el('input', 'width:100%;box-sizing:border-box;background:var(--bg-main,#0d0b14);border:1px solid var(--border-color,#2e2440);border-radius:10px;color:var(--text-main,#f8fafc);font:600 13px Inter,sans-serif;padding:10px 12px;outline:none;');
         search.type = 'text';
@@ -234,7 +222,6 @@
         bar.appendChild(chips);
         listHost.appendChild(bar);
 
-        /* error de permisos */
         if (S.permReports) {
             const err = el('div', 'margin:16px;border:1px solid rgba(239,68,68,.4);background:rgba(239,68,68,.08);color:#f87171;border-radius:12px;padding:14px;font:600 12.5px Inter,sans-serif;line-height:1.6;');
             err.textContent = 'PERMISSION_DENIED leyendo security/reports — publica las reglas nuevas de Firebase (nodo security/reports). Sin eso, REPORTS no puede listar los reportes.';
@@ -247,7 +234,7 @@
             const empty = el('div', 'padding:44px 20px;text-align:center;color:var(--text-muted,#94a3b8);font:600 13px Inter,sans-serif;line-height:1.7;');
             empty.textContent = (S.q || S.filter !== 'todos')
                 ? 'Ningún reporte coincide con la búsqueda/filtro.'
-                : 'Sin reportes todavía. Cuando alguien use el botón 🚩 Reportar en un comentario o respuesta, aparecerá aquí.';
+                : 'Sin reportes todavía. Cuando alguien use el botón 🚩 Reportar, aparecerá aquí.';
             listHost.appendChild(empty);
             return;
         }
@@ -255,13 +242,11 @@
         list.forEach(function (rep) {
             const rm = reasonMeta(rep.reason);
             const sm = statusMeta(rep.status);
-            const isCom = rep.type === 'comment';
 
             const card = el('div', 'border-bottom:1px solid var(--border-color,#2e2440);padding:13px 16px;');
             card.addEventListener('mouseenter', function () { card.style.background = 'var(--bg-hover,#261f36)'; });
             card.addEventListener('mouseleave', function () { card.style.background = 'transparent'; });
 
-            /* línea 1: icono de motivo + autor del contenido + badges */
             const top = el('div', 'display:flex;align-items:center;gap:10px;');
             const ic = el('span', 'flex:none;width:34px;height:34px;border-radius:10px;border:1px solid var(--border-color,#2e2440);display:flex;align-items:center;justify-content:center;font-size:13px;background:var(--bg-main,#0d0b14);');
             ic.style.color = rm.color;
@@ -273,7 +258,7 @@
             const nm = el('b', 'color:var(--text-main,#f8fafc);font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px;');
             nm.textContent = rep.contentName;
             line1.appendChild(nm);
-            line1.appendChild(badge(isCom ? 'COMENTARIO' : 'RESPUESTA', '#8b5cf6'));
+            line1.appendChild(badge(TYPE_LABEL[rep.type] || 'REPORTE', '#8b5cf6'));
             line1.appendChild(badge(sm.label, sm.color));
             mid.appendChild(line1);
             const sub = el('div', 'color:var(--text-muted,#94a3b8);font:600 11px Inter,sans-serif;margin-top:3px;');
@@ -286,14 +271,11 @@
             top.appendChild(right);
             card.appendChild(top);
 
-            /* cita del contenido reportado */
             if (rep.contentText) {
                 const quote = el('div', 'margin-top:9px;background:var(--bg-main,#0d0b14);border:1px solid var(--border-color,#2e2440);border-left:3px solid ' + rm.color + ';border-radius:9px;padding:8px 11px;color:var(--text-main,#f8fafc);font:500 12px/1.55 Inter,sans-serif;word-break:break-word;white-space:pre-wrap;');
                 quote.textContent = rep.contentText.length > 220 ? rep.contentText.slice(0, 220) + '…' : rep.contentText;
                 card.appendChild(quote);
             }
-
-            /* nota del reporter */
             if (rep.detail) {
                 const note = el('div', 'margin-top:7px;color:var(--text-muted,#94a3b8);font:600 11.5px/1.55 Inter,sans-serif;word-break:break-word;');
                 const nb = el('b'); nb.style.color = 'var(--purple-accent,#a78bfa)'; nb.textContent = 'Nota: ';
@@ -303,11 +285,9 @@
                 note.appendChild(nt);
                 card.appendChild(note);
             }
-
-            /* línea técnica: UID del autor del contenido (clic para copiar) + fecha completa */
             if (rep.contentUid) {
                 const tech = el('div', 'margin-top:7px;color:var(--text-muted,#94a3b8);font:600 10px Inter,sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:6px;');
-                tech.title = 'Clic para copiar UID';
+                tech.title = 'Clic para copiar UID del autor';
                 const ti = document.createElement('i');
                 ti.className = 'fa-regular fa-id-badge';
                 ti.setAttribute('aria-hidden', 'true');
@@ -318,8 +298,7 @@
                 tech.addEventListener('click', function (e) {
                     e.stopPropagation();
                     try {
-                        navigator.clipboard.writeText(rep.contentUid).then(function () { toast('Copiado: ' + rep.contentUid); },
-                            function () { toast('No se pudo copiar'); });
+                        navigator.clipboard.writeText(rep.contentUid).then(function () { toast('Copiado: ' + rep.contentUid); }, function () { toast('No se pudo copiar'); });
                     } catch (err) { toast('No se pudo copiar'); }
                 });
                 card.appendChild(tech);
@@ -328,7 +307,6 @@
             when.textContent = fmtDate(rep.at);
             card.appendChild(when);
 
-            /* acciones de estado */
             const acts = el('div', 'display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin-top:10px;');
             if (rep.status === 'pendiente') {
                 acts.appendChild(miniBtn('✓ MARCAR REVISADO', 'ok', function () { doStatus(rep.id, 'revisado'); }));
@@ -342,7 +320,6 @@
             listHost.appendChild(card);
         });
 
-        /* devolver el foco al buscador tras re-render */
         if (S.refocus) {
             S.refocus = false;
             const inp = listHost.querySelector('input');
@@ -351,15 +328,12 @@
                 try { const L = inp.value.length; inp.setSelectionRange(L, L); } catch (e) {}
             }
         }
-
         listHost.scrollTop = scroll;
     }
 
-    /* ==== VENTANA ==== */
     function openWin() {
         if (!winEl) return;
         S.win = true;
-        /* si la ventana de ACCOUNTS está abierta, ciérrala (una a la vez) */
         if (document.body.classList.contains('scacc-lock') && SCSOC.secAccounts) {
             try { SCSOC.secAccounts.close(); } catch (e) {}
         }
@@ -375,7 +349,6 @@
         document.body.classList.remove('screp-lock');
     }
 
-    /* ==== ESTILOS ==== */
     function injectCss() {
         const css = document.createElement('style');
         css.textContent = ''
@@ -390,33 +363,28 @@
             + '.screp-count{font:700 10.5px Inter,sans-serif;color:var(--text-muted,#94a3b8);}'
             + '.screp-x{margin-left:auto;border:0;background:var(--bg-hover,#261f36);color:var(--text-main,#f8fafc);width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;}'
             + '.screp-body{flex:1;overflow-y:auto;}'
-            + '.screp-box{border:1px solid var(--border-color,#2e2440);border-left:3px solid var(--purple-accent,#8b5cf6);border-radius:13px;padding:16px;margin-bottom:12px;background:rgba(139,92,246,.05);transition:border-color .2s ease,background .2s ease;}'
-            + '.screp-box:hover{border-color:rgba(139,92,246,.55);border-left-color:var(--purple-accent,#8b5cf6);background:rgba(139,92,246,.09);}'
+            + '.screp-box{border:1px solid var(--border-color,#2e2440);border-left:3px solid var(--purple-accent,#8b5cf6);border-radius:13px;padding:16px;margin-bottom:12px;background:rgba(139,92,246,.05);}'
             + '.screp-boxtop{display:flex;align-items:center;gap:11px;margin-bottom:8px;}'
             + '.screp-boxic{flex:none;width:38px;height:38px;border-radius:11px;background:rgba(139,92,246,.14);border:1px solid rgba(139,92,246,.4);display:flex;align-items:center;justify-content:center;color:var(--purple-accent,#8b5cf6);font-size:15px;}'
             + '.screp-boxttl{font:800 13px Inter,sans-serif;letter-spacing:.12em;color:var(--text-main,#f8fafc);}'
             + '.screp-boxsub{color:var(--text-muted,#94a3b8);font:600 12px Inter,sans-serif;line-height:1.55;margin:2px 0 12px;}'
             + '.screp-boxstats{display:flex;border:1px solid var(--border-color,#2e2440);border-radius:10px;overflow:hidden;background:var(--bg-main,#0d0b14);margin-bottom:12px;}'
-            + '.screp-openbtn{width:100%;display:flex;align-items:center;justify-content:center;gap:9px;border:1px solid rgba(139,92,246,.55);background:rgba(139,92,246,.14);color:#c4b5fd;font:800 12.5px Inter,sans-serif;letter-spacing:.08em;padding:11px 14px;border-radius:10px;cursor:pointer;transition:background .18s ease,transform .18s ease;}'
+            + '.screp-openbtn{width:100%;display:flex;align-items:center;justify-content:center;gap:9px;border:1px solid rgba(139,92,246,.55);background:rgba(139,92,246,.14);color:#c4b5fd;font:800 12.5px Inter,sans-serif;letter-spacing:.08em;padding:11px 14px;border-radius:10px;cursor:pointer;}'
             + '.screp-openbtn:hover{background:rgba(139,92,246,.26);}'
-            + '.screp-openbtn:active{transform:scale(.97);}'
             + '@media (max-width:640px){.screp-win{width:100vw;}}';
         document.head.appendChild(css);
     }
 
-    /* ==== MONTAJE ==== */
     function mount() {
         if (mounted || !SCSOC.security || !SCSOC.security.body) return;
         mounted = true;
         injectCss();
 
         const bodyEl = SCSOC.security.body;
-        /* limpiar restos del placeholder "zona vacía" si quedara alguno */
         Array.prototype.slice.call(bodyEl.querySelectorAll('.scsec-empty')).forEach(function (n) {
             if (n.parentNode) n.parentNode.removeChild(n);
         });
 
-        /* --- BOX REPORTS (queda ABAJO del de ACCOUNTS por orden de carga) --- */
         const box = E('div', 'screp-box');
         const top = E('div', 'screp-boxtop');
         const ic = E('div', 'screp-boxic');
@@ -431,10 +399,9 @@
         box.appendChild(top);
 
         const sub = E('div', 'screp-boxsub');
-        sub.textContent = 'Reportes de la comunidad: comentarios y respuestas señalados como ofensivos, spam o acoso. Revisa el contenido, márcalos como revisados o descartados, salta a la cuenta del autor o elimina el reporte.';
+        sub.textContent = 'Reportes de la comunidad (máx 5 por usuario al día). Revisa, marca como revisados o descartados, salta a la cuenta del autor o elimina el reporte.';
         box.appendChild(sub);
 
-        /* contadores en 3 celdas (vivos) */
         const statsRow = E('div', 'screp-boxstats');
         const mkStat = function (label, color, first) {
             const c = el('div', 'flex:1;text-align:center;padding:9px 4px;' + (first ? '' : 'border-left:1px solid var(--border-color,#2e2440);'));
@@ -462,7 +429,6 @@
 
         bodyEl.appendChild(box);
 
-        /* --- VENTANA --- */
         backdropEl = E('div', 'screp-backdrop');
         backdropEl.addEventListener('click', closeWin);
         document.body.appendChild(backdropEl);
@@ -492,24 +458,21 @@
         winEl.appendChild(winBody);
         document.body.appendChild(winEl);
 
-        /* Escape: cierra SOLO esta ventana (sin dejar pasar al panel) */
         document.addEventListener('keydown', function (e) {
             if (e.key !== 'Escape' || !S.win) return;
             e.preventDefault(); e.stopPropagation();
             closeWin();
         }, true);
 
-        /* --- LISTENER EN VIVO --- */
         db().ref(CFG.REPORTS).on('value', function (s) {
             S.reports = objToReports(s.val()); S.permReports = false;
             renderSoon();
         }, function () { S.permReports = true; renderSoon(); });
 
         render();
-        console.log('[Stevscon][SEC] reports.js listo (v1) — box REPORTS montado, escuchando security/reports en vivo.');
+        console.log('[Stevscon][SEC] reports.js listo (v2) — entiende reportes por RANURAS (5/día) y los viejos.');
     }
 
-    /* ==== ARRANQUE: espera motor + confirma staff (monta solo para staff) ==== */
     (function wait() {
         const ok = window.firebase && SCSOC.security && SCSOC.security.body && SCSOC.staff;
         if (!ok) return setTimeout(wait, 150);
