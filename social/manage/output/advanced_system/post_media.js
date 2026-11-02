@@ -1,27 +1,17 @@
 /**
  * ====
- * STEVSCON.COM — social/manage/output/advanced_system/post_media.js (v1)
- * MULTIMEDIA EN POSTS — imágenes y videos (SOLO posts; comentarios y
- * respuestas quedan como siempre).
+ * STEVSCON.COM — social/manage/output/advanced_system/post_media.js (v2)
+ * MULTIMEDIA EN POSTS — imágenes y videos (SOLO posts).
  *
- *  - La MISMA mecánica de media_acc.js de Profiles: base64 directo al
- *    Realtime Database (sin Storage, sin reglas nuevas). Queda UNIDO a
- *    Profiles como StevsconProfiles.media.postProcess.
- *  - DIFERENCIA con media_acc.js: ese recorta a 256x256/1200x480 para
- *    avatares/banners. Aquí el archivo viaja TAL CUAL — sin recorte,
- *    sin bajar resolución, sin comprimir (los GIF animan, el PNG
- *    mantiene transparencia).
- *  - Máximo 10 archivos por post. La multimedia vive DENTRO del post:
- *    social/posts/{postId}/media  -> un solo write, cero reglas nuevas.
- *  - Conexión por HOOKS (sin invadir sistemas):
- *      · admin_post.js v6 lanza el hook 'composer' -> aquí ponemos el
- *        botón 🖼️ + previsualizaciones en el composer.
- *      · admin_post.js v6 llama postMedia.paint() al pintar cada
- *        tarjeta -> galería + lightbox con flechas.
- *      · El modal "Editar post" (editTextModal con max=MAX_POST) se
- *        POTENCIA aquí: gana el botón de multimedia.
- *      · El menú ⋯ de cada post gana la entrada "Multimedia" para
- *        cambiar solo las imágenes/videos.
+ *  v2 · LÍMITES Y COMPRESIÓN (el admin postea, pero la BD no es basurero):
+ *   - Imagen ≤ IMG_PASS_B64  -> pasa INTACTA (GIF anima, PNG transparente).
+ *   - Imagen grande          -> canvas: PNG se re-escala (transparencia se
+ *      conserva si puede), cae a JPEG si no alcanza. Objetivo ~90KB b64.
+ *   - Video                  -> máx 2 MB reales (sin compresión posible).
+ *   - Presupuesto TOTAL por post: ~2.8 MB en base64 (los 10 archivos juntos).
+ *   - Reglas nuevas validan media/$i ≤ 2.8MB en el servidor (parche v2).
+ *  Lo demás IDÉNTICO a v1: hooks composer/paint/postMenu, editTextModal
+ *  potenciado, galería + lightbox, unión con StevsconProfiles.media.
  * ====
  */
 (function (window, document) {
@@ -31,9 +21,19 @@
     if (SCSOC.postMedia) return;
     const CONFIG = SCSOC.CONFIG;
 
-    const PM = SCSOC.postMedia = { MAX: 10 };
+    const IMG_PASS_B64 = 120000;    /* pasa intacta hasta ~90KB reales */
+    const IMG_TARGET_B64 = 90000;   /* objetivo tras comprimir */
+    const VID_MAX_RAW = 2 * 1024 * 1024;
+    const TOTAL_MAX_B64 = 2800000;  /* presupuesto de TODO el post */
 
-    /* ==== UNIÓN con Profiles (media_acc.js): mismo sistema base64 ==== */
+    const PM = SCSOC.postMedia = {
+        MAX: 10,
+        LIMITS: { IMG_PASS_B64: IMG_PASS_B64, IMG_TARGET_B64: IMG_TARGET_B64, VID_MAX_RAW: VID_MAX_RAW, TOTAL_MAX_B64: TOTAL_MAX_B64 }
+    };
+
+    /* ==== UNIÓN con Profiles (media_acc.js): misma mecánica base64 ====
+     * Este va SIN comprimir: avatares/banners se recortan pequeños
+     * aguas abajo y la transparencia del PNG es sagrada ahí. */
     function processFile(file) {
         return new Promise(function (resolve, reject) {
             if (!file || !file.type) return reject({ code: 'tipo' });
@@ -55,21 +55,96 @@
         SCp.media.postProcess = processFile;
     } catch (e) {}
 
-    /* Normaliza lo guardado en la BD a un array limpio de dataURLs */
+    /* ==== NORMALIZA lo guardado en la BD a un array limpio de dataURLs ==== */
     function norm(media) {
         const out = [];
-        const ok = function (u) { return typeof u === 'string' && /^data:(image|video)\//i.test(u); };
+        const ok = function (u) { return typeof u === 'string' && /^data:(image|video)\//i.test(u) && u.length <= TOTAL_MAX_B64; };
         if (Array.isArray(media)) media.forEach(function (u) { if (ok(u)) out.push(u); });
         else if (media && typeof media === 'object') {
             Object.keys(media).forEach(function (k) { if (ok(media[k])) out.push(media[k]); });
-            out.sort(function (a, b) { return 0; }); /* orden de inserción */
         }
         return out;
+    }
+
+    /* ==== LECTURA + COMPRESIÓN (solo para POSTS; Profiles sigue intacto) ==== */
+    function readAsDataURL(file, cb) {
+        const r = new FileReader();
+        r.onload = function () { cb(String(r.result || '')); };
+        r.onerror = function () { cb(''); };
+        r.readAsDataURL(file);
+    }
+    function loadImg(dataUrl, cb) {
+        const im = new Image();
+        im.onload = function () { cb(im); };
+        im.onerror = function () { cb(null); };
+        im.src = dataUrl;
+    }
+    function shrink(im, w, h, q, png, fill) {
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        const ctx = c.getContext('2d');
+        if (fill) { ctx.fillStyle = '#1a1625'; ctx.fillRect(0, 0, w, h); }
+        ctx.drawImage(im, 0, 0, w, h);
+        return c.toDataURL(png ? 'image/png' : 'image/jpeg', q);
+    }
+    /* File -> dataURL liviano o rechazo {code:'big'} */
+    function fitFile(file) {
+        return new Promise(function (resolve, reject) {
+            const t = String(file.type || '');
+            const isVid = t.indexOf('video/') === 0;
+            const isImg = t.indexOf('image/') === 0;
+            if (!isVid && !isImg) return reject({ code: 'tipo' });
+            if (isVid) {
+                if (file.size > VID_MAX_RAW) return reject({ code: 'bigvideo' });
+                return readAsDataURL(file, function (u) {
+                    if (u.indexOf('data:video/') !== 0) reject({ code: 'tipo' });
+                    else if (u.length > TOTAL_MAX_B64) reject({ code: 'bigvideo' });
+                    else resolve(u);
+                });
+            }
+            readAsDataURL(file, function (dataUrl) {
+                if (dataUrl.indexOf('data:image/') !== 0) return reject({ code: 'tipo' });
+                /* liviana: intacta (GIF anima, PNG transparente, cero pérdida) */
+                if (dataUrl.length <= IMG_PASS_B64) return resolve(dataUrl);
+                /* GIF grande NO se toca: el canvas mataría la animación */
+                if (/^data:image\/gif/.test(dataUrl)) return reject({ code: 'big' });
+                loadImg(dataUrl, function (im) {
+                    if (!im || !im.width) return reject({ code: 'tipo' });
+                    const isPng = /^data:image\/png/.test(dataUrl);
+                    let w = im.width, h = im.height;
+                    const sc0 = Math.min(1, 1600 / Math.max(w, h));
+                    w = Math.max(1, Math.round(w * sc0));
+                    h = Math.max(1, Math.round(h * sc0));
+                    /* intento 1: PNG re-escala conservando transparencia */
+                    if (isPng) {
+                        let tries = 0, out = shrink(im, w, h, 1, true, false);
+                        while (out.length > IMG_TARGET_B64 && tries < 3) {
+                            w = Math.max(1, Math.round(w * 0.75));
+                            h = Math.max(1, Math.round(h * 0.75));
+                            out = shrink(im, w, h, 1, true, false);
+                            tries++;
+                        }
+                        if (out.length <= IMG_TARGET_B64) return resolve(out);
+                    }
+                    /* intento 2: bucle JPEG progresivo (transparencia -> fondo) */
+                    let q = 0.82, guard = 0, out = shrink(im, w, h, q, false, true);
+                    while (out.length > IMG_TARGET_B64 && guard < 6) {
+                        if (q > 0.52) q -= 0.16;
+                        else { w = Math.max(1, Math.round(w * 0.72)); h = Math.max(1, Math.round(h * 0.72)); }
+                        out = shrink(im, w, h, Math.max(0.42, q), false, true);
+                        guard++;
+                    }
+                    if (out.length <= IMG_TARGET_B64 * 1.15) resolve(out);
+                    else reject({ code: 'big' });
+                });
+            });
+        });
     }
 
     /* ==== PICKER reutilizable (composer + modales de edición) ==== */
     function picker(host, initial) {
         const items = [];
+        const totalLen = function () { return items.reduce(function (a, u) { return a + u.length; }, 0); };
         const bar = SCSOC.el('div', 'display:flex;align-items:center;gap:10px;');
         const btn = SCSOC.el('button', 'display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border-color,#2e2440);background:transparent;color:var(--text-muted,#94a3b8);font:700 12px Inter,sans-serif;padding:7px 12px;border-radius:8px;cursor:pointer;');
         btn.type = 'button';
@@ -132,9 +207,22 @@
             btn.disabled = true; btn.style.opacity = '.5';
             let done = 0;
             files.forEach(function (f) {
-                processFile(f)
-                    .then(function (url) { if (items.length < PM.MAX) items.push(url); })
-                    .catch(function () { SCSOC.toast('Archivo no válido (solo imágenes o videos).'); })
+                fitFile(f)
+                    .then(function (url) {
+                        if (items.length >= PM.MAX) return;
+                        if (totalLen() + url.length > TOTAL_MAX_B64) {
+                            SCSOC.toast('El post llegó a su límite de multimedia (~2.8 MB).');
+                            return;
+                        }
+                        items.push(url);
+                    })
+                    .catch(function (e) {
+                        const c = e && e.code;
+                        if (c === 'bigvideo') SCSOC.toast('Video muy pesado (máx 2 MB).');
+                        else if (c === 'big') SCSOC.toast('Imagen muy pesada incluso comprimida.');
+                        else if (c === 'biggif') SCSOC.toast('Ese GIF es muy pesado (máx ~90KB).');
+                        else SCSOC.toast('Archivo no válido (solo imágenes o videos).');
+                    })
                     .then(function () {
                         if (++done === files.length) { btn.disabled = false; paint(); }
                     });
@@ -221,7 +309,7 @@
         document.body.appendChild(ov);
     }
 
-    /* ==== COMPOSER (admin_post.js v6 invita vía hook 'composer') ==== */
+    /* ==== COMPOSER (admin_post.js invita vía hook 'composer') ==== */
     const _pickers = new WeakMap();
     SCSOC.onHook('composer', function (ctx) {
         if (!ctx || !ctx.box || !ctx.col || !ctx.foot || _pickers.has(ctx.box)) return;
@@ -229,7 +317,7 @@
         if (ctx.foot.parentNode === ctx.col) ctx.col.insertBefore(slot, ctx.foot);
         else ctx.col.appendChild(slot);
         _pickers.set(ctx.box, picker(slot, null));
-    }); 
+    });
 
     PM.composerGet = function (box) {
         const pk = box && _pickers.get(box);
@@ -243,17 +331,19 @@
 
     /* ==== GUARDAR multimedia de un post existente ==== */
     function saveMedia(postId, arr, withToast) {
+        const list = arr || [];
+        const total = list.reduce(function (a, u) { return a + u.length; }, 0);
+        if (total > TOTAL_MAX_B64) {
+            SCSOC.toast('Multimedia demasiado pesada para este post (límite ~2.8 MB).');
+            return;
+        }
         SCSOC.db().ref(CONFIG.POSTS).child(postId).child('media')
-            .set(arr && arr.length ? arr : null)
+            .set(list.length ? list : null)
             .then(function () { if (withToast) SCSOC.toast('Multimedia actualizada ✓'); })
             .catch(function () { SCSOC.toast('No se pudo guardar (¿archivos muy pesados para la BD?).'); });
     }
 
-    /* ==== EDITOR: modal de post CON botón de multimedia ====
-     * onSave presente  -> "Editar post" (textarea + multimedia; al
-     *                     guardar, edit.js actualiza el texto y aquí
-     *                     la multimedia).
-     * onSave ausente   -> "Multimedia del post" (solo archivos). */
+    /* ==== EDITOR: modal de post CON botón de multimedia ==== */
     function openEditor(post, text, max, onSave) {
         const isEdit = typeof onSave === 'function';
         const ov = SCSOC.el('div', 'position:fixed;left:0;top:0;right:0;bottom:0;z-index:2500;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:16px;');
@@ -307,8 +397,8 @@
                 const t = ta.value.trim();
                 if (!t) { SCSOC.toast('No puede quedar vacío.'); return; }
                 close();
-                onSave(t);                       /* texto + editedAt (edit_post.js) */
-                saveMedia(post.id, media, false);/* multimedia (aquí, sin doble toast) */
+                onSave(t);
+                saveMedia(post.id, media, false);
             } else {
                 close();
                 saveMedia(post.id, media, true);
@@ -319,8 +409,7 @@
         if (isEdit) setTimeout(function () { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }, 0);
     }
 
-    /* El modal compartido editTextModal, cuando es de POST (max = MAX_POST),
-     * se potencia con multimedia. Comentarios/respuestas pasan intactos. */
+    /* El modal compartido editTextModal, cuando es de POST, se potencia aquí */
     if (SCSOC.editTextModal) {
         const _origModal = SCSOC.editTextModal;
         SCSOC.editTextModal = function (title, text, max, onSave) {
@@ -334,7 +423,6 @@
         };
     }
 
-    /* El post abierto en el menú ⋯ de ahora (para saber a quién editar) */
     let _menuPost = null;
     SCSOC.onHook('postMenu', function (ctx) {
         _menuPost = (ctx && ctx.post) || null;
@@ -349,5 +437,5 @@
         });
     });
 
-    console.log('[Stevscon] post_media.js listo (v1) — multimedia en posts vía base64 (mecánica media_acc), máx ' + PM.MAX + ' archivos.');
+    console.log('[Stevscon] post_media.js listo (v2) — multimedia con límites: imagen ~90KB, video 2MB, post ~2.8MB.');
 })(window, document);

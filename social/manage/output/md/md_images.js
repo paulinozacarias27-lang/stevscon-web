@@ -1,20 +1,18 @@
 /**
  * ====
- * STEVSCON.COM — social/manage/output/md/md_images.js (v1)
+ * STEVSCON.COM — social/manage/output/md/md_images.js (v2)
  * IMÁGENES en los MDs — base64 directo a Firebase, sin Storage.
- *  - Botón 📷 en el composer + pegar con Ctrl+V + arrastrar y soltar.
- *  - Compresión en canvas: máx 1280px de lado mayor, JPEG progresivo
- *    hasta quedar liviano (GIFs chicos pasan tal cual, sin tocar animación).
- *  - La imagen viaja en el MISMO mensaje: dms/{convId}/msgs/{id} = { ..., img }.
- *    El texto (caption) sigue las mismas reglas que siempre (anti-bad, 2000).
- *  - Burbuja: imagen con clic → lightbox (clic afuera o ESC para cerrar).
- *  - CERO ediciones ajenas: envuelve D.watchConv SOLO para montar la
- *    imagen en la burbuja que ya pinta md_ui; el envío usa su propia
- *    ruta (mismo formato de msg y bandeja que D.send, sin tocarlo).
- *  - SEGURIDAD: img solo acepta 'data:image/...' (validado también en
- *    las rules); la imagen se pinta con img.src — NUNCA innerHTML;
- *    caption pasa por el filtro anti-bad y richText como cualquier MD.
- *  Cargar DESPUÉS de md_button.js (necesita md_core + md_ui cargados).
+ *
+ *  v2 · DOS ARREGLOS:
+ *   1) COMPRESOR: el objetivo baja de 190000 a 55000 chars (bajo el tope
+ *      duro de 60000 que firman las rules). Antes casi toda foto legítima
+ *      terminaba en «muy pesada».
+ *   2) BLOQUEOS: sendImage() ahora pasa por C.guard() (md_contacts), el
+ *      MISMO candado que el texto. Si hay bloqueo tuyo o del peer, la
+ *      imagen NO viaja. Antes las imágenes se saltaban el bloqueo.
+ *  Todo lo demás idéntico a v1: botón 📷, Ctrl+V, arrastrar y soltar,
+ *  lightbox, watchConv envuelto, caption con anti-bad, cero innerHTML.
+ *  Cargar DESPUÉS de md_button.js y md_contacts.js.
  * ====
  */
 (function (window, document) {
@@ -25,9 +23,9 @@
 
     const D = SCSOC.dm, U = SCSOC.dmUI;
 
-    const MAX_DIM = 1280;        /* lado mayor del canvas de compresión */
-    const TARGET_B64 = 190000;   /* ~140 KB reales en base64 */
-    const MAX_B64 = 600000;      /* tope duro — el MISMO de las rules */
+    const MAX_DIM = 1280;
+    const TARGET_B64 = 55000;   /* v2: bajo el tope de 60000 de las rules */
+    const MAX_B64 = 60000;
 
     const I = SCSOC.dmImages = { MAX_DIM: MAX_DIM, MAX_B64: MAX_B64 };
 
@@ -73,10 +71,10 @@
                 h = Math.max(1, Math.round(h * sc0));
                 let q = 0.82, guard = 0;
                 let out = shrink(im, w, h, q);
-                while (out.length > TARGET_B64 && guard < 6) {
-                    if (q > 0.52) q -= 0.16;
-                    else { w = Math.max(1, Math.round(w * 0.72)); h = Math.max(1, Math.round(h * 0.72)); }
-                    out = shrink(im, w, h, Math.max(0.42, q));
+                while (out.length > TARGET_B64 && guard < 7) {
+                    if (q > 0.5) q -= 0.14;
+                    else { w = Math.max(1, Math.round(w * 0.75)); h = Math.max(1, Math.round(h * 0.75)); }
+                    out = shrink(im, w, h, Math.max(0.4, q));
                     guard++;
                 }
                 cb(out.length <= MAX_B64 ? out : 'big');
@@ -109,8 +107,12 @@
                     if (cb) cb(new Error('expired')); return;
                 }
                 const peerUid = D.peerOf(meta.users, a.uid);
+                const C = SCSOC.dmContacts;
+                /* v2: candado de BLOQUEOS — el mismo que respeta el texto.
+                 * err: 'mine' (yo lo bloqueé) | 'theirs' (me bloqueó) | null.
+                 * guard() ya muestra su propio toast. */
+                const goPrefs = function () {
                 D.prefOf(peerUid, function (p) {
-                    const C = SCSOC.dmContacts;
                     const friend = !!(C && C.isFriend && C.isFriend(peerUid));
                     if (p && p.mdAllow === 'nadie' && !friend) {
                         toast('Esta persona tiene los MDs desactivados.');
@@ -164,6 +166,13 @@
                         });
                     });
                 });
+                };
+                if (C && typeof C.guard === 'function') {
+                    C.guard(peerUid, function (err) {
+                        if (err) { if (cb) cb(new Error('blocked')); return; }
+                        goPrefs();
+                    });
+                } else goPrefs();
             }).catch(function () {
                 toast('No se pudo enviar la imagen.'); if (cb) cb(new Error('meta'));
             });
@@ -201,8 +210,6 @@
             window.removeEventListener('keydown', esc, true);
             if (ov.parentNode) ov.parentNode.removeChild(ov);
         };
-        /* capture en window: gana al ESC del drawer (document) y no
-           navega hacia atrás mientras el lightbox está abierto */
         const esc = function (e) {
             if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); }
         };
@@ -317,7 +324,7 @@
             if (obs) obs.disconnect();
             obs = new MutationObserver(function () {
                 if (!curWin || !curWin.isConnected) return;
-                hookComposer(curWin); /* si el composer se reconstruye, re-engancha */
+                hookComposer(curWin);
             });
             obs.observe(d.win, { childList: true, subtree: true });
         } else {
@@ -343,5 +350,5 @@
         document.head.appendChild(css);
     })();
 
-    console.log('[Stevscon] md_images.js listo (v1) — imágenes base64 en los MDs 📷');
+    console.log('[Stevscon] md_images.js listo (v2) — compresor a 55KB + bloqueos respetados 📷');
 })(window, document);
