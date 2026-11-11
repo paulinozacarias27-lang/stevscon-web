@@ -1,16 +1,19 @@
-/* ============================================================
-   STEVSCON.COM · security/accounts/analytics.js  (v1)
+/* ====
+   STEVSCON.COM · security/accounts/analytics.js  (v2)
    BOX #4 del panel SEGURIDAD — debajo de REPORTS.
-   Métricas en vivo: cuentas, contenido, actividad 7 días,
-   top usuarios y salud del sitio. 100% LECTURA (staff):
-   no escribe nada en Firebase, no requiere reglas nuevas.
-   ============================================================ */
+   v2 — CORRECCIONES:
+    · DAY ahora sí es un día (86400000 ms): el gráfico de 7 días y las
+      cuentas nuevas contaban bien SOLO si pasó en las últimas 14h.
+    · nfmt() con K / M / B correctos (antes 10,000+ se mostraba como "M").
+    · refresh() blindado si Firebase aún no existe.
+   100% LECTURA (staff): no escribe nada, no requiere reglas nuevas.
+   ==== */
 (function (window, document) {
     'use strict';
 
     const SCSOC = window.SCSOC || (window.SCSOC = {});
     const OWNER_EMAIL = 'steven23hd@gmail.com';
-    const DAY = 86400000;
+    const DAY = 86400000; /* v2: antes 8640000 (10 días corto) */
 
     const PATHS = {
         users: 'users',
@@ -40,10 +43,13 @@
     function E(tag, cls) { const d = document.createElement(tag); if (cls) d.className = cls; return d; }
     function el(tag, css, cls) { const d = document.createElement(tag); if (css) d.style.cssText = css; if (cls) d.className = cls; return d; }
     function nfmt(n) {
-        if (n === null || n === undefined) return '—';
-        if (n >= 1000000) return (n / 1000000).toFixed(1).replace('.0', '') + 'M';
-        if (n >= 1000) return (n / 1000).toFixed(1).replace('.0', '') + 'K';
-        return String(n);
+        if (n === null || n === undefined || isNaN(Number(n))) return '—';
+        const x = Number(n);
+        const trim = function (s) { return s.replace('.0', ''); };
+        if (x >= 1e9) return trim((x / 1e9).toFixed(1)) + 'B';
+        if (x >= 1e6) return trim((x / 1e6).toFixed(1)) + 'M';
+        if (x >= 1e3) return trim((x / 1e3).toFixed(1)) + 'K';
+        return String(x);
     }
     function safeName(v) {
         const s = String(v || '').trim();
@@ -91,16 +97,12 @@
             days.push({ p: 0, c: 0, r: 0, label: lb });
         }
 
-        const nameByUid = {}, accByUid = {};
+        const nameByUid = {};
         let newAcc = 0;
         if (usersS) usersS.forEach(function (c) {
             const v = c.val() || {};
             nameByUid[c.key] = safeName(v.name || v.displayName || v.username || v.nombre);
-            const t = userTs(v);
-            if (t) {
-                accByUid[c.key] = t;
-                if (dayIdx(t) >= 0) newAcc++;
-            }
+            if (dayIdx(userTs(v)) >= 0) newAcc++;
         });
 
         const topMap = {};
@@ -166,7 +168,7 @@
 
     /* ==== LECTURA en vivo (solo .once; todo se recalcula local) ==== */
     function refresh() {
-        if (S.loading) return;
+        if (S.loading || !window.firebase || !firebase.database) return;
         S.loading = true;
         const keys = Object.keys(PATHS);
         Promise.all(keys.map(function (k) {
@@ -179,7 +181,7 @@
             S.updatedAt = Date.now();
             paintBox();
             if (S.win) paintPanel();
-        });
+        }).catch(function () { S.loading = false; });
     }
 
     /* ==== CSS ==== */
@@ -305,7 +307,7 @@
 
         paintBox();
         refresh();
-        console.log('[Stevscon][SEC] analytics.js listo (v1) — box ANALYTICS montado debajo de REPORTS.');
+        console.log('[Stevscon][SEC] analytics.js listo (v2) — box ANALYTICS montado debajo de REPORTS.');
     }
     function paintBox() {
         const d = S.data;
@@ -477,7 +479,7 @@
         winBody.appendChild(foot);
     }
 
-    /* ==== ARRANQUE (tras login, igual que anti-bad v2) ==== */
+    /* ==== ARRANQUE (tras login, igual que anti-bad) ==== */
     (function wait() {
         const ok = window.firebase;
         if (!ok) return setTimeout(wait, 150);

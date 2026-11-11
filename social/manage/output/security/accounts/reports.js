@@ -108,13 +108,16 @@
             : db().ref(CFG.REPORTS).child(rep.byUid).child(rep.id);
     }
 
-    function doStatus(id, st) {
-        const rep = findRep(id);
+    function doStatus(repOrId, st) {
+        /* v2.1: acepta el OBJETO reporte — los slots r0..r4 se repiten entre
+           usuarios y buscar solo por id podía tocar el reporte EQUIVOCADO */
+        const rep = (typeof repOrId === 'object') ? repOrId : findRep(repOrId);
         if (!rep) return;
         repRef(rep).update({ status: st })
             .then(function () { toast(st === 'pendiente' ? 'Devuelto a pendiente' : 'Marcado como ' + st + ' ✓'); render(); })
             .catch(function (e) { toast('⚠️ No se pudo actualizar (' + (e && e.code || 'error') + ')'); });
     }
+
     function doDelete(repOrId) {
         const rep = (typeof repOrId === 'object') ? repOrId : findRep(repOrId);
         if (!rep) return;
@@ -262,7 +265,7 @@
             line1.appendChild(badge(sm.label, sm.color));
             mid.appendChild(line1);
             const sub = el('div', 'color:var(--text-muted,#94a3b8);font:600 11px Inter,sans-serif;margin-top:3px;');
-            sub.textContent = 'Motivo: ' + rep.reason + ' · reportado por ' + (rep.byName || '—') + (rep.at ? ' · ' + SCSOC.timeAgo(Number(rep.at)) : '');
+            sub.textContent = 'Motivo: ' + rep.reason + ' · reportado por ' + (rep.byName || '—') + (rep.at ? ' · ' + (SCSOC.timeAgo ? SCSOC.timeAgo(Number(rep.at)) : fmtDate(rep.at)) : '');
             mid.appendChild(sub);
             top.appendChild(mid);
 
@@ -309,10 +312,10 @@
 
             const acts = el('div', 'display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin-top:10px;');
             if (rep.status === 'pendiente') {
-                acts.appendChild(miniBtn('✓ MARCAR REVISADO', 'ok', function () { doStatus(rep.id, 'revisado'); }));
-                acts.appendChild(miniBtn('DESCARTAR', 'ghost', function () { doStatus(rep.id, 'descartado'); }));
+                acts.appendChild(miniBtn('✓ MARCAR REVISADO', 'ok', function () { doStatus(rep, 'revisado'); }));
+                acts.appendChild(miniBtn('DESCARTAR', 'ghost', function () { doStatus(rep, 'descartado'); }));
             } else {
-                acts.appendChild(miniBtn('↺ VOLVER A PENDIENTE', 'ghost', function () { doStatus(rep.id, 'pendiente'); }));
+                acts.appendChild(miniBtn('↺ VOLVER A PENDIENTE', 'ghost', function () { doStatus(rep, 'pendiente'); }));
             }
             if (rep.contentUid) acts.appendChild(miniBtn('IR A LA CUENTA', 'purple', function () { goAccount(rep.contentUid); }));
             card.appendChild(acts);

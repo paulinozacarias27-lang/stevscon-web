@@ -152,18 +152,14 @@ firebase.auth().onAuthStateChanged(function (u) {
 });
 </script>
 
-  <script defer src="accounts/manage/settings/output/ui_settings.js?v=7"></script>
-  <script defer src="accounts/manage/settings/output/ui_preferences.js?v=2"></script>
-  <script defer src="accounts/manage/settings/output/ui_privacy.js?v=1"></script>
-  <script defer src="accounts/manage/settings/output/ui_data.js?v=2"></script>
-  <script defer src="accounts/manage/settings/buttons/set_preferences.js?v=2"></script>
-
-<!-- output primero (UI), buttons después (Firebase), coordinador AL FINAL -->
-  <script defer src="accounts/manage/settings/output/ui_settings.js?v=7"></script>
-  <script defer src="accounts/manage/settings/output/ui_preferences.js?v=1"></script>
-  <script defer src="accounts/manage/settings/output/ui_privacy.js?v=1"></script>
-  <script defer src="accounts/manage/settings/output/ui_data.js?v=2"></script>
-  <script defer src="accounts/manage/settings/buttons/set_preferences.js?v=1"></script>
+<!-- SETTINGS · UNA sola carga y rutas ABSOLUTAS (este HTML vive en /social/) -->
+  <script defer src="/accounts/manage/settings/output/ui_settings.js?v=7"></script>
+  <script defer src="/accounts/manage/settings/output/ui_preferences.js?v=2"></script>
+  <script defer src="/accounts/manage/settings/output/ui_privacy.js?v=1"></script>
+  <script defer src="/accounts/manage/settings/output/ui_data.js?v=2"></script>
+  <script defer src="/accounts/manage/settings/buttons/set_preferences.js?v=2"></script>
+  <script defer src="/accounts/manage/settings/buttons/set_privacy.js?v=1"></script>
+  <script defer src="/accounts/manage/settings/buttons/set_data.js?v=1"></script>
 
 <!-- settings v2 ya cargados arriba; faltaban los botones de privacy y data -->
   <script defer src="accounts/manage/settings/buttons/set_privacy.js?v=1"></script>
@@ -205,9 +201,9 @@ firebase.auth().onAuthStateChanged(function (u) {
 <script src="/social/manage/output/security/security_panel.js?v=4"></script>
 <!-- SECURITY · módulo ACCOUNTS (cuentas registradas, baneos, historial) -->
 <script src="/social/manage/output/security/accounts/accounts.js?v=5"></script>
-<script src="/social/manage/output/security/accounts/reports.js?v=2"></script>
-<script src="/social/manage/output/security/accounts/anti-bad.js?v=4"></script>
-<script src="/social/manage/output/security/accounts/analytics.js?v=1"></script>
+<script src="/social/manage/output/security/accounts/reports.js?v=3"></script>
+<script src="/social/manage/output/security/accounts/anti-bad.js?v=5"></script>
+<script src="/social/manage/output/security/accounts/analytics.js?v=2"></script>
 
 <script src="/social/manage/output/security/report_menu.js?v=1"></script>
 
@@ -223,7 +219,7 @@ firebase.auth().onAuthStateChanged(function (u) {
 <!-- EL MOTOR: category_posts.js monta la página Social completa.
      Ruta REAL (según tu árbol y tu index): social/manage/posts/ -->
 <script src="/social/manage/posts/category_posts.js?v=2"></script>
-<script src="/social/manage/posts/category_social.js?v=2"></script>
+<script src="/social/manage/posts/errors.js?v=1"></script>
 
 <script src="/banned.js?v=4"></script>
 <script src="/unban.js?v=1"></script>
