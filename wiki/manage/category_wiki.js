@@ -1,20 +1,22 @@
 /**
  * ====
- * STEVSCON.COM — wiki/manage/category_wiki.js (v2)
- * La PUERTA hacia la Wiki — MISMA LIGA que category_social.js v2.
+ * STEVSCON.COM — wiki/manage/category_wiki.js (v3)
+ * La PUERTA hacia la Wiki — ahora en el DOCK SUPERIOR, centrada arriba.
  *
- * - Pestaña FIJA a la izquierda, APILADA debajo de la de Social.
- * - El círculo es la WikiFace (wiki/manage/WikiFace.png): se inclina
- *   al hover, shimmer que la cruza, flecha dorada, squish al click.
- * - Pantalla de carga ÉPICA: WikiFace en anillo doble (contra-rotan),
- *   glows flotantes, partículas, barra de progreso REAL (sigue la
- *   precarga de verdad), mensajes con chips SUERTE/CONSEJO/PREGUNTA,
- *   easter egg raro y la WikiFace es TOCABLE (boing + frases).
+ * - v3: la pestaña ya NO vive a la izquierda apilada bajo Social. Ahora
+ *   es una píldora de cristal ARRIBA, centrada, junto a la de Social
+ *   (comparten el dock #sc-top-dock). Misma alma, otro cuerpo: glow
+ *   pulsante, shimmer al hover, WikiFace que se inclina feliz y squish
+ *   al click. La etiqueta "Wiki" siempre visible (se jubila la flecha).
+ * - Pantalla de carga ÉPICA intacta: WikiFace en anillo doble
+ *   (contra-rotan), glows flotantes, partículas, barra de progreso REAL,
+ *   mensajes con chips SUERTE/CONSEJO/PREGUNTA, easter egg raro y la
+ *   WikiFace TOCABLE (boing + frases).
  * - PRECARGA todo: descarga wiki.html, lee sus <script>/<link> y los
- *   calienta en caché + ping a Firebase. Aterriza en cuanto TODO se
- *   cargó Y pasaron 2.4s mínimos (tope 6.5s por seguridad).
+ *   calienta en caché + ping a Firebase. Aterriza cuando TODO se cargó
+ *   Y pasaron 2.4s mínimos (tope 6.5s por seguridad).
  * - Respeta prefers-reduced-motion. Dentro de /wiki/ no aparece.
- * Cargar DESPUÉS de category_social.js en el index (con ?v=2).
+ * Cargar junto a category_social.js v3 en el index (con ?v=3).
  * ====
  */
 (function (window, document) {
@@ -22,7 +24,7 @@
 
     /* Dentro de la wiki la puerta no existe */
     if (location.pathname.toLowerCase().indexOf('/wiki/') !== -1) {
-        console.log('[Stevscon] category_wiki.js: dentro de la Wiki, pestaña oculta.');
+        console.log('[Stevscon] category_wiki.js v3: dentro de la Wiki, puerta oculta.');
         return;
     }
 
@@ -31,6 +33,7 @@
     var WIKIFACE_URL = '/wiki/manage/WikiFace.png';  /* ← tu imagen */
     var LOGO_FALLBACK = '/SC-LOGO-20260825013121.png';
     var TAB_ID = 'sc-wiki-tab';
+    var DOCK_ID = 'sc-top-dock';
     var LOADER_ID = 'sc-wiki-loader';
 
     var MIN_SHOW = 2400;   /* ms mínimos (se lee el mensaje) */
@@ -68,31 +71,42 @@
 
     /* ==== ESTILOS (prefijo scw- para no pisar NADA, ni al de Social) ==== */
     var CSS = [
-        '/* ---- Pestaña Wiki ---- */',
+        '/* ---- DOCK SUPERIOR (mismo del Social, por si la Wiki carga primero) ---- */',
+        '#' + DOCK_ID + ' {',
+        '  position: fixed; top: 8px; left: 50%; transform: translateX(-50%);',
+        '  z-index: 1200; display: flex; align-items: center; gap: 10px;',
+        '  flex-wrap: nowrap; pointer-events: none;',
+        '}',
+        '#' + DOCK_ID + ' > * { pointer-events: auto; }',
+        '',
+        '/* ---- Pestaña Wiki · píldora superior ---- */',
         '#' + TAB_ID + ' {',
-        '  position: fixed; left: 0; top: calc(50% + 74px); z-index: 1200;',
-        '  transform: translateY(-50%);',
-        '  display: flex; align-items: center; gap: 11px;',
-        '  height: 62px; width: 66px; padding: 0 0 0 11px; box-sizing: border-box;',
-        '  border: 1px solid rgba(139,92,246,.35); border-left: 0; border-radius: 0 999px 999px 0;',
-        '  background: rgba(23,18,38,.96); overflow: hidden; cursor: pointer;',
+        '  position: relative;',
+        '  display: flex; align-items: center; gap: 9px;',
+        '  height: 44px; padding: 0 16px 0 6px; box-sizing: border-box;',
+        '  border: 1px solid rgba(139,92,246,.4); border-radius: 999px;',
+        '  background: rgba(23,18,38,.9);',
+        '  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);',
+        '  overflow: hidden; cursor: pointer;',
         '  font-family: Inter, system-ui, sans-serif; color: #f8fafc;',
-        '  box-shadow: 0 8px 30px rgba(0,0,0,.5);',
-        '  transition: width .38s cubic-bezier(.22,1,.36,1), transform .38s cubic-bezier(.22,1,.36,1),',
-        '              box-shadow .3s ease, background .3s ease, border-color .3s ease;',
+        '  box-shadow: 0 6px 24px rgba(0,0,0,.45);',
+        '  transition: transform .3s cubic-bezier(.22,1,.36,1), box-shadow .3s ease,',
+        '              border-color .3s ease, background .3s ease, opacity .3s ease;',
         '  animation: scw-tab-pulse 3.4s ease-in-out infinite; animation-delay: .4s;',
         '}',
         '#' + TAB_ID + ':hover {',
-        '  width: 196px; background: linear-gradient(135deg, rgba(139,92,246,.28), rgba(23,18,38,.98));',
-        '  border-color: rgba(240,180,41,.55); animation: none;',
-        '  box-shadow: 0 12px 38px rgba(0,0,0,.55), 0 0 24px rgba(139,92,246,.4);',
+        '  transform: translateY(-2px) scale(1.05);',
+        '  border-color: rgba(240,180,41,.6);',
+        '  background: linear-gradient(135deg, rgba(139,92,246,.3), rgba(23,18,38,.95));',
+        '  animation: none;',
+        '  box-shadow: 0 10px 30px rgba(0,0,0,.5), 0 0 26px rgba(139,92,246,.45);',
         '}',
         '#' + TAB_ID + ':focus-visible { outline: 2px solid #f0b429; outline-offset: 3px; }',
         '#' + TAB_ID + '.is-pressing { animation: scw-squish .45s cubic-bezier(.34,1.56,.64,1); }',
-        '#' + TAB_ID + '.is-hidden { transform: translateY(-50%) translateX(-120%); opacity: 0; pointer-events: none; }',
+        '#' + TAB_ID + '.is-hidden { opacity: 0; transform: scale(.85); pointer-events: none; }',
         '',
         '#' + TAB_ID + ' .scw-face {',
-        '  width: 42px; height: 42px; flex: none; border-radius: 50%; padding: 2px;',
+        '  width: 34px; height: 34px; flex: none; border-radius: 50%; padding: 2px;',
         '  background: linear-gradient(135deg, #a78bfa, #6d28d9);',
         '  display: grid; place-items: center; box-sizing: border-box;',
         '  transition: transform .35s cubic-bezier(.34,1.56,.64,1);',
@@ -102,24 +116,15 @@
         '}',
         '#' + TAB_ID + ' .scw-face-fb {',
         '  background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: #fff;',
-        '  display: grid; place-items: center; font-weight: 800; font-size: 15px;',
+        '  display: grid; place-items: center; font-weight: 800; font-size: 13px;',
         '}',
         '#' + TAB_ID + ':hover .scw-face { transform: rotate(-14deg) scale(1.08); }',
         '',
         '#' + TAB_ID + ' .scw-label {',
-        '  font-size: 15px; font-weight: 800; letter-spacing: .5px; white-space: nowrap;',
-        '  opacity: 0; transform: translateX(-8px);',
-        '  transition: opacity .25s ease .08s, transform .32s cubic-bezier(.22,1,.36,1) .08s;',
+        '  font-size: 14px; font-weight: 800; letter-spacing: .4px; white-space: nowrap;',
         '}',
-        '#' + TAB_ID + ':hover .scw-label { opacity: 1; transform: translateX(0); }',
-        '#' + TAB_ID + ' .scw-arrow {',
-        '  flex: none; width: 8px; height: 8px; margin-right: 16px;',
-        '  border-top: 2.5px solid #f0b429; border-right: 2.5px solid #f0b429;',
-        '  transform: rotate(45deg); opacity: 0; translate: -6px 0;',
-        '  transition: opacity .25s ease .12s, translate .3s ease .12s;',
-        '}',
-        '#' + TAB_ID + ':hover .scw-arrow { opacity: 1; translate: 0 0; }',
         '',
+        '/* shimmer que cruza al hacer hover (el de siempre) */',
         '#' + TAB_ID + ' .scw-shimmer {',
         '  position: absolute; top: -20%; bottom: -20%; width: 36px;',
         '  background: rgba(255,255,255,.14); transform: skewX(-22deg);',
@@ -128,17 +133,13 @@
         '#' + TAB_ID + ':hover .scw-shimmer { animation: scw-shine .9s ease .05s; }',
         '',
         '@keyframes scw-shine { 0% { left: -30%; opacity: 0; } 25% { opacity: 1; } 100% { left: 115%; opacity: 0; } }',
-        '@keyframes scw-squish { 0% { transform: translateY(-50%) scale(1); } 40% { transform: translateY(-50%) scale(.88,.8); } 100% { transform: translateY(-50%) scale(1); } }',
+        '@keyframes scw-squish { 0% { transform: scale(1); } 40% { transform: scale(.86,.78); } 100% { transform: scale(1); } }',
         '@keyframes scw-tab-pulse {',
-        '  0%,100% { box-shadow: 0 8px 30px rgba(0,0,0,.5); }',
-        '  50%     { box-shadow: 0 8px 30px rgba(0,0,0,.5), 0 0 22px rgba(139,92,246,.4); }',
-        '}',
-        '@media (hover: none) {',
-        '  #' + TAB_ID + ' { width: auto; padding-right: 18px; }',
-        '  #' + TAB_ID + ' .scw-label { opacity: 1; transform: translateX(0); }',
+        '  0%,100% { box-shadow: 0 6px 24px rgba(0,0,0,.45); }',
+        '  50%     { box-shadow: 0 6px 24px rgba(0,0,0,.45), 0 0 22px rgba(139,92,246,.45); }',
         '}',
         '',
-        '/* ---- Pantalla de carga ---- */',
+        '/* ---- Pantalla de carga (INTACTA de v2) ---- */',
         '#' + LOADER_ID + ' {',
         '  position: fixed; inset: 0; z-index: 2147483000; background: #0d0b14;',
         '  display: flex; flex-direction: column; align-items: center; justify-content: center;',
@@ -216,11 +217,17 @@
         '#' + LOADER_ID + ' .scw-tip-mini { color: #64748b; font-size: 11px; font-weight: 600; position: absolute; bottom: 26px; }',
         '#' + LOADER_ID + ' .scw-brand { color: #475569; font-size: 11px; font-weight: 700; letter-spacing: 1px; position: absolute; bottom: 10px; }',
         '',
+        '/* ---- Responsive ---- */',
+        '@media (max-width: 760px) {',
+        '  #' + DOCK_ID + ' { top: 58px; gap: 8px; }',
+        '  #' + TAB_ID + ' { height: 40px; padding: 0 13px 0 5px; }',
+        '  #' + TAB_ID + ' .scw-face { width: 30px; height: 30px; }',
+        '  #' + TAB_ID + ' .scw-label { font-size: 13px; }',
+        '}',
         '@media (max-width: 640px) {',
         '  #' + LOADER_ID + ' .scw-ring { width: 118px; height: 118px; }',
         '  #' + LOADER_ID + ' .scw-face-big, #' + LOADER_ID + ' .scw-face-fb { width: 84px; height: 84px; }',
         '  #' + LOADER_ID + ' .scw-msg { font-size: 15px; min-height: 4.6em; }',
-        '  #' + TAB_ID + ' { height: 54px; }  #' + TAB_ID + ' .scw-face { width: 38px; height: 38px; }',
         '}',
         '@media (prefers-reduced-motion: reduce) {',
         '  #' + LOADER_ID + ' .scw-pt, #' + LOADER_ID + ' .scw-glow-a, #' + LOADER_ID + ' .scw-glow-b { display: none; }',
@@ -242,6 +249,17 @@
             f.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap';
             document.head.appendChild(f);
         }
+    }
+
+    /* ==== DOCK SUPERIOR · se crea solo una vez (lo comparte el Social) ==== */
+    function ensureDock() {
+        var d = document.getElementById(DOCK_ID);
+        if (!d) {
+            d = document.createElement('div');
+            d.id = DOCK_ID;
+            document.body.appendChild(d);
+        }
+        return d;
     }
 
     /* ==== PRECARGA de TODA la wiki (cache warm-up real) ==== */
@@ -300,7 +318,7 @@
         if (load.total && load.done >= load.total && load.resolve) load.resolve();
     }
 
-    /* ==== LA PESTAÑA ==== */
+    /* ==== LA PESTAÑA (v3 · píldora superior) ==== */
     function buildTab() {
         if (document.getElementById(TAB_ID)) return;
         var b = document.createElement('button');
@@ -332,16 +350,12 @@
         label.className = 'scw-label';
         label.textContent = 'Wiki';
 
-        var arrow = document.createElement('span');
-        arrow.className = 'scw-arrow';
-
         var shimmer = document.createElement('span');
         shimmer.className = 'scw-shimmer';
 
         b.appendChild(shimmer);
         b.appendChild(face);
         b.appendChild(label);
-        b.appendChild(arrow);
 
         b.addEventListener('mouseenter', startPrewarm);
         b.addEventListener('touchstart', startPrewarm, { passive: true });
@@ -352,7 +366,7 @@
             setTimeout(openWiki, 140);
         });
 
-        document.body.appendChild(b);
+        ensureDock().appendChild(b);
     }
 
     function startPrewarm() {
@@ -361,7 +375,7 @@
         ensurePrefetch();
     }
 
-    /* ==== PANTALLA DE CARGA ==== */
+    /* ==== PANTALLA DE CARGA (intacta) ==== */
     function pickMsg(not) {
         var i, m;
         do { i = Math.floor(Math.random() * MSGS.length); m = MSGS[i]; }
@@ -553,5 +567,5 @@
         init();
     }
 
-    console.log('[Stevscon] category_wiki.js listo (v2) — puerta Wiki con WikiFace + precarga real.');
+    console.log('[Stevscon] category_wiki.js listo (v3) — puerta Wiki en el DOCK SUPERIOR + precarga real.');
 })(window, document);

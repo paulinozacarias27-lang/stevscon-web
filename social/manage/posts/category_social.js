@@ -1,38 +1,41 @@
 /**
  * ====
- * STEVSCON.COM - social/manage/category_social.js (v2)
- * La PUERTA hacia el Social (después de la separación index / social.html).
+ * STEVSCON.COM - social/manage/posts/category_social.js (v3)
+ * La PUERTA hacia el Social — ahora en el DOCK SUPERIOR, centrada arriba.
  *
- * - Botón/pestaña FIJO en el lado IZQUIERDO, auto-montado (no necesita
- *   ningún tag en el index; de hecho, si tienes un <a>Social</a> pelado
- *   en el HTML del index, BÓRRALO — este file dibuja el botón él solo).
- * - Hover: se despliega revelando "Social", la carita se inclina feliz
- *   y cruza un brillo (shimmer). Glow dorado/morado.
- * - Click: animación de "squish" y abre la pantalla de carga épica:
- *   HappyFace en el centro, partículas, barra de progreso REAL y
- *   mensajes random de suerte / consejos / preguntas (con easter egg
- *   raro y la carita es tocable).
- * - Mientras tanto PRECARGA todo el Social: descarga social.html, lee
- *   sus <script>/<link> y los calienta en caché + un ping a Firebase,
- *   para que al aterrizar el arranque sea casi instantáneo.
- * - Aterriza SIEMPRE: mínimo 2.4s (leer el mensaje) y máximo 6.5s
- *   (por si algo se cuelga), luego navega a /social/social.html.
+ * - v3: la pestaña ya NO vive a media pantalla a la izquierda. Ahora es
+ *   una píldora de cristal en la parte de ARRIBA de la web, centrada,
+ *   junto a la de Wiki (comparten dock). Misma alma, otro cuerpo:
+ *   glow pulsante, shimmer al hover, carita que se inclina feliz y
+ *   squish al click. La etiqueta "Social" siempre visible.
+ * - GUARDIA NUEVA: dentro de /social/social.html la puerta NO se pinta
+ *   (la puerta no se muestra dentro de su propia casa).
+ * - Click: misma pantalla de carga épica de HappyFace (intacta):
+ *   partículas, barra REAL, mensajes, easter egg raro, carita tocable.
+ * - Sigue PRECARGANDO todo el Social antes de aterrizar (2.4s mín / 6.5s máx).
  * - Respeta prefers-reduced-motion.
- * Cargar al final del index (</body>). Nada más.
  * ====
  */
 (function (window, document) {
     'use strict';
 
-    /* ==== CONFIG (ajusta solo si cambian de sitio) ==== */
+    /* GUARDIA · dentro del Social la puerta no existe */
+    var __p = location.pathname.replace(/\/+$/, '').toLowerCase();
+    if (__p.indexOf('/social/social.html') !== -1) {
+        console.log('[Stevscon] category_social.js v3: ya estás DENTRO del Social, puerta oculta.');
+        return;
+    }
+
+    /* ==== CONFIG ==== */
     var SOCIAL_URL = '/social/social.html';
-    var HAPPYFACE_URL = '/HappyFace.png';   /* ← ruta de tu personaje en el proyecto */
+    var HAPPYFACE_URL = '/HappyFace.png';
     var TAB_ID = 'scsoc-social-tab';
+    var DOCK_ID = 'sc-top-dock';
     var LOADER_ID = 'scsoc-loader';
 
-    var MIN_SHOW = 2400;   /* ms mínimos de pantalla de carga (se lee el mensaje) */
-    var MAX_SHOW = 6500;   /* ms máximos (fallback: nunca atrapar al usuario) */
-    var MSG_EVERY = 1700;  /* ms entre mensajes */
+    var MIN_SHOW = 2400;
+    var MAX_SHOW = 6500;
+    var MSG_EVERY = 1700;
 
     var state = { opened: false, going: false, prewarm: false, msgTimer: 0 };
 
@@ -62,36 +65,46 @@
     ];
     var RARE_MSG = 'EASTER EGG: Encontraste la carita dorada de la fortuna. Hoy nadie te niega un like.';
 
-    /* ==== ESTILOS (prefijo scsoc- / sc- para no pisar NADA) ==== */
+    /* ==== ESTILOS (prefijo scsoc-) ==== */
     var CSS = [
-        '/* ---- Pestaña Social ---- */',
+        '/* ---- DOCK SUPERIOR · casa compartida de las puertas ---- */',
+        '#' + DOCK_ID + ' {',
+        '  position: fixed; top: 8px; left: 50%; transform: translateX(-50%);',
+        '  z-index: 1200; display: flex; align-items: center; gap: 10px;',
+        '  flex-wrap: nowrap; pointer-events: none;',
+        '}',
+        '#' + DOCK_ID + ' > * { pointer-events: auto; }',
+        '',
+        '/* ---- Pestaña Social · píldora superior ---- */',
         '#' + TAB_ID + ' {',
-        '  position: fixed; left: 0; top: 50%; z-index: 1200;',
-        '  transform: translateY(-50%);',
-        '  display: flex; align-items: center; gap: 11px;',
-        '  height: 62px; width: 66px; padding: 0 0 0 11px; box-sizing: border-box;',
-        '  border: 1px solid rgba(139,92,246,.35); border-left: 0; border-radius: 0 999px 999px 0;',
-        '  background: rgba(23,18,38,.96); overflow: hidden; cursor: pointer;',
+        '  position: relative;',
+        '  display: flex; align-items: center; gap: 9px;',
+        '  height: 44px; padding: 0 16px 0 6px; box-sizing: border-box;',
+        '  border: 1px solid rgba(139,92,246,.4); border-radius: 999px;',
+        '  background: rgba(23,18,38,.9);',
+        '  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);',
+        '  overflow: hidden; cursor: pointer;',
         '  font-family: Inter, system-ui, sans-serif; color: #f8fafc;',
-        '  box-shadow: 0 8px 30px rgba(0,0,0,.5);',
-        '  transition: width .38s cubic-bezier(.22,1,.36,1), transform .38s cubic-bezier(.22,1,.36,1),',
-        '              box-shadow .3s ease, background .3s ease, border-color .3s ease;',
+        '  box-shadow: 0 6px 24px rgba(0,0,0,.45);',
+        '  transition: transform .3s cubic-bezier(.22,1,.36,1), box-shadow .3s ease,',
+        '              border-color .3s ease, background .3s ease, opacity .3s ease;',
         '  animation: scsoc-tab-pulse 3.4s ease-in-out infinite;',
         '}',
         '#' + TAB_ID + ':hover {',
-        '  width: 196px; background: linear-gradient(135deg, rgba(139,92,246,.28), rgba(23,18,38,.98));',
-        '  border-color: rgba(240,180,41,.55); animation: none;',
-        '  box-shadow: 0 12px 38px rgba(0,0,0,.55), 0 0 24px rgba(139,92,246,.4);',
+        '  transform: translateY(-2px) scale(1.05);',
+        '  border-color: rgba(240,180,41,.6);',
+        '  background: linear-gradient(135deg, rgba(139,92,246,.3), rgba(23,18,38,.95));',
+        '  animation: none;',
+        '  box-shadow: 0 10px 30px rgba(0,0,0,.5), 0 0 26px rgba(139,92,246,.45);',
         '}',
         '#' + TAB_ID + ':focus-visible { outline: 2px solid #f0b429; outline-offset: 3px; }',
         '#' + TAB_ID + '.is-pressing { animation: scsoc-squish .45s cubic-bezier(.34,1.56,.64,1); }',
-        '#' + TAB_ID + '.is-hidden { transform: translateY(-50%) translateX(-120%); opacity: 0; pointer-events: none; }',
+        '#' + TAB_ID + '.is-hidden { opacity: 0; transform: scale(.85); pointer-events: none; }',
         '',
         '#' + TAB_ID + ' .scsoc-face {',
-        '  width: 42px; height: 42px; flex: none; border-radius: 50%; padding: 2px;',
+        '  width: 34px; height: 34px; flex: none; border-radius: 50%; padding: 2px;',
         '  background: linear-gradient(135deg, #f0b429, #b45309);',
         '  display: grid; place-items: center; box-sizing: border-box;',
-        '  box-shadow: 0 0 0 0 rgba(240,180,41,.55);',
         '  transition: transform .35s cubic-bezier(.34,1.56,.64,1);',
         '}',
         '#' + TAB_ID + ' .scsoc-face img, #' + TAB_ID + ' .scsoc-face .scsoc-face-fallback {',
@@ -99,44 +112,30 @@
         '}',
         '#' + TAB_ID + ' .scsoc-face-fallback {',
         '  background: #f0b429; color: #1c1404; display: grid; place-items:center;',
-        '  font-weight: 800; font-size: 15px; letter-spacing: -.5px;',
+        '  font-weight: 800; font-size: 13px; letter-spacing: -.5px;',
         '}',
         '#' + TAB_ID + ':hover .scsoc-face { transform: rotate(-14deg) scale(1.08); }',
         '',
         '#' + TAB_ID + ' .scsoc-label {',
-        '  font-size: 15px; font-weight: 800; letter-spacing: .5px; white-space: nowrap;',
-        '  opacity: 0; transform: translateX(-8px);',
-        '  transition: opacity .25s ease .08s, transform .32s cubic-bezier(.22,1,.36,1) .08s;',
+        '  font-size: 14px; font-weight: 800; letter-spacing: .4px; white-space: nowrap;',
         '}',
-        '#' + TAB_ID + ':hover .scsoc-label { opacity: 1; transform: translateX(0); }',
-        '#' + TAB_ID + ' .scsoc-arrow {',
-        '  flex: none; width: 8px; height: 8px; margin-right: 16px;',
-        '  border-top: 2.5px solid #f0b429; border-right: 2.5px solid #f0b429;',
-        '  transform: rotate(45deg); opacity: 0; translate: -6px 0;',
-        '  transition: opacity .25s ease .12s, translate .3s ease .12s;',
-        '}',
-        '#' + TAB_ID + ':hover .scsoc-arrow { opacity: 1; translate: 0 0; }',
         '',
-        '/* shimmer que cruza al hacer hover */',
+        '/* shimmer que cruza al hacer hover (el de siempre) */',
         '#' + TAB_ID + ' .scsoc-shimmer {',
-        '  position: absolute; top: -20%; bottom: -20%; left: -30%; width: 36px;',
+        '  position: absolute; top: -20%; bottom: -20%; width: 36px;',
         '  background: rgba(255,255,255,.14); transform: skewX(-22deg);',
         '  left: -30%; opacity: 0;',
         '}',
         '#' + TAB_ID + ':hover .scsoc-shimmer { animation: scsoc-shine .9s ease .05s; }',
         '',
         '@keyframes scsoc-shine { 0% { left: -30%; opacity: 0; } 25% { opacity: 1; } 100% { left: 115%; opacity: 0; } }',
-        '@keyframes scsoc-squish { 0% { transform: translateY(-50%) scale(1); } 40% { transform: translateY(-50%) scale(.88,.8); } 100% { transform: translateY(-50%) scale(1); } }',
+        '@keyframes scsoc-squish { 0% { transform: scale(1); } 40% { transform: scale(.86,.78); } 100% { transform: scale(1); } }',
         '@keyframes scsoc-tab-pulse {',
-        '  0%,100% { box-shadow: 0 8px 30px rgba(0,0,0,.5); }',
-        '  50%     { box-shadow: 0 8px 30px rgba(0,0,0,.5), 0 0 22px rgba(240,180,41,.35); }',
-        '}',
-        '@media (hover: none) {',
-        '  #' + TAB_ID + ' { width: auto; padding-right: 18px; background: rgba(23,18,38,.96); }',
-        '  #' + TAB_ID + ' .scsoc-label { opacity: 1; transform: translateX(0); }',
+        '  0%,100% { box-shadow: 0 6px 24px rgba(0,0,0,.45); }',
+        '  50%     { box-shadow: 0 6px 24px rgba(0,0,0,.45), 0 0 22px rgba(240,180,41,.4); }',
         '}',
         '',
-        '/* ---- Pantalla de carga ---- */',
+        '/* ---- Pantalla de carga (INTACTA de v2) ---- */',
         '#' + LOADER_ID + ' {',
         '  position: fixed; inset: 0; z-index: 2147483000; background: #0d0b14;',
         '  display: flex; flex-direction: column; align-items: center; justify-content: center;',
@@ -208,11 +207,17 @@
         '#' + LOADER_ID + ' .sc-tip-mini { color: #64748b; font-size: 11px; font-weight: 600; position: absolute; bottom: 26px; }',
         '#' + LOADER_ID + ' .sc-brand { color: #475569; font-size: 11px; font-weight: 700; letter-spacing: 1px; position: absolute; bottom: 10px; }',
         '',
+        '/* ---- Responsive ---- */',
+        '@media (max-width: 760px) {',
+        '  #' + DOCK_ID + ' { top: 58px; gap: 8px; }',
+        '  #' + TAB_ID + ' { height: 40px; padding: 0 13px 0 5px; }',
+        '  #' + TAB_ID + ' .scsoc-face { width: 30px; height: 30px; }',
+        '  #' + TAB_ID + ' .scsoc-label { font-size: 13px; }',
+        '}',
         '@media (max-width: 640px) {',
         '  #' + LOADER_ID + ' .sc-ring { width: 118px; height: 118px; }',
         '  #' + LOADER_ID + ' .sc-face, #' + LOADER_ID + ' .sc-face-fallback { width: 84px; height: 84px; }',
         '  #' + LOADER_ID + ' .sc-msg { font-size: 15px; min-height: 4.6em; }',
-        '  #' + TAB_ID + ' { height: 54px; }  #' + TAB_ID + ' .scsoc-face { width: 38px; height: 38px; }',
         '}',
         '@media (prefers-reduced-motion: reduce) {',
         '  #' + LOADER_ID + ' .sc-pt, #' + LOADER_ID + ' .sc-glow-a, #' + LOADER_ID + ' .sc-glow-b { display: none; }',
@@ -227,13 +232,23 @@
         st.id = 'scsoc-category-social-style';
         st.textContent = CSS;
         document.head.appendChild(st);
-        /* Inter por si el index no la carga aún (la pantalla de carga la usa) */
         if (!document.querySelector('link[href*="family=Inter"]')) {
             var f = document.createElement('link');
             f.rel = 'stylesheet';
             f.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap';
             document.head.appendChild(f);
         }
+    }
+
+    /* ==== DOCK SUPERIOR · se crea solo una vez (lo comparte la Wiki) ==== */
+    function ensureDock() {
+        var d = document.getElementById(DOCK_ID);
+        if (!d) {
+            d = document.createElement('div');
+            d.id = DOCK_ID;
+            document.body.appendChild(d);
+        }
+        return d;
     }
 
     /* ==== PRECARGA de TODO el social (cache warm-up real) ==== */
@@ -248,8 +263,6 @@
     }
 
     function warmFirebase() {
-        /* Si el index ya tiene Firebase vivo, calentamos la conexión RTDB
-           para que el feed de Social pinte al instante. */
         if (window.firebase && firebase.apps && firebase.apps.length && firebase.database) {
             firebase.database().ref('.info/connected').once('value').catch(function () {});
         }
@@ -269,7 +282,6 @@
         }).then(function (html) {
             var doc = new DOMParser().parseFromString(html, 'text/html');
             var urls = [], seen = {};
-            /* Resolvemos cada src/href RELATIVO contra la ruta real de social.html */
             var scripts = doc.querySelectorAll('script[src]');
             var links = doc.querySelectorAll('link[rel="stylesheet"][href]');
             function push(raw) {
@@ -295,7 +307,7 @@
         if (load.total && load.done >= load.total && load.resolve) load.resolve();
     }
 
-    /* ==== LA PESTAÑA ==== */
+    /* ==== LA PESTAÑA (v3 · píldora superior) ==== */
     function buildTab() {
         if (document.getElementById(TAB_ID)) return;
         var b = document.createElement('button');
@@ -309,7 +321,7 @@
         var img = document.createElement('img');
         img.src = HAPPYFACE_URL;
         img.alt = '';
-        img.onerror = function () {   /* fallback por si la ruta cambia */
+        img.onerror = function () {
             var fb = document.createElement('span');
             fb.className = 'scsoc-face-fallback';
             fb.textContent = 'SC';
@@ -321,27 +333,23 @@
         label.className = 'scsoc-label';
         label.textContent = 'Social';
 
-        var arrow = document.createElement('span');
-        arrow.className = 'scsoc-arrow';
-
         var shimmer = document.createElement('span');
         shimmer.className = 'scsoc-shimmer';
 
         b.appendChild(shimmer);
         b.appendChild(face);
         b.appendChild(label);
-        b.appendChild(arrow);
 
         b.addEventListener('mouseenter', startPrewarm);
         b.addEventListener('touchstart', startPrewarm, { passive: true });
         b.addEventListener('click', function () {
             b.classList.remove('is-pressing');
-            void b.offsetWidth;              /* reinicia la animación de squish */
+            void b.offsetWidth;              /* reinicia el squish */
             b.classList.add('is-pressing');
-            setTimeout(openSocial, 140);     /* deja respirar el squish */
+            setTimeout(openSocial, 140);
         });
 
-        document.body.appendChild(b);
+        ensureDock().appendChild(b);
     }
 
     function startPrewarm() {
@@ -350,7 +358,7 @@
         ensurePrefetch();
     }
 
-    /* ==== PANTALLA DE CARGA ==== */
+    /* ==== PANTALLA DE CARGA (intacta) ==== */
     function pickMsg(not) {
         var i, m;
         do { i = Math.floor(Math.random() * MSGS.length); m = MSGS[i]; }
@@ -370,7 +378,6 @@
         var gb = document.createElement('span'); gb.className = 'sc-glow-b';
         ov.appendChild(ga); ov.appendChild(gb);
 
-        /* partículas doradas/moradas */
         for (var i = 0; i < 14; i++) {
             var p = document.createElement('span');
             p.className = 'sc-pt';
@@ -442,7 +449,6 @@
         loader.el = ov; loader.chipEl = chip; loader.msgEl = msg;
         loader.barEl = bar; loader.faceEl = face;
 
-        /* primer mensaje al instante (6% de que toque el easter egg raro) */
         if (Math.random() < 0.06) {
             setMsg('HAPPYFACE', 'gold', RARE_MSG, true);
             loader.rareMode = true;
@@ -487,8 +493,8 @@
     function paintProgress(t0, allDone) {
         if (!loader.barEl) return;
         var elapsed = Date.now() - t0;
-        var creep = Math.min(88, (elapsed / MIN_SHOW) * 88);       /* se arrastra con el tiempo */
-        var real = load.total ? (load.done / load.total) * 100 : 0; /* y salta con la carga real */
+        var creep = Math.min(88, (elapsed / MIN_SHOW) * 88);
+        var real = load.total ? (load.done / load.total) * 100 : 0;
         var pct = allDone ? 100 : Math.max(creep, real);
         loader.barEl.style.width = Math.min(100, pct) + '%';
     }
@@ -521,12 +527,10 @@
             setTimeout(function () { location.href = SOCIAL_URL; }, 280);
         }
 
-        /* termina cuando TODO se precargó Y el mínimo pasó; cap duro de seguridad */
         Promise.all([prefetch, new Promise(function (r) { setTimeout(r, MIN_SHOW); })]).then(go);
         setTimeout(go, MAX_SHOW);
     }
 
-    /* el loader vive aquí para los handlers */
     var loader = {};
 
     /* ==== INIT ==== */
@@ -541,5 +545,5 @@
         init();
     }
 
-    console.log('[Stevscon] category_social.js listo (v2) — puerta Social con precarga + pantalla de HappyFace.');
+    console.log('[Stevscon] category_social.js listo (v3) — puerta Social en el DOCK SUPERIOR + precarga real.');
 })(window, document);
