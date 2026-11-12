@@ -33,7 +33,7 @@
             { id: 'b2', css: 'linear-gradient(120deg,#2e1065,#7c3aed)' },
             { id: 'b3', css: 'linear-gradient(120deg,#0f0a18,#8b5cf6)' },
             { id: 'b4', css: 'linear-gradient(120deg,#4c1d95,#ec4899)' },
-            { id: 'b5', css: 'linear-gradient(120deg,#111118,#6d28d9)' },
+            { id: 'b5', css: 'linear-gradient(120deg,#111128,#6d28d9)' },
             { id: 'b6', css: 'linear-gradient(120deg,#2e1065,#a78bfa)' }
         ]
     };

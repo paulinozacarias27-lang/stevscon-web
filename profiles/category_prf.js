@@ -67,7 +67,7 @@
             const kids = m.children;
             let ref = null;
             for (let j = 0; j < kids.length; j++) {
-                if (kids[j].tagName === 'BUTTON' && kids[j].textContent === 'Cerrar sesión') { ref = kids[j]; break; }
+                if (kids[j].tagName === 'BUTTON' && /cerrar\s+sesi/i.test(kids[j].textContent || '')) { ref = kids[j]; break; }
             }
             const item1 = makeMenuItem('fa-solid fa-user', 'Ver perfil', function () { m.hidden = true; openView(); });
             const item2 = makeMenuItem('fa-solid fa-pen-to-square', 'Editar perfil', function () { m.hidden = true; openEdit(); });
