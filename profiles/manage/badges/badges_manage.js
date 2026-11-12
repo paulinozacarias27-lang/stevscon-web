@@ -630,7 +630,7 @@
             if (!w || (w.role !== 'owner' && w.role !== 'admin' && w.role !== 'mod')) return;
             if (document.getElementById('sc-badges-manage-btn')) return;
             state.role = w.role;
-            const b = el('button', 'position:fixed;right:18px;bottom:18px;z-index:3900;width:46px;height:46px;border-radius:50%;' +
+            const b = el('button', 'position:fixed;right:18px;bottom:74px;z-index:3900;width:46px;height:46px;border-radius:50%;' +
                 'border:1px solid rgba(251,191,36,.7);background:linear-gradient(135deg,#2e1065,#1a1526);color:#fbbf24;font-size:19px;' +
                 'cursor:pointer;box-shadow:0 8px 26px rgba(0,0,0,.5),0 0 14px rgba(251,191,36,.3);display:flex;align-items:center;justify-content:center;transition:transform .15s;');
             b.id = 'sc-badges-manage-btn';
