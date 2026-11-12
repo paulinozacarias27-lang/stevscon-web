@@ -17,6 +17,7 @@
     const SC = window.StevsconCreate = window.StevsconCreate || {};
 
     let menuRef = null;
+    let lastUser = null;
 
     function fb() {
         return (typeof window.StevsconFirebase !== 'undefined') ? window.StevsconFirebase : null;
@@ -73,6 +74,23 @@
         slot.appendChild(btn);
     }
 
+    // Pinta el avatar real (imagen/GIF) con background-image inline.
+    // Sin URL, el elemento queda como está (inicial). Nunca crea <img>.
+    function paintHeaderAvatar(el, profile) {
+        const pr = (profile && profile.profile) || {};
+        const url = pr.avatarUrl || pr.avatarURL || '';
+        if (!url || !el) return;
+        const probe = new Image();
+        probe.onload = function () {
+            el.style.backgroundImage = 'url("' + String(url).replace(/"/g, '%22') + '")';
+            el.style.backgroundSize = 'cover';
+            el.style.backgroundPosition = 'center';
+            el.style.backgroundRepeat = 'no-repeat';
+            el.textContent = '';
+        };
+        probe.src = String(url);
+    }
+
     function renderLoggedIn(slot, authUser, profile) {
         slot.textContent = '';
         const p = profile || {};
@@ -91,6 +109,7 @@
         const letterSpan = document.createElement('span');
         letterSpan.textContent = letter;
         avatar.appendChild(letterSpan);
+        paintHeaderAvatar(avatar, p);
 
         const menu = document.createElement('div');
         menu.hidden = true;
@@ -103,6 +122,7 @@
 
         const bigAvatar = document.createElement('div');
         bigAvatar.textContent = letter;
+        paintHeaderAvatar(bigAvatar, p);
         bigAvatar.style.cssText = 'width:44px;height:44px;border-radius:50%;background:#7c3aed;color:#ffffff;font-weight:800;font-size:19px;display:flex;align-items:center;justify-content:center;flex:none;';
 
         const headInfo = document.createElement('div');
@@ -155,6 +175,7 @@
         const F = fb();
         if (!F || !F.auth) return;
         F.auth.onAuthStateChanged(function (user) {
+            lastUser = user || null;
             const slot = document.getElementById('user-header-actions');
             if (!slot) return;
             if (!user) { renderLoggedOut(slot); return; }
@@ -166,6 +187,17 @@
             });
         });
     }
+
+    // Si Perfiles actualiza tu perfil, el header se repinta al instante
+    // con los datos nuevos (mismo evento que usa la tarjeta de la home).
+    document.addEventListener('stevscon:profile-updated', function () {
+        const slot = document.getElementById('user-header-actions');
+        const F = fb();
+        if (!lastUser || !slot || !F || !F.database) return;
+        F.database.ref('users/' + lastUser.uid).once('value').then(function (snap) {
+            renderLoggedIn(slot, lastUser, snap.val());
+        }).catch(function () { /* el header actual se queda: no rompe */ });
+    });
 
     // Espera a que existan el header y Firebase (orden de scripts)
     function boot(tries) {

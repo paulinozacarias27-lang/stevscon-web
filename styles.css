@@ -651,3 +651,45 @@ body {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
 }
+
+/* ====
+   ACCESO · Caja de errores del login (acc_access.js)
+   ==== */
+.form-errors {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    color: #f87171;
+    border-radius: 8px;
+    padding: 11px 14px;
+    margin-bottom: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.form-errors p:last-child { margin: 0; }
+
+/* ====
+   TOASTS · Variante de error (category_acc.js)
+   ==== */
+.toast-error {
+    background: var(--bg-card);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    color: #f87171;
+}
+
+/* ====
+   TEMA CLARO · tus settings ya cambian body.theme-light,
+   pero styles.css solo tenía variables oscuras: con esto
+   el toggle de tema pinta TODO el panel de cuentas.
+   ==== */
+body.theme-light {
+    --bg-main: #f4f2fb;
+    --bg-card: #ffffff;
+    --bg-hover: #ece7fa;
+    --bg-elevated: #f0ecfd;
+    --text-main: #1e1b2e;
+    --text-muted: #6b6480;
+    --border-color: #ddd4f5;
+    --purple-glow: rgba(139, 92, 246, 0.18);
+}
