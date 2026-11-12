@@ -380,7 +380,29 @@
         'Categorías del Social': 'Social categories',
         'Panel de seguridad': 'Security panel',
         'Seguridad': 'Security',
-        'Zona de trabajo vacía — aquí va el módulo de seguridad.': 'Empty work area — the security module goes here.'
+        'Zona de trabajo vacía — aquí va el módulo de seguridad.': 'Empty work area — the security module goes here.',
+
+        /* — v1.2 · menús ⋯ (edit_comment + edit_post) — */
+        'Editar': 'Edit',
+        'Eliminar': 'Delete',
+        'Editar publicación': 'Edit post',
+        'Eliminar publicación': 'Delete post',
+        'Editado ✓': 'Edited ✓',
+        'Eliminado ✓': 'Deleted ✓',
+        'Post editado ✓': 'Post edited ✓',
+        'Post eliminado ✓': 'Post deleted ✓',
+        'No se pudo editar.': "Couldn't edit.",
+        'No se pudo editar el post.': "Couldn't edit the post.",
+        'No se pudo eliminar.': "Couldn't delete.",
+        'No se pudo eliminar el post.': "Couldn't delete the post.",
+        'Solo el autor puede editarlo.': 'Only the author can edit it.',
+        'Solo el autor o el staff puede eliminar esto.': 'Only the author or staff can delete this.',
+        'Solo el staff puede editar posts.': 'Only staff can edit posts.',
+        'Solo el staff puede eliminar posts.': 'Only staff can delete posts.',
+        'Esto no se puede deshacer. ¿Seguro?': "This can't be undone. Are you sure?",
+        'Esto no se puede deshacer. ¿Seguro que quieres eliminarla?': "This can't be undone. Are you sure you want to delete it?",
+        'Ya enviaste un reporte de esto hace un momento.': 'You already reported this a moment ago.',
+        'Detalle extra (opcional): qué pasó, links, contexto…': 'Extra detail (optional): what happened, links, context…'
     };
 
     /* palabras sueltas que se traducen DENTRO de frases dinámicas */
@@ -423,6 +445,9 @@
         { re: /^([\d.,]+\s*[KMB]?) respuestas$/, rep: '$1 replies' },
         { re: /^Nada en «(.+)» por ahora\.$/, fn: function (s, c) { return 'Nothing in «' + lb(c) + '» yet.'; } },
         { re: /^Verificación aplicada: (.+) ✅$/, fn: function (s, v) { return 'Verification applied: ' + lb(v) + ' ✅'; } },
+        { re: /^Editar (comentario|respuesta)$/, fn: function (s, k) { return k === 'comentario' ? 'Edit comment' : 'Edit reply'; } },
+        { re: /^Eliminar (comentario|respuesta)$/, fn: function (s, k) { return k === 'comentario' ? 'Delete comment' : 'Delete reply'; } },
+        { re: /^Reportar (comentario|respuesta)$/, fn: function (s, k) { return k === 'comentario' ? 'Report comment' : 'Report reply'; } },
         { re: /^Muy largo: máx (\d+) caracteres\.$/, rep: 'Too long: max $1 characters.' },
         { re: /^↳ respondiendo a (@.+)$/, rep: '↳ replying to $1' },
         { re: /^Ese (post|comentario) ya se envió hace un momento\.$/, fn: function (s, k) { return k === 'post' ? 'That post was just sent.' : 'That comment was just sent.'; } },
