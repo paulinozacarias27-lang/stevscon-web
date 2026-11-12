@@ -352,7 +352,35 @@
         'ANTI-BAD HOY': 'ANTI-BAD TODAY',
         'REFRESCAR': 'REFRESH',
         'Sin actividad en los últimos 7 días todavía.': 'No activity in the last 7 days yet.',
-        'Aún no hay actividad para armar el ranking.': 'No activity yet to build the ranking.'
+        'Aún no hay actividad para armar el ranking.': 'No activity yet to build the ranking.',
+
+        /* — v1.1 · verificaciones (verified.js) — */
+        'Verificado clásico': 'Classic verified',
+        'Creador de contenido (CC)': 'Content creator (CC)',
+        'Verificado Mods': 'Mods verified',
+        'Verificado Developer': 'Developer verified',
+        'Verificado de Oro': 'Gold verified',
+        'VERIFICACIÓN': 'VERIFICATION',
+        'ACTUAL': 'CURRENT',
+        'Cambiar / Quitar': 'Change / Remove',
+        '⚠️ No se pudo verificar': "⚠️ Couldn't verify",
+        '⚠️ No se pudo quitar': "⚠️ Couldn't remove",
+        '⚠️ Verificación inválida': '⚠️ Invalid verification',
+        '⚠️ Solo Owner y Admins pueden verificar': '⚠️ Only Owner and Admins can verify',
+        '⚠️ Solo Owner y Admins pueden quitar': '⚠️ Only Owner and Admins can remove',
+        '⚠️ Falta el usuario': '⚠️ Missing user',
+        'Verificación inválida': 'Invalid verification',
+        'Solo Owner y Admins pueden verificar': 'Only Owner and Admins can verify',
+        'Solo Owner y Admins pueden quitar': 'Only Owner and Admins can remove',
+        'Falta el usuario': 'Missing user',
+
+        /* — v1.1 · categorías (feed_tabs.js) + security_panel.js — */
+        'Anuncios': 'Announcements',
+        'Actualizaciones': 'Updates',
+        'Categorías del Social': 'Social categories',
+        'Panel de seguridad': 'Security panel',
+        'Seguridad': 'Security',
+        'Zona de trabajo vacía — aquí va el módulo de seguridad.': 'Empty work area — the security module goes here.'
     };
 
     /* palabras sueltas que se traducen DENTRO de frases dinámicas */
@@ -366,6 +394,16 @@
         'reportar': 'report', 'enviar': 'send', 'interactuar': 'interact'
     };
     function w(s) { return (s && (DICT[s] || WORDS[s])) || s; }
+
+    /* v1.1: labels que aparecen DENTRO de frases dinámicas (categorías,
+     * verificaciones). Los nombres reales en BD quedan intactos. */
+    var LBL = {
+        'General': 'General', 'Anuncios': 'Announcements', 'Actualizaciones': 'Updates',
+        'Verificado clásico': 'Classic verified', 'Creador de contenido (CC)': 'Content creator (CC)',
+        'Verificado Mods': 'Mods verified', 'Verificado Developer': 'Developer verified',
+        'Verificado de Oro': 'Gold verified'
+    };
+    function lb(s) { return (s && LBL[s]) || w(s) || s; }
 
     function timeEn(t) {
         var m = /^hace (\d+) min$/.exec(t); if (m) return m[1] + ' min ago';
@@ -383,7 +421,8 @@
         { re: /^([\d.,]+\s*[KMB]?) me gusta$/, rep: '$1 likes' },
         { re: /^([\d.,]+\s*[KMB]?) comentarios$/, rep: '$1 comments' },
         { re: /^([\d.,]+\s*[KMB]?) respuestas$/, rep: '$1 replies' },
-        { re: /^Nada en «(.+)» por ahora\.$/, rep: 'Nothing in «$1» yet.' },
+        { re: /^Nada en «(.+)» por ahora\.$/, fn: function (s, c) { return 'Nothing in «' + lb(c) + '» yet.'; } },
+        { re: /^Verificación aplicada: (.+) ✅$/, fn: function (s, v) { return 'Verification applied: ' + lb(v) + ' ✅'; } },
         { re: /^Muy largo: máx (\d+) caracteres\.$/, rep: 'Too long: max $1 characters.' },
         { re: /^↳ respondiendo a (@.+)$/, rep: '↳ replying to $1' },
         { re: /^Ese (post|comentario) ya se envió hace un momento\.$/, fn: function (s, k) { return k === 'post' ? 'That post was just sent.' : 'That comment was just sent.'; } },
