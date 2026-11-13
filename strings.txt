@@ -1,0 +1,6 @@
+while IFS= read -r linea; do
+  [ -z "$linea" ] && continue
+  es=$(printf '%s' "$linea" | sed 's/"/\\"/g')
+  en=$(trans -b es:en "$linea" | sed 's/"/\\"/g')
+  printf '        "%s": "%s",\n' "$es" "$en"
+done < strings.txt > dict.js
