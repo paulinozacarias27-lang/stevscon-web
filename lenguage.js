@@ -1,33 +1,27 @@
 /**
  * ====
  * STEVSCON.COM - lenguage.js  (RAIZ del proyecto)
- * IDIOMA · Traduccion ES/EN de TODA la web en UN solo file · v3
- * - v3 BIDIRECCIONAL: el diccionario sigue siendo espanol -> ingles, pero
- *   ahora se construye solo el INVERSO (ingles -> espanol). Asi, aunque un
- *   modulo o el HTML pinte texto en ingles (ej: el hero "Welcome to
- *   Stevscon"), en modo ES se restaura al espanol. Este era el bug de
- *   "puse espanol y todo sigue en ingles".
- * - v3 SINCRONIZADO con social/lenguage.js: guarda en localStorage AMBAS
- *   claves ('stevscon_lang' y 'sc_lang') y lee cualquiera de las dos, asi
- *   el toggle del index y el del Social comparten idioma siempre.
- * - v3 TU ELECCION MANDA: el espejo de Firebase solo se aplica la PRIMERA
- *   vez (si nunca elegiste idioma local). Antes Firebase podia re-imponer
- *   un 'en' viejo en cada recarga.
- * - Incluye TODO category_social.js: la puerta (Social / Abrir Social /
- *   Tócame / Entrando a Social / Psst...) y su pantalla de carga completa
- *   (15 mensajes SUERTE/CONSEJO/PREGUNTA, chips, 4 frases de HappyFace y
- *   el easter egg dorado).
- * - Sigue traduciendo al vuelo TODO lo que aparezca despues (modals,
- *   toasts, menus) con MutationObserver, usando textContent/attrs seguros.
- * - StevsconLang.diagnose() = diagnostico · StevsconLang.debug() = lista
- *   en consola de todo texto que quede sin traducir (en AMBOS idiomas).
- * Cargar al FINAL del index. El tag debe llamarse EXACTO: lenguage.js?v=3
+ * IDIOMA · Traduccion ES/EN de TODA la web en UN solo file · v4
+ * - v4 PROFILES: agrega el diccionario COMPLETO de profiles (modal Mi
+ *   perfil, modal Editar Perfil, campo username/crear cuenta, descripcion,
+ *   genero, avatar, banner, panel Cambiar de cuenta, panel de Badges,
+ *   estados de presencia y errores de Firebase). Profiles corre dentro del
+ *   index, asi que NO necesita files extra: este mismo file lo cubre todo.
+ * - v3 BIDIRECCIONAL: diccionario espanol -> ingles + inverso automatico
+ *   (ingles -> espanol) para restaurar textos pintados en ingles.
+ * - v3 SINCRONIZADO: guarda AMBAS claves ('stevscon_lang' y 'sc_lang').
+ * - v3 TU ELECCION MANDA: Firebase solo aplica si nunca elegiste idioma.
+ * - Nota de diseno: el GENERO y los ESTADOS se guardan en Firebase con su
+ *   valor espanol (asi la base de datos no se mezcla); aqui se traduce solo
+ *   lo que se MUESTRA. Cero migracion de datos.
+ * - StevsconLang.diagnose() / StevsconLang.debug() igual que siempre.
+ * Tag EXACTO en index: <script defer src="lenguage.js?v=4"></script>
  * ====
  */
 (function (window, document) {
     'use strict';
 
-    var VERSION = 3;
+    var VERSION = 4;
 
     function hasKey(obj, k) {
         return Object.prototype.hasOwnProperty.call(obj, k);
@@ -59,24 +53,153 @@
         'Cerrar sesion': 'Sign out',
         'Correo': 'Email',
         'Copiar': 'Copy',
-        // Perfiles (category_prf.js)
+        '¡Copiado!': 'Copied!',
+
+        // Perfiles · tarjeta (ui_profile v3 · SCp.ui.renderProfileCard)
         'Mi perfil': 'My profile',
         'Tu tarjeta, estilo Stevscon.': 'Your card, Stevscon style.',
         '← Volver a mi perfil': '← Back to my profile',
+        'Sin nombre': 'No name',
+        'DESCRIPCIÓN': 'DESCRIPTION',
+        'Sin descripción aún.': 'No description yet.',
+        'MIEMBRO DESDE': 'MEMBER SINCE',
+        'GÉNERO': 'GENDER',
+        'Sin especificar': 'Not specified',
+        'Tu avatar': 'Your avatar',
+        'Tu banner': 'Your banner',
 
-        // ---- category_social.js · la puerta del Social ----
+        // Perfiles · modal Editar Perfil (UIProfile)
+        'Editar Perfil': 'Edit Profile',
+        'Nombre de usuario': 'Username',
+        'Biografia (max 300 caracteres)': 'Bio (max 300 characters)',
+        'Ubicacion': 'Location',
+        'Sitio web': 'Website',
+        'Estado personalizado (max 100 caracteres)': 'Custom status (max 100 characters)',
+        'Estado de presencia': 'Presence status',
+        'En linea': 'Online',
+        'Ausente': 'Away',
+        'No molestar': 'Do not disturb',
+        'Invisible': 'Invisible',
+        'Asi te veran los demas.': 'This is how others will see you.',
+        'Privacidad': 'Privacy',
+        'Visibilidad del perfil': 'Profile visibility',
+        'Publico': 'Public',
+        'Solo amigos': 'Friends only',
+        'Privado': 'Private',
+        'Permitir solicitudes de amistad': 'Allow friend requests',
+        'Si': 'Yes',
+        'Permitir mensajes directos': 'Allow direct messages',
+        'Todos': 'Everyone',
+        'Nadie': 'Nobody',
+        'Mostrar estado online': 'Show online status',
+        'Cancelar': 'Cancel',
+        'Guardar cambios': 'Save changes',
+        'Subiendo avatar...': 'Uploading avatar...',
+        'Avatar actualizado.': 'Avatar updated.',
+        'Subiendo banner...': 'Uploading banner...',
+        'Banner actualizado.': 'Banner updated.',
+        'Guardando...': 'Saving...',
+        'Perfil actualizado correctamente.': 'Profile updated successfully.',
+        'No se pudo guardar el perfil.': 'Could not save the profile.',
+
+        // Perfiles · EDIT · username (crear cuenta), descripcion, genero
+        'Nombre visible': 'Display name',
+        'Así te verán los demás en Stevscon.': 'This is how others will see you on Stevscon.',
+        'Escribe tu nombre visible.': 'Type your display name.',
+        'Cuéntale a Stevscon sobre ti...': 'Tell Stevscon about yourself...',
+        'Guardar descripción': 'Save description',
+        'Descripción actualizada.': 'Description updated.',
+        'Masculino': 'Male',
+        'Femenino': 'Female',
+        'Otro': 'Other',
+        'Prefiero no decirlo': 'Prefer not to say',
+        'Guardar género': 'Save gender',
+        'Género actualizado.': 'Gender updated.',
+
+        // Perfiles · EDIT · avatar y banner (subida de imagen)
+        'Subir imagen': 'Upload image',
+        'Subiendo imagen...': 'Uploading image...',
+        'Guardar avatar': 'Save avatar',
+        'Guardar banner': 'Save banner',
+        'Ese archivo no es una imagen.': 'That file is not an image.',
+        'La imagen pesa demasiado (máximo 8 MB).': 'The image is too large (max 8 MB).',
+        'No pudimos leer esa imagen.': "We couldn't read that image.",
+        'Falta Firebase Storage: agrégalo a memory_acc.js y habilita Storage en la consola.': 'Firebase Storage is missing: add it to memory_acc.js and enable Storage in the console.',
+        'Falta el cargador de imagenes (media_acc.js). Revisa el index.': 'The image uploader (media_acc.js) is missing. Check the index.',
+
+        // Perfiles · panel Cambiar de cuenta (panel.js)
+        'Cambiar de cuenta': 'Switch account',
+        'Tus cuentas guardadas en este dispositivo.': 'Your accounts saved on this device.',
+        'Actual': 'Current',
+        'Quitar de la lista': 'Remove from list',
+        'No se pudo cambiar de cuenta.': 'Could not switch accounts.',
+        'Esta cuenta aún no está guardada aquí.': 'This account is not saved here yet.',
+        'Guardar': 'Save',
+        'Todavía no tienes cuentas guardadas. Añade una abajo.': "You don't have any saved accounts yet. Add one below.",
+        'Añadir cuenta': 'Add account',
+        'Las contraseñas se guardan ofuscadas SOLO en este dispositivo. Nunca se suben a la web.': 'Passwords are saved obfuscated ONLY on this device. They are never uploaded to the web.',
+        '← Volver a las cuentas': '← Back to accounts',
+        'Guardar esta cuenta': 'Save this account',
+        'Cuenta actual': 'Current account',
+        'Correo o handler de la cuenta': 'Account email or handler',
+        'correo@gmail.com o @handler': 'email@gmail.com or @handler',
+        'Contraseña de esa cuenta': 'Password for that account',
+        'Entrar y guardar': 'Sign in and save',
+        'Entrando…': 'Signing in…',
+        'No se pudo guardar la cuenta.': 'Could not save the account.',
+        'Cuenta': 'Account',
+
+        // Perfiles · motor de switch (switch.js · errores)
+        'Contraseña incorrecta para esa cuenta.': 'Incorrect password for that account.',
+        'Esa cuenta ya no existe.': 'That account no longer exists.',
+        'Demasiados intentos. Espera un momento y vuelve a intentar.': 'Too many attempts. Wait a moment and try again.',
+        'Sin conexión con el servidor. Revisa tu internet.': 'No connection to the server. Check your internet.',
+        'Ese correo no es válido.': 'That email is not valid.',
+        'No se pudo completar el cambio de cuenta.': 'Could not complete the account switch.',
+        'Escribe el correo o un @handler válido.': 'Type a valid email or @handler.',
+        'No encontré el correo de ese handler. Entra con el CORREO de la cuenta.': "I couldn't find the email for that handler. Sign in with the account's EMAIL.",
+        'No encontré ese handler. Prueba con el correo de la cuenta.': "I couldn't find that handler. Try the account's email.",
+        'No pude resolver ese handler. Entra con el correo de la cuenta.': "I couldn't resolve that handler. Sign in with the account's email.",
+        'Firebase no está listo.': 'Firebase is not ready.',
+        'Esta cuenta guardada se dañó. Añádela de nuevo.': 'This saved account got corrupted. Add it again.',
+        'Escribe el correo o @handler de la cuenta.': "Type the account's email or @handler.",
+        'Escribe la contraseña de esa cuenta.': "Type that account's password.",
+
+        // Badges · catalogo + panel 👑 (badges_core / system / manage)
+        'Fundador de Stevscon — el orgullo de la web 💜': 'Founder of Stevscon — the pride of the web 💜',
+        'OTORGADO ✓': 'GRANTED ✓',
+        'SIN BADGE': 'NO BADGE',
+        'Otorgar': 'Grant',
+        'Quitar': 'Remove',
+        'Solo el Owner puede manejar este badge': 'Only the Owner can manage this badge',
+        'Badges — Orgullo de la web': 'Badges — Pride of the web',
+        'Otorga insignias que se muestran en los perfiles': 'Grant badges shown on profiles',
+        '@handler o UID del usuario…': '@handler or user UID…',
+        'Buscar': 'Search',
+        '❌ Usuario no encontrado. Prueba con su @handler exacto.': '❌ User not found. Try their exact @handler.',
+        'Usuario cargado. Otorga o quita badges abajo.': 'User loaded. Grant or remove badges below.',
+        '❌ No se pudo leer el usuario.': '❌ Could not read the user.',
+        'Usuario': 'User',
+        'No hay sesión iniciada.': 'No signed-in session.',
+        'Solo Owner/Admins pueden manejar este badge.': 'Only Owner/Admins can manage this badge.',
+
+        // Estado de presencia (status_online + online/inactive/busy/offline)
+        'ESTADO': 'STATUS',
+        'Cambiar mi estado': 'Change my status',
+        'Activo': 'Online',
+        'Inactivo': 'Inactive',
+        'Ocupado': 'Busy',
+        'Desconectado': 'Offline',
+
+        // ---- Social · la puerta (category_social.js) ----
         'Abrir Social': 'Open Social',
         'Tócame': 'Touch me',
         'Entrando a Social': 'Entering Social',
         'Psst… la carita se puede tocar.': 'Psst… you can touch the face.',
         'No pudimos abrir Social: falta category_posts.js. Revisa el index.': "We couldn't open Social: category_posts.js is missing. Check the index.",
-
-        // Chips de la pantalla de carga
         'SUERTE': 'LUCK',
         'CONSEJO': 'TIP',
         'PREGUNTA': 'QUESTION',
-
-        // Los 15 mensajes de la pantalla de carga
         'Hoy el algoritmo está de tu lado. Todo te va a salir bien.': 'Today the algorithm is on your side. Everything will go great.',
         'Dicen que quien entra a Social un viernes recibe un like inesperado.': 'They say whoever enters Social on a Friday gets an unexpected like.',
         'Si la carita sonríe, tu día va a sonreír también. Es ciencia.': 'If the smiley smiles, your day will smile too. It is science.',
@@ -92,20 +215,16 @@
         'Morado o dorado… el SC ya eligió. ¿Tú qué?': 'Purple or gold… SC already chose. What about you?',
         'Si la carita hablara, ¿qué diría? … Probablemente "holi".': 'If the smiley could talk, what would it say? … Probably "holi".',
         '¿Ya revisaste quién te dejó un like hoy?': 'Have you checked who left you a like today?',
-
-        // Frases de HappyFace (carita tocable) + easter egg dorado
         'HappyFace: «¡Buen viaje, viajero!»': 'HappyFace: «Safe travels, traveler!»',
         'HappyFace: «Yo sonrío, tú postea.»': 'HappyFace: «I smile, you post.»',
         'HappyFace: «Me tienes en el corazón… y en el centro de esta pantalla.»': 'HappyFace: «You hold me in your heart… and at the center of this screen.»',
         'HappyFace: «Eso, picándole. Ya casi.»': 'HappyFace: «That is it, keep tapping. Almost there.»',
         'EASTER EGG: Encontraste la carita dorada de la fortuna. Hoy nadie te niega un like.': 'EASTER EGG: You found the golden face of fortune. Today nobody can deny you a like.',
-
-        // Arranque de social.html (por si el file algun dia corre ahi tambien)
         'Abriendo el Social…': 'Opening Social…',
         'Abriendo el Social...': 'Opening Social...'
     };
 
-    // ---- Inverso automatico: ingles -> espanol (la cura del hero en ingles) ----
+    // ---- Inverso automatico: ingles -> espanol ----
     var REV = {};
     (function () {
         for (var k in DICT) {
@@ -113,26 +232,64 @@
         }
     })();
 
-    // Textos con partes dinamicas (usernames, IDs...) en ambas direcciones
+    // ---- Textos con partes dinamicas (usernames, IDs, numeros, emails) ----
     var PATTERNS = [
-        {
-            re: /^¡Cuenta creada! Bienvenido, (.+) \(ID: (\d+)\)$/,
-            en: 'Account created! Welcome, $1 (ID: $2)',
-            revRe: /^Account created! Welcome, (.+) \(ID: (\d+)\)$/,
-            es: '¡Cuenta creada! Bienvenido, $1 (ID: $2)'
-        },
-        {
-            re: /^ID copiado: (.+)$/,
-            en: 'ID copied: $1',
-            revRe: /^ID copied: (.+)$/,
-            es: 'ID copiado: $1'
-        }
+        { re: /^¡Cuenta creada! Bienvenido, (.+) \(ID: (\d+)\)$/, en: 'Account created! Welcome, $1 (ID: $2)',
+          revRe: /^Account created! Welcome, (.+) \(ID: (\d+)\)$/, es: '¡Cuenta creada! Bienvenido, $1 (ID: $2)' },
+        { re: /^ID copiado: (.+)$/, en: 'ID copied: $1',
+          revRe: /^ID copied: (.+)$/, es: 'ID copiado: $1' },
+
+        // Profiles · crear cuenta / username
+        { re: /^Muy corto: mínimo (\d+) caracteres\.$/, en: 'Too short: minimum $1 characters.',
+          revRe: /^Too short: minimum (\d+) characters\.$/, es: 'Muy corto: mínimo $1 caracteres.' },
+        { re: /^Perfecto, ¡hola (.+)!$/, en: 'Perfect, hello $1!',
+          revRe: /^Perfect, hello (.+)!$/, es: 'Perfecto, ¡hola $1!' },
+        { re: /^El nombre debe tener al menos (\d+) caracteres\.$/, en: 'The name must be at least $1 characters.',
+          revRe: /^The name must be at least (\d+) characters\.$/, es: 'El nombre debe tener al menos $1 caracteres.' },
+        { re: /^El nombre no puede pasar de (\d+) caracteres\.$/, en: 'The name cannot exceed $1 characters.',
+          revRe: /^The name cannot exceed (\d+) characters\.$/, es: 'El nombre no puede pasar de $1 caracteres.' },
+
+        // Profiles · errores con detalle tecnico
+        { re: /^No se pudo guardar\. Detalle: (.+)$/, en: 'Could not save. Detail: $1',
+          revRe: /^Could not save\. Detail: (.+)$/, es: 'No se pudo guardar. Detalle: $1' },
+        { re: /^No se pudo subir la imagen\. Detalle: (.+)$/, en: 'Could not upload the image. Detail: $1',
+          revRe: /^Could not upload the image\. Detail: (.+)$/, es: 'No se pudo subir la imagen. Detalle: $1' },
+
+        // Profiles · switch de cuentas con numeros
+        { re: /^(\d+) de (\d+) cuentas guardadas \(según tu rango\)\.$/, en: '$1 of $2 accounts saved (based on your rank).',
+          revRe: /^(\d+) of (\d+) accounts saved \(based on your rank\)\.$/, es: '$1 de $2 cuentas guardadas (según tu rango).' },
+        { re: /^Llegaste a tu límite de (\d+) cuentas guardadas \(según tu rango\)\. Quítala una para añadir otra\.$/,
+          en: 'You reached your limit of $1 saved accounts (based on your rank). Remove one to add another.',
+          revRe: /^You reached your limit of (\d+) saved accounts \(based on your rank\)\. Remove one to add another\.$/,
+          es: 'Llegaste a tu límite de $1 cuentas guardadas (según tu rango). Quítala una para añadir otra.' },
+
+        // Badges · feedback dinámico del panel 👑
+        { re: /^✅ Badge "(.+)" otorgado a (.+)\. Se ve AL INSTANTE en su perfil\.$/,
+          en: '✅ Badge "$1" granted to $2. It shows INSTANTLY on their profile.',
+          revRe: /^✅ Badge "(.+)" granted to (.+)\. It shows INSTANTLY on their profile\.$/,
+          es: '✅ Badge "$1" otorgado a $2. Se ve AL INSTANTE en su perfil.' },
+        { re: /^🗑️ Badge "(.+)" quitado a (.+)\.$/, en: '🗑️ Badge "$1" removed from $2.',
+          revRe: /^🗑️ Badge "(.+)" removed from (.+)\.$/, es: '🗑️ Badge "$1" quitado a $2.' },
+        { re: /^❌ No se pudo otorgar: (.+)$/, en: '❌ Could not grant: $1',
+          revRe: /^❌ Could not grant: (.+)$/, es: '❌ No se pudo otorgar: $1' },
+        { re: /^❌ No se pudo quitar: (.+)$/, en: '❌ Could not remove: $1',
+          revRe: /^❌ Could not remove: (.+)$/, es: '❌ No se pudo quitar: $1' },
+        { re: /^❌ No se pudo leer los badges: (.+)$/, en: '❌ Could not read badges: $1',
+          revRe: /^❌ Could not read badges: (.+)$/, es: '❌ No se pudo leer los badges: $1' },
+        { re: /^❌ Solo el Owner \((.+)\) puede manejar el badge Owner\.$/, en: '❌ Only the Owner ($1) can manage the Owner badge.',
+          revRe: /^❌ Only the Owner \((.+)\) can manage the Owner badge\.$/, es: '❌ Solo el Owner ($1) puede manejar el badge Owner.' },
+        { re: /^Solo el Owner \((.+)\) puede manejar el badge Owner\.$/, en: 'Only the Owner ($1) can manage the Owner badge.',
+          revRe: /^Only the Owner \((.+)\) can manage the Owner badge\.$/, es: 'Solo el Owner ($1) puede manejar el badge Owner.' },
+        { re: /^Badge desconocido: "(.+)"\.$/, en: 'Unknown badge: "$1".',
+          revRe: /^Unknown badge: "(.+)"\.$/, es: 'Badge desconocido: "$1".' },
+
+        // Badges · tooltip con fecha
+        { re: /^Otorgado el (.+)$/, en: 'Awarded on $1',
+          revRe: /^Awarded on (.+)$/, es: 'Otorgado el $1' }
     ];
 
-    var ATTRS = ['placeholder', 'title', 'aria-label'];
+    var ATTRS = ['placeholder', 'title', 'aria-label', 'alt'];
 
-    // v3: AMBAS claves — el toggle del Social (sc_lang) y el de la raiz
-    // (stevscon_lang) quedan siempre espejados en las dos direcciones.
     var STORE_KEYS = ['stevscon_lang', 'sc_lang'];
 
     function readStore() {
@@ -153,8 +310,8 @@
 
     var lang = readStore() || 'es';
 
-    var originals = new WeakMap();      // TextNode -> texto original
-    var attrOriginals = new WeakMap();  // Element -> { atributo: original }
+    var originals = new WeakMap();
+    var attrOriginals = new WeakMap();
     var debugOn = false;
     var debugSeen = {};
     var menuInjectedOnce = false;
@@ -183,7 +340,6 @@
         if (!original) return null;
         var hit = translateExact(original);
         if (hit !== null) return hit;
-        // Tolerante a espacios de borde (innerHTML tipo "Entrando a Social <span>...")
         var m = original.match(/^(\s*)(\S[\s\S]*?)(\s*)$/);
         if (m) {
             var inner = translateExact(m[2]);
@@ -201,7 +357,6 @@
         if (/^[^\s]+@[^\s]+$/.test(s)) return;
         if (/^https?:/i.test(s)) return;
         if (lang === 'es') {
-            // En ES solo reportamos sospechosos de estar pintados en ingles
             if (hasKey(DICT, s) || !/^[\x00-\x7F]*$/.test(s)) return;
         }
         debugSeen[s] = 1;
@@ -315,7 +470,7 @@
         try {
             var FB = window.StevsconFirebase;
             if (!FB || !FB.auth) return;
-            var hadLocalChoice = readStore() !== null; // v3: tu eleccion local manda
+            var hadLocalChoice = readStore() !== null;
             FB.auth.onAuthStateChanged(function (u) {
                 if (!u || !FB.database || hadLocalChoice) return;
                 FB.database.ref('users/' + u.uid + '/settings/lang').once('value').then(function (s) {
@@ -326,13 +481,13 @@
         } catch (e) {}
     }
 
-    // ---- MENU del avatar: deteccion POR CONTENIDO (a prueba de todo) ----
+    // ---- MENU del avatar: deteccion POR CONTENIDO en AMBOS idiomas ----
 
     function looksLikeMenu(el) {
         if (!el || el.nodeType !== 1 || !el.textContent) return false;
         var t = el.textContent;
-        if (!/ver\s+perfil/i.test(t)) return false;
-        return (/editar\s+perfil/i.test(t) || /cerrar\s+sesi/i.test(t));
+        if (!/ver\s+perfil|view\s+profile/i.test(t)) return false;
+        return (/editar\s+perfil|edit\s+profile/i.test(t) || /cerrar\s+sesi|sign\s+out/i.test(t));
     }
 
     function findMenuBoxesGlobal() {
@@ -490,12 +645,12 @@
             console.log('- boton flotante ES/EN:', floatBtn ? 'creado' : 'aun no creado');
             console.log('- localStorage (stevscon_lang / sc_lang):', stored);
             console.log('- diccionario:', Object.keys(DICT).length, 'entradas ES->EN +', Object.keys(REV).length, 'inversas EN->ES');
-            console.log('- Si nada de esto aparece, revisa que index tenga: <script defer src="lenguage.js?v=3"></script> (nombre EXACTO)');
+            console.log('- Si nada de esto aparece, revisa que index tenga: <script defer src="lenguage.js?v=4"></script> (nombre EXACTO)');
         },
         debug: function () {
             debugOn = true;
             debugSeen = {};
-            console.log('[Stevscon i18n] debug ON. Recorre la home, el loader del Social (toca la carita) y los modals: cada texto que quede sin traducir se imprimira aqui. Pasame esa lista y amplio el diccionario.');
+            console.log('[Stevscon i18n] debug ON. Recorre la home, el modal Mi perfil, Editar Perfil, Cambiar de cuenta, el panel 👑 y el ESTADO: cada texto sin traducir se imprimira aqui. Pasame esa lista y amplio el diccionario.');
         }
     };
 
