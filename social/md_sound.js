@@ -1,36 +1,33 @@
 /**
  * ====
- * STEVSCON.COM — social/md_sound.js (v3)
+ * STEVSCON.COM — social/md_sound.js (v4)
  * NOTIFICACIONES de Mensajes Directos — tu mp3 real + campana silenciadora.
  *  - El sonido es TU MP3: notify-md.mp3, en esta MISMA carpeta social/.
- *    El script resuelve la ruta desde donde vive él: puedes cargarlo
- *    desde CUALQUIER HTML con <script src="/social/md_sound.js?v=3">
- *    y el mp3 se encuentra solo (no hay que copiar archivos).
- *  - v3 · DISPARADOR REAL: suena cuando sube lastAt (el mismo campo que
- *    pinta el mensaje nuevo en tu bandeja) O cuando sube unread. Antes
- *    solo miraba unread, y tu md_core escribe el mensaje en DOS pasos
- *    (lastAt primero, unread después): si el segundo fallaba, callaba.
- *  - v3 · CONSOLA HONESTA: si llega un MD y NO suena, la consola dice
- *    la razón exacta (silenciado / estás leyendo ese chat / ya sonó).
- *  - Escucha dms/inbox/{uid} en vivo (el mismo nodo del badge 99+).
+ *  - v4 · CAJA NEGRA: la consola ahora imprime CADA cambio real de la
+ *    bandeja (lastAt/unread/lastFrom) y la DECISIÓN exacta tomada.
+ *    Si llega un MD y no suena, la consola SIEMPRE dice por qué.
+ *  - v4 · NUEVO: StevsconNotify.simulate() — inyecta un MD falso que pasa
+ *    por el MISMO camino de decisión que uno real (audio + toast).
+ *    Si simulate() suena pero un MD real no, el problema está en lo que
+ *    Firebase entrega, no en este script — y la traza lo muestra.
+ *  - Disparador: sube lastAt (el mismo campo que pinta el mensaje nuevo
+ *    en la bandeja) O sube unread.
  *  - No suena: al cargar la página, si el mensaje es tuyo, ni si estás
  *    DENTRO de esa conversación con la pestaña activa (estilo Discord).
- *  - CAMPANA abajo a la IZQUIERDA: silencia sonido + toasts por completo.
- *    Se guarda en localStorage: el silencio vale en TODA la web.
- *    OJO: si la campana está roja con tachón, estás silenciado — el
- *    test() suena igual, pero los MD reales no.
- *    API: StevsconNotify.toggle() / .setMuted(v) / .test() / .status()
- *  - El toast lleva data-sctr-skip: el traductor NUNCA toca el MD.
- *  - Doble pestaña abierta: solo una suena (dedupe por localStorage).
- *  INSTALACION:
- *    social.html -> <script src="/social/md_sound.js?v=3"></script>
- *  Si se edita el file, subir la version: ?v=4, ?v=5...
+ *    OJO: los mensajes que llegan con la página CERRADA o recargándose
+ *    entran en la línea base — esos nunca suenan (es lo correcto).
+ *  - CAMPANA abajo a la IZQUIERDA: silencia sonido + toasts por completo
+ *    (localStorage: el silencio vale en TODA la web).
+ *  - Toast con data-sctr-skip: el traductor NUNCA toca el contenido del MD.
+ *  - Doble pestaña: solo una suena (dedupe por localStorage).
+ *  INSTALACION: <script src="/social/md_sound.js?v=4"></script>
+ *  API: StevsconNotify.toggle() / .setMuted(v) / .test() / .simulate() / .status()
  * ====
  */
 (function (window, document) {
     'use strict';
 
-    const VERSION = 3;
+    const VERSION = 4;
     const MUTE_KEY = 'sc_md_notify_muted';
     const DEDUPE_KEY = 'sc_md_lastping';
 
@@ -52,11 +49,11 @@
         try {
             pingAudio = new Audio(AUDIO_URL);
             pingAudio.preload = 'auto';
-            pingAudio.volume = 0.9;   /* cambia esto si suena fuerte/bajo (0.0 a 1.0) */
+            pingAudio.volume = 0.9;
             pingAudio.onerror = function () {
                 console.warn('[Stevscon md_sound] NO encontró el mp3 en: ' + AUDIO_URL + ' — revisa que notify-md.mp3 esté en la misma carpeta que md_sound.js.');
             };
-            pingAudio.load();          /* lo descarga de una vez, sin esperas al recibir MD */
+            pingAudio.load();
         } catch (e) { pingAudio = null; }
     }
     function playPing() {
@@ -170,11 +167,11 @@
     }
 
     /* ==== NÚCLEO · escucha la bandeja dms/inbox/{uid} ==== */
-    let base = null;        /* primer snapshot: línea base SIN sonido */
-    let alerted = {};       /* convId -> lastAt ya notificado */
+    let base = null;
+    let alerted = {};
     let offInbox = null;
     let myUid = '';
-    let openConvId = '';    /* conversación abierta en el drawer (si lo está) */
+    let openConvId = '';
 
     document.addEventListener('sc:dm-view', function (ev) {
         const d = (ev && ev.detail) || {};
@@ -194,6 +191,16 @@
         offInbox = function () { try { ref.off('value', fn); } catch (e) {} };
         console.log('[Stevscon md_sound] escuchando dms/inbox/' + u.uid + ' …');
     }
+
+    /* v4 · traza: cada cambio real de la bandeja imprime su decisión */
+    function trace(k, p, e, msg) {
+        console.info('[Stevscon md_sound] bandeja [' + k + ']'
+            + ' lastAt ' + p.lastAt + '→' + e.lastAt
+            + ' · unread ' + p.unread + '→' + e.unread
+            + ' · lastFrom=' + (e.lastFrom || '(vacío)')
+            + ' → ' + msg);
+    }
+
     function onSnap(v) {
         const now = {};
         Object.keys(v).forEach(function (k) {
@@ -207,35 +214,39 @@
                 peerUid: String(e.peerUid)
             };
         });
-        if (!base) { base = now; return; }          /* arranque: línea base, sin sonido */
+        if (!base) { base = now; return; }        /* arranque: línea base, sin sonido */
         Object.keys(now).forEach(function (k) {
             const e = now[k], p = base[k] || { unread: 0, lastAt: 0 };
+            const changed = (e.lastAt !== p.lastAt) || (e.unread !== p.unread);
+            if (!changed) return;
             const fromOther = e.lastFrom && e.lastFrom !== myUid;
-            if (!fromOther) return;                                  /* tuyo o vacío: nada */
-            /* v3 · dispara si subió lastAt (mensaje nuevo en bandeja) O unread */
+            if (!fromOther) { trace(k, p, e, 'IGNORADO (el último mensaje lo escribiste TÚ o lastFrom llegó vacío)'); return; }
             const isNew = (e.lastAt > p.lastAt) || (e.unread > p.unread);
-            if (!isNew) return;                                      /* nada nuevo */
+            if (!isNew) { trace(k, p, e, 'IGNORADO (no subió lastAt ni unread: era lectura, no mensaje nuevo)'); return; }
             if (k === openConvId && document.hasFocus && document.hasFocus()) {
                 alerted[k] = e.lastAt;
-                console.info('[Stevscon md_sound] MD nuevo mientras leías ESA conversación: sin sonido (estás dentro, estilo Discord).');
+                trace(k, p, e, 'SIN SONIDO (estás DENTRO de esa conversación, estilo Discord)');
                 return;
             }
-            if (alerted[k] === e.lastAt) return;                     /* ya sonó en esta pestaña */
-            try {                                                    /* dedupe entre pestañas */
+            if (alerted[k] === e.lastAt) { trace(k, p, e, 'IGNORADO (ya notificado en esta pestaña)'); return; }
+            try {
                 const d = JSON.parse(localStorage.getItem(DEDUPE_KEY) || '""');
-                if (d && d.k === k + '|' + e.lastAt && Date.now() - d.t < 8000) { alerted[k] = e.lastAt; return; }
+                if (d && d.k === k + '|' + e.lastAt && Date.now() - d.t < 8000) {
+                    alerted[k] = e.lastAt;
+                    trace(k, p, e, 'IGNORADO (otra pestaña ya sonó)');
+                    return;
+                }
                 localStorage.setItem(DEDUPE_KEY, JSON.stringify({ k: k + '|' + e.lastAt, t: Date.now() }));
             } catch (e2) {}
             alerted[k] = e.lastAt;
-            if (muted) {
-                console.info('[Stevscon md_sound] MD nuevo recibido, pero estás SILENCIADO — pulsa la campana (abajo a la izquierda) para activar.');
-                return;
-            }
+            if (muted) { trace(k, p, e, 'SIN SONIDO (SILENCIADO — pulsa la campana para activar)'); return; }
+            trace(k, p, e, '✔ SONANDO + toast');
             playPing();
             showToast(e);
         });
         base = now;
     }
+
     (function waitFirebase(n) {
         if (window.firebase && firebase.auth) {
             try {
@@ -243,7 +254,6 @@
             } catch (e) { console.warn('[Stevscon md_sound] auth:', e); }
             return;
         }
-        /* páginas sin Firebase: el file queda en silencio, sin errores */
         if (n < 200) setTimeout(function () { waitFirebase(n + 1); }, 250);
     })(0);
 
@@ -254,10 +264,31 @@
         setMuted: setMuted,
         toggle: function () { setMuted(!muted); return muted; },
         test: function () {
-            if (muted) console.warn('[Stevscon md_sound] OJO: estás SILENCIADO — el test suena igual, pero los MD reales NO hasta que pulses la campana o escribas StevsconNotify.setMuted(false).');
+            if (muted) console.warn('[Stevscon md_sound] OJO: estás SILENCIADO — el test suena igual, pero los MD reales NO hasta que pulses la campana.');
             return playPing();
         },
-        status: function () {   /* diagnóstico rápido desde la consola */
+        simulate: function () {
+            /* v4 · inyecta un MD FALSO que recorre el MISMO camino que uno real */
+            if (!base) { console.warn('[Stevscon md_sound] simulate(): aún no hay bandeja (¿sin sesión?).'); return false; }
+            console.info('[Stevscon md_sound] simulate(): inyectando MD falso por el camino real…');
+            const fake = {};
+            Object.keys(base).forEach(function (k) { fake[k] = Object.assign({}, base[k]); });
+            let k = null;
+            const keys = Object.keys(fake);
+            for (let i = 0; i < keys.length; i++) { if (keys[i] !== openConvId) { k = keys[i]; break; } }
+            if (!k && keys.length) k = keys[0];
+            if (!k) { k = 'simulado'; fake[k] = { unread: 0, lastAt: 0, lastFrom: '', lastText: '', peerUid: 'simulado' }; }
+            fake[k].lastAt = (fake[k].lastAt || 0) + 1;
+            fake[k].unread = (fake[k].unread || 0) + 1;
+            fake[k].lastFrom = 'no-soy-yo';
+            fake[k].lastText = '🔍 SIMULACIÓN — así se ve y suena un MD real al llegar';
+            const real = base;
+            onSnap(fake);          /* pasa por la MISMA lógica de decisión */
+            base = real;           /* deja la bandeja real intacta */
+            Object.keys(fake).forEach(function (kk) { if (alerted[kk] === fake[kk].lastAt) delete alerted[kk]; });
+            return true;
+        },
+        status: function () {
             return {
                 version: VERSION,
                 muted: muted,
@@ -273,7 +304,7 @@
         injectCss();
         ensureBell();
         ensureHost();
-        preloadPing();   /* deja tu mp3 cargado desde el arranque */
+        preloadPing();
         console.log('[Stevscon] md_sound listo (v' + VERSION + ') — MD con notify-md.mp3' + (muted ? ' (SILENCIADO: pulsa la campana)' : '') + '.');
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
