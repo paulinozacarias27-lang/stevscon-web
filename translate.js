@@ -1,6 +1,6 @@
 /*
- * ============================================================
- *  Stevscon Translate · translate.js (v1)
+ * ====
+ *  Stevscon Translate · translate.js (v4)
  *  Traduccion automatica de TODA la web (ES <-> EN).
  *  - Diccionario base incluido: los textos de la UI se traducen
  *    al instante, sin llamar a Google (calidad garantizada).
@@ -10,21 +10,29 @@
  *    limite de concurrencia (anti-flood).
  *  - Nunca se envian: @handlers, correos, URLs, numeros sueltos,
  *    ni textos de mas de 900 caracteres.
+ *  - NOMBRES DE USUARIO INTOCABLES (v4): cada @handler visible
+ *    ensena su nombre al sistema; los nombres aprendidos nunca
+ *    se traducen y su cache se cura sola. "StevsLoL" ya no puede
+ *    volverse "StevesLoL" ni "Gatihto" volverse "Kitten".
+ *  - Marca protegida: "Stevscon.wiki" nunca se corrompe a "week".
  *  - Escape manual: agrega translate="no" o class="notranslate"
  *    a cualquier elemento que NO deba traducirse (o data-sctr-skip).
- *  - Boton flotante ES/EN identico al anterior + item en el menu
- *    del avatar. Sincroniza con Firebase (users/{uid}/settings/lang).
+ *  - Boton flotante ES/EN + item en el menu del avatar.
+ *    Sincroniza con Firebase (users/{uid}/settings/lang).
  *  INSTALACION:
- *    index.html   -> <script defer src="translate.js?v=1"></script>
- *    social.html  -> <script defer src="../translate.js?v=1"></script>
- *  Si se edita el file, subir la version: ?v=2, ?v=3...
+ *    index.html   -> <script defer src="translate.js?v=4"></script>
+ *    social.html  -> <script defer src="../translate.js?v=4"></script>
+ *  Si se edita el file, subir la version: ?v=5, ?v=6...
  *  Guardar en UTF-8 (default de VS Code).
- * ============================================================
+ * ====
  */
 (function (window, document) {
     'use strict';
 
-    var VERSION = 1;
+    var VERSION = 4;
+
+    // ---- NOMBRES protegidos a mano (agrega los que quieras, separados por coma) ----
+    var PROTECTED_NAMES = ['StevsLoL'];
 
     // ---- Diccionario base ES -> EN (UI propia; se aplica sin API) ----
     var DICT = {
@@ -151,7 +159,7 @@
         'No se pudo completar el cambio de cuenta.': 'Could not complete the account switch.',
         'Escribe el correo o un @handler válido.': 'Type a valid email or @handler.',
         'No encontré el correo de ese handler. Entra con el CORREO de la cuenta.': "I couldn't find the email for that handler. Sign in with the account's EMAIL.",
-        'No encontré ese handler. Prueba con el correo de la cuenta.': "I couldn't find that handler. Try the account's email.",
+        'No encontré ese handler. Prueba con el correo de la cuenta.': "I couldn't find that handler. Try with the account's email.",
         'No pude resolver ese handler. Entra con el correo de la cuenta.': "I couldn't resolve that handler. Sign in with the account's email.",
         'Firebase no está listo.': 'Firebase is not ready.',
         'Esta cuenta guardada se dañó. Añádela de nuevo.': 'This saved account got corrupted. Add it again.',
@@ -242,9 +250,107 @@
     var attrOriginals = new WeakMap();  // el -> {attr: original}
     var mem = Object.create(null);      // cache en memoria
 
+    // ---- NOMBRES DE USUARIO · NUNCA se traducen ----
+    // "StevsLoL" NO puede volverse "StevesLoL" ni "Gatihto" volverse "Kitten".
+    // Los nombres se APRENDEN de dos fuentes:
+    //   1) Cada @handler visible en la web ensena su nombre (cero falsos positivos).
+    //   2) Zonas de identidad (data-scsoc-profile) y la tarjeta de perfil.
+    // Quedan guardados en localStorage y protegidos en TODA la web.
+    var nameSet = Object.create(null);
+    var NAMES_KEY = 'stevscon_names_v1';   // OJO: NO empieza con CACHE_PREFIX (el purgador no lo borra)
+    function rememberName(t) {
+        var s = String(t || '').trim();
+        if (s.length < 2 || s.length > 40) return;
+        if (s.charAt(0) === '@') s = s.slice(1);
+        s = s.trim();
+        if (s.length < 2) return;
+        if (hasKey(nameSet, s.toLowerCase())) return;
+        nameSet[s.toLowerCase()] = 1;
+        try { localStorage.setItem(NAMES_KEY, JSON.stringify(Object.keys(nameSet).slice(0, 400))); } catch (e) {}
+    }
+    function isName(s) { return hasKey(nameSet, String(s || '').trim().toLowerCase()); }
+    // Token suelto con forma de username: "StevsLoL" (mayuscula interna, sin espacios).
+    // Google "corrige" estos tokens como si fueran typos -> no se envian.
+    function isNameLikeToken(s) {
+        if (/\s/.test(s)) return false;
+        if (!/^[A-Za-z][A-Za-z0-9_.-]{1,24}$/.test(s)) return false;
+        if (!/[a-z]/.test(s) || !/[A-Z]/.test(s)) return false;
+        return /[a-z][A-Z]/.test(s);
+    }
+    function loadNames() {
+        try {
+            var arr = JSON.parse(localStorage.getItem(NAMES_KEY) || '[]');
+            if (Array.isArray(arr)) for (var i = 0; i < arr.length && i < 400; i++) nameSet[String(arr[i]).toLowerCase()] = 1;
+        } catch (e) {}
+    }
+    // Aprende nombres desde cualquier texto con menciones "@usuario"
+    function learnFromText(t) {
+        var s = String(t || '');
+        if (s.indexOf('@') < 0) return;
+        var re = /(?:^|\s)@([\w.-]{2,30})(?=[\s.,!?…]|$)/g;
+        var m, n = 0;
+        while ((m = re.exec(s)) !== null && n < 10) { rememberName(m[1]); n++; }
+    }
+    function learnNamesUnder(root) {
+        if (!root) return;
+        if (root.nodeType === 3) { learnFromText(root.nodeValue); return; }
+        if (root.nodeType !== 1 || skipEl(root)) return;
+        try {
+            var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+            var node = w.nextNode();
+            while (node) { learnFromText(node.nodeValue); node = w.nextNode(); }
+        } catch (e) {}
+    }
+    function isIdentityEl(el) {
+        return !!(el && el.nodeType === 1 && el.hasAttribute && el.hasAttribute('data-scsoc-profile'));
+    }
+    /* Envuelve a los pintores de nombres (mismo truco que badges y status) */
+    function hookIdentityPainters() {
+        try {
+            var S = window.SCSOC;
+            if (S && typeof S.userHead === 'function' && !S.userHead.__sctrHook) {
+                var orig = S.userHead;
+                S.userHead = function () {
+                    var el = orig.apply(this, arguments);
+                    try {
+                        if (el && el.setAttribute) el.setAttribute('data-sctr-skip', '1');
+                        if (el && el.textContent) learnFromText(el.textContent);
+                    } catch (e) {}
+                    return el;
+                };
+                S.userHead.__sctrHook = true;
+            }
+        } catch (e) {}
+        try {
+            var SCp = window.StevsconProfiles;
+            if (SCp && SCp.ui && typeof SCp.ui.renderProfileCard === 'function' && !SCp.ui.__sctrNameGuard) {
+                var orig2 = SCp.ui.renderProfileCard;
+                SCp.ui.renderProfileCard = function (container) {
+                    var out = orig2.apply(this, arguments);
+                    var mark = function () {
+                        try {
+                            var rootEl = (container && container.querySelector) ? container : (out && out.querySelector ? out : null);
+                            if (!rootEl) return;
+                            var h3 = rootEl.querySelector('h3');
+                            if (h3 && h3.textContent && h3.textContent.trim().toLowerCase() !== 'sin nombre') {
+                                h3.setAttribute('translate', 'no');
+                                h3.setAttribute('data-sctr-skip', '1');
+                                rememberName(h3.textContent);
+                            }
+                        } catch (e) {}
+                    };
+                    mark(); setTimeout(mark, 0); setTimeout(mark, 400);  // cubre pintado asincrono
+                    return out;
+                };
+                SCp.ui.__sctrNameGuard = true;
+            }
+        } catch (e) {}
+    }
+
     // ---- Cache (memoria -> diccionario -> localStorage) ----
 
     function cacheGet(key) {
+        if (isName(key)) return key;   // nombre conocido: su traduccion es el MISMO nombre (cura cache envenenada)
         if (hasKey(mem, key)) return mem[key];
         if (hasKey(DICT, key)) { mem[key] = DICT[key]; return DICT[key]; }
         try {
@@ -258,17 +364,18 @@
         try { localStorage.setItem(CACHE_PREFIX + key, val); }
         catch (e) { purgeDiskCache(); try { localStorage.setItem(CACHE_PREFIX + key, val); } catch (e2) {} }
     }
-    // Limpieza UNICA de la cache vieja (trae traducciones corruptas de antes del parche)
+    // Limpieza UNICA de la cache vieja (v3: borra tambien nombres ya envenenados,
+    // como "StevsLoL -> StevesLoL" guardado antes de este parche)
     function purgeCorruptCache() {
         try {
-            if (localStorage.getItem('sc_tr_clean_v2')) return;
+            if (localStorage.getItem('sc_tr_clean_v3')) return;
             var kill = [];
             for (var i = 0; i < localStorage.length; i++) {
                 var k = localStorage.key(i);
                 if (k && k.indexOf(CACHE_PREFIX) === 0) kill.push(k);
             }
             for (var j = 0; j < kill.length; j++) localStorage.removeItem(kill[j]);
-            localStorage.setItem('sc_tr_clean_v2', '1');
+            localStorage.setItem('sc_tr_clean_v3', '1');
         } catch (e) {}
     }
     function purgeDiskCache() {
@@ -373,76 +480,17 @@
             .replace(/\.week\b/gi, '.wiki');
     }
 
-    // ---- NOMBRES DE USUARIO · NUNCA se traducen ----
-    // "Gatihto" NO puede volverse "Kitten". Los nombres se APRENDEN en vivo
-    // desde las zonas de identidad del DOM (data-scsoc-profile, tarjeta de
-    // perfil) y quedan protegidos en TODA la web durante la sesion.
-    var nameSet = Object.create(null);
-    var NAMES_KEY = 'sc_tr_names';
-    function rememberName(t) {
-        var s = String(t || '').trim();
-        if (s.length < 2 || s.length > 40) return;
-        if (s.charAt(0) === '@') s = s.slice(1);
-        if (hasKey(nameSet, s.toLowerCase())) return;
-        nameSet[s.toLowerCase()] = 1;
-        try { sessionStorage.setItem(NAMES_KEY, JSON.stringify(Object.keys(nameSet).slice(0, 400))); } catch (e) {}
-    }
-    function isName(s) { return hasKey(nameSet, String(s || '').trim().toLowerCase()); }
-    function isIdentityEl(el) {
-        return !!(el && el.nodeType === 1 && el.hasAttribute && el.hasAttribute('data-scsoc-profile'));
-    }
-    function loadNames() {
-        try {
-            var arr = JSON.parse(sessionStorage.getItem(NAMES_KEY) || '[]');
-            if (Array.isArray(arr)) for (var i = 0; i < arr.length && i < 400; i++) nameSet[String(arr[i]).toLowerCase()] = 1;
-        } catch (e) {}
-    }
-    /* Envuelve a los pintores de nombres (mismo truco que badges y status) */
-    function hookIdentityPainters() {
-        try {
-            var S = window.SCSOC;
-            if (S && typeof S.userHead === 'function' && !S.userHead.__sctrHook) {
-                var orig = S.userHead;
-                S.userHead = function () {
-                    var el = orig.apply(this, arguments);
-                    try { if (el && el.setAttribute) el.setAttribute('data-sctr-skip', '1'); } catch (e) {}
-                    return el;
-                };
-                S.userHead.__sctrHook = true;
-            }
-        } catch (e) {}
-        try {
-            var SCp = window.StevsconProfiles;
-            if (SCp && SCp.ui && typeof SCp.ui.renderProfileCard === 'function' && !SCp.ui.__sctrNameGuard) {
-                var orig2 = SCp.ui.renderProfileCard;
-                SCp.ui.renderProfileCard = function (container) {
-                    var out = orig2.apply(this, arguments);
-                    try {
-                        var h3 = container && container.querySelector ? container.querySelector('h3') : null;
-                        if (h3 && h3.textContent && h3.textContent.trim().toLowerCase() !== 'sin nombre') {
-                            h3.setAttribute('translate', 'no');
-                            h3.setAttribute('data-sctr-skip', '1');
-                            rememberName(h3.textContent);
-                        }
-                    } catch (e) {}
-                    return out;
-                };
-                SCp.ui.__sctrNameGuard = true;
-            }
-        } catch (e) {}
-    }
-
     function translatable(t) {
         if (!t) return false;
         var s = t.trim();
-        if (isProtected(s)) return false;   // marca de la casa: no se envia a Google
         if (s.length < 2 || s.length > MAX_TEXT) return false;
         if (!/[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/.test(s)) return false;   // sin letras: numeros/emojis
         if (/^https?:\/\//i.test(s)) return false;              // URLs
         if (/^[^\s]+@[^\s]+\.[^\s]+$/.test(s)) return false;    // correos
-        if (/^@[\w.]{2,}$/.test(s)) return false;               // @handlers
+        if (/^@[\w.-]{2,}$/.test(s)) return false;              // @handlers
         if (isProtected(s)) return false;   // marca de la casa: no se envia a Google
-        if (isName(s)) return false;        // nombre de usuario: no se toca JAMAS
+        if (isName(s)) return false;        // nombre de usuario aprendido: JAMAS se toca
+        if (isNameLikeToken(s)) return false; // token suelto tipo username: Google lo "corrige" y rompe
         return true;
     }
 
@@ -458,6 +506,7 @@
         var cur = node.nodeValue;
         if (!cur || !cur.trim()) return;
         if (nodeSkipped(node)) return;
+        learnFromText(cur);   // cada @handler visible ensena su nombre ANTES de traducirse nada
         if (!translatable(cur)) return;
 
         // Recordar el original SIEMPRE en la primera vista,
@@ -472,7 +521,7 @@
                 }
             }
         } else {
-            originals.set(node, cur);           // <-- LA LINEA QUE FALTABA
+            originals.set(node, cur);
         }
         var sp = ws(originals.get(node));
         if (lang !== 'en') return;
@@ -677,7 +726,7 @@
         for (var i = 0; i < btns.length; i++) {
             var active = ((btns[i].textContent === 'ES' && lang === 'es') || (btns[i].textContent === 'EN' && lang === 'en'));
             btns[i].style.background = active ? '#7c3aed' : 'none';
-            btns[i].style.color = active ? '#ffffff' : '#94a3b8';
+            btns[i].style.color = active ? '#ffff' : '#94a3b8';
         }
     }
 
@@ -691,10 +740,21 @@
         window.requestAnimationFrame(function () {
             pending = false;
             var recs = batch; batch = [];
-            for (var i = 0; i < recs.length; i++) {
-                var rec = recs[i];
+            var i, j, rec;
+            // PRE-PASO: aprender TODOS los nombres nuevos ANTES de traducir nada
+            for (i = 0; i < recs.length; i++) {
+                rec = recs[i];
                 if (rec.type === 'childList') {
-                    for (var j = 0; j < rec.addedNodes.length; j++) scanNode(rec.addedNodes[j]);
+                    for (j = 0; j < rec.addedNodes.length; j++) learnNamesUnder(rec.addedNodes[j]);
+                } else if (rec.type === 'characterData') {
+                    learnFromText(rec.target && rec.target.nodeValue);
+                }
+            }
+            // PASO NORMAL: traducir
+            for (i = 0; i < recs.length; i++) {
+                rec = recs[i];
+                if (rec.type === 'childList') {
+                    for (j = 0; j < rec.addedNodes.length; j++) scanNode(rec.addedNodes[j]);
                 } else if (rec.type === 'characterData') {
                     translateTextNode(rec.target);
                 } else if (rec.type === 'attributes') {
@@ -714,6 +774,8 @@
         get: function () { return lang; },
         set: setLang,
         toggle: function () { setLang(lang === 'es' ? 'en' : 'es'); },
+        protect: function (name) { rememberName(name); return true; },   // StevsconTranslate.protect('Nombre')
+        names: function () { return Object.keys(nameSet); },
         diagnose: function () {
             var disk = 0;
             try { for (var i = 0; i < localStorage.length; i++) if (localStorage.key(i).indexOf(CACHE_PREFIX) === 0) disk++; } catch (e) {}
@@ -722,10 +784,11 @@
             console.log('- diccionario base:', Object.keys(DICT).length, 'entradas (sin API)');
             console.log('- cache memoria:', Object.keys(mem).length, '| cache localStorage:', disk);
             console.log('- cola Google pendiente:', q.length, '| en vuelo:', inFlight);
+            console.log('- nombres protegidos:', Object.keys(nameSet).length, '->', Object.keys(nameSet).slice(0, 20));
             console.log('- boton flotante:', floatBtn ? 'ok' : 'aun no creado');
         },
         debug: function () {
-            console.log('[Stevscon translate] debug: los fallos de Google se imprimen con console.warn. Los textos >' + MAX_TEXT + ' caracteres y los @handles/correos/URLs se omiten por diseño.');
+            console.log('[Stevscon translate] debug: los fallos de Google se imprimen con console.warn. Los textos >' + MAX_TEXT + ' caracteres, los @handles/correos/URLs y los NOMBRES DE USUARIO se omiten por diseño.');
         }
     };
     try { window.StevsconLang = window.StevsconTranslate; } catch (e) {}
@@ -734,18 +797,21 @@
 
     function init() {
         purgeCorruptCache();
+        loadNames();                                     // nombres aprendidos ANTES de escanear
+        for (var i = 0; i < PROTECTED_NAMES.length; i++) rememberName(PROTECTED_NAMES[i]);
         document.documentElement.setAttribute('lang', lang);
+        learnNamesUnder(document.body);                  // pre-paso: aprende TODOS los @handlers visibles
         applyAll();
         injectMenu();
         ensureFloatBtn();
-        loadNames();
+        initFromFirebase();
         (function waitPainters(n) {
             hookIdentityPainters();
             if (n < 20) setTimeout(function () { waitPainters(n + 1); }, 500);
         })(0);
         var mo = new MutationObserver(schedule);
         mo.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ATTRS.concat(['class', 'hidden']) });
-        console.log('[Stevscon] translate.js listo (v' + VERSION + ' · ' + Object.keys(DICT).length + ' entradas base + Google automatico).');
+        console.log('[Stevscon] translate.js listo (v' + VERSION + ' · ' + Object.keys(DICT).length + ' entradas base + Google automatico · nombres protegidos).');
     }
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
