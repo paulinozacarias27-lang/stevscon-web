@@ -1,6 +1,6 @@
 /*
  * ====
- *  Stevscon Translate · translate.js (v4)
+ *  Stevscon Translate · translate.js (v5)
  *  Traduccion automatica de TODA la web (ES <-> EN).
  *  - Diccionario base incluido: los textos de la UI se traducen
  *    al instante, sin llamar a Google (calidad garantizada).
@@ -10,26 +10,30 @@
  *    limite de concurrencia (anti-flood).
  *  - Nunca se envian: @handlers, correos, URLs, numeros sueltos,
  *    ni textos de mas de 900 caracteres.
- *  - NOMBRES DE USUARIO INTOCABLES (v4): cada @handler visible
- *    ensena su nombre al sistema; los nombres aprendidos nunca
- *    se traducen y su cache se cura sola. "StevsLoL" ya no puede
+ *  - NOMBRES DE USUARIO INTOCABLES: cada @handler visible ensena
+ *    su nombre al sistema; los nombres aprendidos nunca se
+ *    traducen y su cache se cura sola. "StevsLoL" ya no puede
  *    volverse "StevesLoL" ni "Gatihto" volverse "Kitten".
+ *  - MENSAJES DIRECTOS INTOCABLES (v5): TODO el drawer de MDs
+ *    (.scdm-win: lista, chat, burbujas, composer y sus botones)
+ *    y la pagina de Mensajes (#conversations-list, #chat-area)
+ *    conservan su TEXTO ORIGINAL. Nada de ahi se envia a Google.
  *  - Marca protegida: "Stevscon.wiki" nunca se corrompe a "week".
  *  - Escape manual: agrega translate="no" o class="notranslate"
  *    a cualquier elemento que NO deba traducirse (o data-sctr-skip).
  *  - Boton flotante ES/EN + item en el menu del avatar.
  *    Sincroniza con Firebase (users/{uid}/settings/lang).
  *  INSTALACION:
- *    index.html   -> <script defer src="translate.js?v=4"></script>
- *    social.html  -> <script defer src="../translate.js?v=4"></script>
- *  Si se edita el file, subir la version: ?v=5, ?v=6...
+ *    index.html   -> <script defer src="translate.js?v=5"></script>
+ *    social.html  -> <script defer src="../translate.js?v=5"></script>
+ *  Si se edita el file, subir la version: ?v=6, ?v=7...
  *  Guardar en UTF-8 (default de VS Code).
  * ====
  */
 (function (window, document) {
     'use strict';
 
-    var VERSION = 4;
+    var VERSION = 5;
 
     // ---- NOMBRES protegidos a mano (agrega los que quieras, separados por coma) ----
     var PROTECTED_NAMES = ['StevsLoL'];
@@ -166,7 +170,7 @@
         'Escribe el correo o @handler de la cuenta.': "Type the account's email or @handler.",
         'Escribe la contraseña de esa cuenta.': "Type that account's password.",
         // Badges
-        'Fundador de Stevscon — el orgullo de la web 💜': 'Founder of Stevscon — the pride of the web 💜',
+        'Fundador de Stevscon — el orgullo de la web 💜': 'Founder of Stevscon — the pride of la web 💜',
         'OTORGADO ✓': 'GRANTED ✓',
         'SIN BADGE': 'NO BADGE',
         'Otorgar': 'Grant',
@@ -250,6 +254,17 @@
     var attrOriginals = new WeakMap();  // el -> {attr: original}
     var mem = Object.create(null);      // cache en memoria
 
+    // ---- MENSAJES DIRECTOS (MD) · NUNCA se traducen ----
+    // Todo el drawer de MDs del Social (.scdm-win: lista de conversaciones,
+    // chat, burbujas .scdm-bub, composer, timer y sus botones) y la pagina
+    // de Mensajes (#conversations-list + #chat-area) conservan su TEXTO
+    // ORIGINAL. Nada de ahi se escanea, se cachea ni se envia a Google:
+    // las conversaciones no se confunden y la privacidad mejora.
+    var DM_SELECTORS = '.scdm-win, #conversations-list, #chat-area';
+    function inDM(el) {
+        return !!(el && el.closest && el.closest(DM_SELECTORS));
+    }
+
     // ---- NOMBRES DE USUARIO · NUNCA se traducen ----
     // "StevsLoL" NO puede volverse "StevesLoL" ni "Gatihto" volverse "Kitten".
     // Los nombres se APRENDEN de dos fuentes:
@@ -293,12 +308,19 @@
     }
     function learnNamesUnder(root) {
         if (!root) return;
-        if (root.nodeType === 3) { learnFromText(root.nodeValue); return; }
+        if (root.nodeType === 3) {
+            if (root.parentNode && inDM(root.parentNode)) return;
+            learnFromText(root.nodeValue);
+            return;
+        }
         if (root.nodeType !== 1 || skipEl(root)) return;
         try {
             var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
             var node = w.nextNode();
-            while (node) { learnFromText(node.nodeValue); node = w.nextNode(); }
+            while (node) {
+                if (!(node.parentNode && inDM(node.parentNode))) learnFromText(node.nodeValue);
+                node = w.nextNode();
+            }
         } catch (e) {}
     }
     function isIdentityEl(el) {
@@ -443,6 +465,7 @@
 
     function skipEl(el) {
         if (!el || el.nodeType !== 1) return false;
+        if (inDM(el)) return true;   // MD: su texto original NO se toca JAMAS
         if (el.closest && el.closest('[data-scsoc-profile]')) return true;
         if (el.closest && el.closest('[data-sctr-skip]')) return true;
         if (el.closest && el.closest('[translate="no"]')) return true;
@@ -451,6 +474,7 @@
     }
     function nodeSkipped(node) {
         var p = node.parentNode;
+        if (p && inDM(p)) return true;   // MD: burbujas/composer/lista quedan como son
         while (p) {
             if (p.nodeType === 1) {
                 /* Zona de identidad (avatar/nombre del Social): el texto directo
@@ -747,7 +771,9 @@
                 if (rec.type === 'childList') {
                     for (j = 0; j < rec.addedNodes.length; j++) learnNamesUnder(rec.addedNodes[j]);
                 } else if (rec.type === 'characterData') {
-                    learnFromText(rec.target && rec.target.nodeValue);
+                    if (!(rec.target && rec.target.parentNode && inDM(rec.target.parentNode))) {
+                        learnFromText(rec.target && rec.target.nodeValue);
+                    }
                 }
             }
             // PASO NORMAL: traducir
@@ -781,14 +807,15 @@
             try { for (var i = 0; i < localStorage.length; i++) if (localStorage.key(i).indexOf(CACHE_PREFIX) === 0) disk++; } catch (e) {}
             console.log('=== StevsconTranslate diagnose ===');
             console.log('- version:', VERSION, '| idioma:', lang);
-            console.log('- diccionario base:', Object.keys(DICT).length, 'entradas (sin API)');
+            console.log('- diccionario base:', Object.keys(DICT.length), 'entradas (sin API)');
             console.log('- cache memoria:', Object.keys(mem).length, '| cache localStorage:', disk);
             console.log('- cola Google pendiente:', q.length, '| en vuelo:', inFlight);
             console.log('- nombres protegidos:', Object.keys(nameSet).length, '->', Object.keys(nameSet).slice(0, 20));
+            console.log('- zonas MD excluidas:', DM_SELECTORS, '| drawer abierto:', !!document.querySelector('.scdm-win'));
             console.log('- boton flotante:', floatBtn ? 'ok' : 'aun no creado');
         },
         debug: function () {
-            console.log('[Stevscon translate] debug: los fallos de Google se imprimen con console.warn. Los textos >' + MAX_TEXT + ' caracteres, los @handles/correos/URLs y los NOMBRES DE USUARIO se omiten por diseño.');
+            console.log('[Stevscon translate] debug: los fallos de Google se imprimen con console.warn. Los textos >' + MAX_TEXT + ' caracteres, los @handles/correos/URLs, los NOMBRES DE USUARIO y TODO el MD (.scdm-win) se omiten por diseño.');
         }
     };
     try { window.StevsconLang = window.StevsconTranslate; } catch (e) {}
@@ -797,7 +824,7 @@
 
     function init() {
         purgeCorruptCache();
-        loadNames();                                     // nombres aprendidos ANTES de escanear
+        loadNames();                    // nombres aprendidos ANTES de escanear
         for (var i = 0; i < PROTECTED_NAMES.length; i++) rememberName(PROTECTED_NAMES[i]);
         document.documentElement.setAttribute('lang', lang);
         learnNamesUnder(document.body);                  // pre-paso: aprende TODOS los @handlers visibles
@@ -811,7 +838,7 @@
         })(0);
         var mo = new MutationObserver(schedule);
         mo.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ATTRS.concat(['class', 'hidden']) });
-        console.log('[Stevscon] translate.js listo (v' + VERSION + ' · ' + Object.keys(DICT).length + ' entradas base + Google automatico · nombres protegidos).');
+        console.log('[Stevscon] translate.js listo (v' + VERSION + ' · ' + Object.keys(DICT).length + ' entradas base + Google automatico · nombres protegidos · MD intocable).');
     }
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
