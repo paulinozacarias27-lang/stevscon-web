@@ -364,17 +364,21 @@
         if (nodeSkipped(node)) return;
         if (!translatable(cur)) return;
 
-        // Recordar el original (y detectar si la web re-pinto el nodo)
-        var stored = originals.has(node) ? originals.get(node) : cur;
-        var sp = ws(stored);
-        if (cur !== stored) {
-            var enPrev = cacheGet(sp.b);
-            if (enPrev === null || sp.a + enPrev + sp.c !== cur) {
-                stored = cur;
-                originals.set(node, stored);
-                sp = ws(stored);
+        // Recordar el original SIEMPRE en la primera vista,
+        // y detectar si la web repinto el nodo con texto nuevo.
+        if (originals.has(node)) {
+            var prev = originals.get(node);
+            if (cur !== prev) {
+                var pp = ws(prev);
+                var enPrev = cacheGet(pp.b);
+                if (enPrev === null || pp.a + enPrev + pp.c !== cur) {
+                    originals.set(node, cur);   // la web puso texto nuevo: nuevo original
+                }
             }
+        } else {
+            originals.set(node, cur);           // <-- LA LINEA QUE FALTABA
         }
+        var sp = ws(originals.get(node));
         if (lang !== 'en') return;
 
         var key = sp.b;
