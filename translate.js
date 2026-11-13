@@ -258,6 +258,19 @@
         try { localStorage.setItem(CACHE_PREFIX + key, val); }
         catch (e) { purgeDiskCache(); try { localStorage.setItem(CACHE_PREFIX + key, val); } catch (e2) {} }
     }
+    // Limpieza UNICA de la cache vieja (trae traducciones corruptas de antes del parche)
+    function purgeCorruptCache() {
+        try {
+            if (localStorage.getItem('sc_tr_clean_v2')) return;
+            var kill = [];
+            for (var i = 0; i < localStorage.length; i++) {
+                var k = localStorage.key(i);
+                if (k && k.indexOf(CACHE_PREFIX) === 0) kill.push(k);
+            }
+            for (var j = 0; j < kill.length; j++) localStorage.removeItem(kill[j]);
+            localStorage.setItem('sc_tr_clean_v2', '1');
+        } catch (e) {}
+    }
     function purgeDiskCache() {
         try {
             var kill = [];
@@ -283,7 +296,7 @@
             for (var i = 0; i < segs.length; i++) {
                 if (segs[i] && segs[i][0]) out += segs[i][0];
             }
-            return out;
+            return fixEN(out);   // repara wiki->week antes de guardar en cache
         });
     }
 
@@ -323,6 +336,7 @@
 
     function skipEl(el) {
         if (!el || el.nodeType !== 1) return false;
+        if (el.closest && el.closest('[data-scsoc-profile]')) return true;
         if (el.closest && el.closest('[data-sctr-skip]')) return true;
         if (el.closest && el.closest('[translate="no"]')) return true;
         if (el.closest && el.closest('.notranslate')) return true;
@@ -332,6 +346,12 @@
         var p = node.parentNode;
         while (p) {
             if (p.nodeType === 1) {
+                /* Zona de identidad (avatar/nombre del Social): el texto directo
+                   es un nombre -> se aprende y NUNCA se manda a Google */
+                if (isIdentityEl(p)) {
+                    if (p === node.parentNode) rememberName(node.nodeValue);
+                    return true;
+                }
                 if (p.hasAttribute && (p.hasAttribute('data-sctr-skip') || p.getAttribute('translate') === 'no')) return true;
                 if (p.className && typeof p.className === 'string' && p.className.indexOf('notranslate') >= 0) return true;
             }
@@ -339,14 +359,90 @@
         }
         return false;
     }
+    // ---- PROTECCION DE MARCA · textos que Google NUNCA debe tocar ----
+    var PROTECT = ['stevscon.wiki', 'stevscon.com', 'stevscon', '.wiki', '.com', 'wiki'];
+    function isProtected(t) {
+        var s = t.trim().toLowerCase();
+        for (var i = 0; i < PROTECT.length; i++) if (s === PROTECT[i]) return true;
+        return false;
+    }
+    // Repara la corrupcion conocida de Google (wiki -> week) en resultados
+    function fixEN(t) {
+        return String(t)
+            .replace(/stevscon\s*\.\s*week/gi, 'Stevscon.wiki')
+            .replace(/\.week\b/gi, '.wiki');
+    }
+
+    // ---- NOMBRES DE USUARIO · NUNCA se traducen ----
+    // "Gatihto" NO puede volverse "Kitten". Los nombres se APRENDEN en vivo
+    // desde las zonas de identidad del DOM (data-scsoc-profile, tarjeta de
+    // perfil) y quedan protegidos en TODA la web durante la sesion.
+    var nameSet = Object.create(null);
+    var NAMES_KEY = 'sc_tr_names';
+    function rememberName(t) {
+        var s = String(t || '').trim();
+        if (s.length < 2 || s.length > 40) return;
+        if (s.charAt(0) === '@') s = s.slice(1);
+        if (hasKey(nameSet, s.toLowerCase())) return;
+        nameSet[s.toLowerCase()] = 1;
+        try { sessionStorage.setItem(NAMES_KEY, JSON.stringify(Object.keys(nameSet).slice(0, 400))); } catch (e) {}
+    }
+    function isName(s) { return hasKey(nameSet, String(s || '').trim().toLowerCase()); }
+    function isIdentityEl(el) {
+        return !!(el && el.nodeType === 1 && el.hasAttribute && el.hasAttribute('data-scsoc-profile'));
+    }
+    function loadNames() {
+        try {
+            var arr = JSON.parse(sessionStorage.getItem(NAMES_KEY) || '[]');
+            if (Array.isArray(arr)) for (var i = 0; i < arr.length && i < 400; i++) nameSet[String(arr[i]).toLowerCase()] = 1;
+        } catch (e) {}
+    }
+    /* Envuelve a los pintores de nombres (mismo truco que badges y status) */
+    function hookIdentityPainters() {
+        try {
+            var S = window.SCSOC;
+            if (S && typeof S.userHead === 'function' && !S.userHead.__sctrHook) {
+                var orig = S.userHead;
+                S.userHead = function () {
+                    var el = orig.apply(this, arguments);
+                    try { if (el && el.setAttribute) el.setAttribute('data-sctr-skip', '1'); } catch (e) {}
+                    return el;
+                };
+                S.userHead.__sctrHook = true;
+            }
+        } catch (e) {}
+        try {
+            var SCp = window.StevsconProfiles;
+            if (SCp && SCp.ui && typeof SCp.ui.renderProfileCard === 'function' && !SCp.ui.__sctrNameGuard) {
+                var orig2 = SCp.ui.renderProfileCard;
+                SCp.ui.renderProfileCard = function (container) {
+                    var out = orig2.apply(this, arguments);
+                    try {
+                        var h3 = container && container.querySelector ? container.querySelector('h3') : null;
+                        if (h3 && h3.textContent && h3.textContent.trim().toLowerCase() !== 'sin nombre') {
+                            h3.setAttribute('translate', 'no');
+                            h3.setAttribute('data-sctr-skip', '1');
+                            rememberName(h3.textContent);
+                        }
+                    } catch (e) {}
+                    return out;
+                };
+                SCp.ui.__sctrNameGuard = true;
+            }
+        } catch (e) {}
+    }
+
     function translatable(t) {
         if (!t) return false;
         var s = t.trim();
+        if (isProtected(s)) return false;   // marca de la casa: no se envia a Google
         if (s.length < 2 || s.length > MAX_TEXT) return false;
         if (!/[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/.test(s)) return false;   // sin letras: numeros/emojis
         if (/^https?:\/\//i.test(s)) return false;              // URLs
         if (/^[^\s]+@[^\s]+\.[^\s]+$/.test(s)) return false;    // correos
         if (/^@[\w.]{2,}$/.test(s)) return false;               // @handlers
+        if (isProtected(s)) return false;   // marca de la casa: no se envia a Google
+        if (isName(s)) return false;        // nombre de usuario: no se toca JAMAS
         return true;
     }
 
@@ -637,11 +733,16 @@
     // ---- Init ----
 
     function init() {
+        purgeCorruptCache();
         document.documentElement.setAttribute('lang', lang);
         applyAll();
         injectMenu();
         ensureFloatBtn();
-        initFromFirebase();
+        loadNames();
+        (function waitPainters(n) {
+            hookIdentityPainters();
+            if (n < 20) setTimeout(function () { waitPainters(n + 1); }, 500);
+        })(0);
         var mo = new MutationObserver(schedule);
         mo.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ATTRS.concat(['class', 'hidden']) });
         console.log('[Stevscon] translate.js listo (v' + VERSION + ' · ' + Object.keys(DICT).length + ' entradas base + Google automatico).');
