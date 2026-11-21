@@ -648,3 +648,17 @@ body.theme-light {
     --border-color: #ddd4f5;
     --purple-glow: rgba(139, 92, 246, 0.18);
 }
+.home-chips{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:2px}
+.home-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;border:1px solid var(--border-color);background:var(--bg-card);color:var(--text-muted);font-size:12px;font-weight:700}
+.home-chip i{color:var(--purple-accent);font-size:11px}
+.home-stats{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:14px;width:100%;max-width:640px}
+.home-stat{flex:1;min-width:130px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:14px;padding:14px 10px;display:flex;flex-direction:column;gap:2px;align-items:center;transition:transform .15s ease,border-color .15s ease}
+.home-stat:hover{transform:translateY(-2px);border-color:var(--purple-accent)}
+.home-stat b{font-size:1.5rem;font-weight:800;color:var(--text-main)}
+.home-stat span{font-size:11.5px;font-weight:700;color:var(--text-muted);letter-spacing:.04em;text-transform:uppercase}
+.home-features{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;width:100%;max-width:760px;margin-top:16px}
+.home-feature{display:flex;flex-direction:column;gap:6px;align-items:flex-start;text-align:left;background:var(--bg-card);border:1px solid var(--border-color);border-radius:14px;padding:16px;text-decoration:none;color:var(--text-main);transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease}
+.home-feature:hover{transform:translateY(-3px);border-color:var(--purple-accent);box-shadow:0 12px 30px var(--purple-glow)}
+.home-fico{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--purple-dark),var(--purple-accent));display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;box-shadow:0 6px 16px var(--purple-glow)}
+.home-feature b{font-size:.98rem;font-weight:800}
+.home-feature p{font-size:.8rem;color:var(--text-muted);line-height:1.45}

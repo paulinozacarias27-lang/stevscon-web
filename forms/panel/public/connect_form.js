@@ -214,7 +214,8 @@ function wireAuth() {
 function refreshUser() {
     if (!userHost) return;
     userHost.textContent = '';
-    core.session(function (s) {
+    if (!FM.core || typeof FM.core.session !== 'function') return;
+    FM.core.session(function (s) {
         if (!userHost) return;
         userHost.textContent = '';
         if (staffTab) staffTab.style.display = (s && s.isStaff) ? '' : 'none';

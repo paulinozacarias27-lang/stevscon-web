@@ -35,6 +35,10 @@
     const database = firebase.database();
     const storage = firebase.storage();
 
+    try {
+        auth.setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(function () {});
+    } catch (e) {}
+
     window.StevsconFirebase = {
         app: app,
         auth: auth,

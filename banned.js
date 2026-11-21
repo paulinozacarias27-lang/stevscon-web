@@ -325,6 +325,9 @@
 
     function kickSession() {
         try {
+            if (window.StevsconStatus && window.StevsconStatus.forceOffline) window.StevsconStatus.forceOffline();
+        } catch (e) {}
+        try {
             var a = firebase.auth();
             if (a.currentUser) {
                 a.signOut().then(function () {

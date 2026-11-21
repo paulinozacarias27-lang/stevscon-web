@@ -108,6 +108,9 @@
         avatar.appendChild(letterSpan);
         paintHeaderAvatar(avatar, p);
 
+        const SCST = window.StevsconStatus;
+        if (SCST && typeof SCST.badge === 'function') SCST.badge(wrap, 14);
+
         const menu = document.createElement('div');
         menu.hidden = true;
         menu.style.cssText = 'position:absolute;right:0;top:46px;width:264px;background:#1a1526;border:1px solid rgba(167,139,250,.35);border-radius:12px;padding:16px;z-index:60;color:#ede9fe;font-family:Inter,sans-serif;box-shadow:0 18px 50px rgba(0,0,0,.45);';
@@ -151,6 +154,7 @@
         out.style.cssText = 'width:100%;margin-top:12px;padding:9px 0;border-radius:10px;border:1px solid rgba(239,68,68,.45);background:rgba(239,68,68,.08);color:#f87171;font-weight:700;font-size:13px;font-family:Inter,sans-serif;cursor:pointer;';
         out.addEventListener('click', function () {
             const F = fb();
+            try { if (window.StevsconStatus && window.StevsconStatus.forceOffline) window.StevsconStatus.forceOffline(); } catch (e) {}
             if (F && F.auth) F.auth.signOut();
         });
         menu.appendChild(out);

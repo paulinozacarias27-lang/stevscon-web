@@ -12,7 +12,7 @@
 (function (window, document) {
     'use strict';
 
-    if (window.__scConsoleGuard) return;
+    if (!window || window.__scConsoleGuard) return;
     window.__scConsoleGuard = true;
 
     var WARN = '%c⚠️ Stevscon.com — Zona protegida';

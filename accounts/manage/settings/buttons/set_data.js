@@ -45,6 +45,7 @@
         logout: function () {
             if (typeof firebase === 'undefined' || !firebase.auth) return;
             SCSET.close();
+            try { if (window.StevsconStatus && window.StevsconStatus.forceOffline) window.StevsconStatus.forceOffline(); } catch (e) {}
             firebase.auth().signOut().catch(function (err) {
                 console.error('[Stevscon Settings] Error cerrando sesión:', err);
             });

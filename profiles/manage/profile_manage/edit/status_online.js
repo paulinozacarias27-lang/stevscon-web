@@ -284,20 +284,41 @@
         }
     }
 
+    function clearPresence(ref) {
+        if (!ref) return;
+        try {
+            ref.onDisconnect().cancel().catch(function (e) { console.error('[Stevscon Status] cancel onDisconnect:', e.message); });
+        } catch (e) {}
+        try {
+            ref.update({ state: 'offline', updated: TS() })
+                .then(function () { console.log('[Stevscon Status] estado offline guardado.'); })
+                .catch(function (e) { console.error('[Stevscon Status] offline rechazado:', e.message); });
+        } catch (e) { console.error('[Stevscon Status] offline falló:', e); }
+    }
+
     function startForUser(user) {
         const D = db();
         if (!D || !user) return;
+        if (statusRef) {
+            if (!authUser || authUser.uid !== user.uid) clearPresence(statusRef);
+            if (detachValue) { try { detachValue(); } catch (e) {} detachValue = null; }
+            if (connectedRef) { try { connectedRef.off('value', onConnected); } catch (e) {} connectedRef = null; }
+            statusRef = null;
+        }
         authUser = user;
-        statusRef = D.ref('users/' + user.uid + '/status');
+        const ref = D.ref('users/' + user.uid + '/status');
+        statusRef = ref;
 
-        statusRef.once('value').then(function (snap) {
+        ref.once('value').then(function (snap) {
+            if (statusRef !== ref) return null;
             const v = snap.val() || {};
             const manual = v.manual || v.state || 'online';
             cached = { state: manual, manual: manual };
-            return statusRef.update({ state: manual, manual: manual, updated: TS() });
+            return ref.update({ state: manual, manual: manual, updated: TS() });
         }).then(function () {
+            if (statusRef !== ref) return;
             armDisconnect();
-            detachValue = statusRef.on('value', onValue);
+            detachValue = ref.on('value', onValue);
             connectedRef = D.ref('.info/connected');
             connectedRef.on('value', onConnected);
             repaintBadges();
@@ -307,15 +328,10 @@
 
         if (SCST.auto && SCST.auto.start) SCST.auto.start();
         document.addEventListener('sc:status-auto', onAuto);
-        document.addEventListener('visibilitychange', function () {
-            if (!statusRef || !isVisible()) return;
-            armDisconnect();
-            pushState();
-        });
     }
 
     function stopForUser() {
-        if (statusRef) { try { statusRef.onDisconnect().cancel(); } catch (e) {} }
+        clearPresence(statusRef);
         if (detachValue) { try { detachValue(); } catch (e) {} detachValue = null; }
         if (connectedRef) { try { connectedRef.off('value', onConnected); } catch (e) {} connectedRef = null; }
         statusRef = null;
@@ -326,6 +342,24 @@
         closePanel();
         repaintBadges();
     }
+
+    SCST.badge = function (el, px) {
+        if (!el) return null;
+        px = px || 14;
+        el.style.position = getComputedStyle(el).position === 'static' ? 'relative' : getComputedStyle(el).position;
+        const b = makeBadge(px);
+        el.appendChild(b);
+        setIcon(b, cached.state);
+        return b;
+    };
+
+    SCST.forceOffline = function () {
+        if (!statusRef) return;
+        clearPresence(statusRef);
+        if (detachValue) { try { detachValue(); } catch (e) {} detachValue = null; }
+        if (connectedRef) { try { connectedRef.off('value', onConnected); } catch (e) {} connectedRef = null; }
+        statusRef = null;
+    };
 
 
     function findAvatarInCard(box) {
@@ -432,6 +466,11 @@
         A.onAuthStateChanged(function (user) {
             if (user) startForUser(user);
             else stopForUser();
+        });
+        document.addEventListener('visibilitychange', function () {
+            if (!statusRef || !isVisible()) return;
+            armDisconnect();
+            pushState();
         });
     }
 

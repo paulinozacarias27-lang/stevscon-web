@@ -82,6 +82,23 @@
         subtitle.className = 'home-subtitle';
         subtitle.textContent = 'Tu plataforma social, mensajeria y comunidad en tiempo real.';
 
+        const chips = document.createElement('div');
+        chips.className = 'home-chips';
+        [
+            ['fa-solid fa-bolt', 'Todo en tiempo real'],
+            ['fa-solid fa-gift', '100% gratis'],
+            ['fa-solid fa-shield-halved', 'Con moderacion'],
+            ['fa-solid fa-language', 'En espanol']
+        ].forEach(function (c) {
+            const chip = document.createElement('span');
+            chip.className = 'home-chip';
+            const ic = document.createElement('i');
+            ic.className = c[0];
+            chip.appendChild(ic);
+            chip.appendChild(document.createTextNode(c[1]));
+            chips.appendChild(chip);
+        });
+
         const stack = document.createElement('div');
         stack.className = 'category-stack';
 
@@ -105,12 +122,80 @@
         sessionBox.className = 'hidden';
         sessionBox.id = 'home-session-box';
 
+        const stats = document.createElement('div');
+        stats.className = 'home-stats';
+        const statMembers = makeStat('—', 'Miembros');
+        const statArticles = makeStat('—', 'Articulos en la Wiki');
+        const statEdits = makeStat('—', 'Ediciones de la comunidad');
+        stats.appendChild(statMembers);
+        stats.appendChild(statArticles);
+        stats.appendChild(statEdits);
+        loadStats(statMembers, statArticles, statEdits);
+
+        const features = document.createElement('div');
+        features.className = 'home-features';
+        features.appendChild(makeFeature('fa-solid fa-comments', 'Social', 'Publica, comenta y chatea por mensajes directos con la comunidad.', '/social/social.html'));
+        features.appendChild(makeFeature('fa-solid fa-book', 'Wiki', 'La documentacion oficial de todos los proyectos de Stevscon.', '/wiki/wiki.html'));
+        features.appendChild(makeFeature('fa-solid fa-file-pen', 'Apostulaciones', 'Aplica para entrar al staff y a los proyectos abiertos.', '/forms/forms.html'));
+
         home.appendChild(logo);
         home.appendChild(title);
         home.appendChild(subtitle);
+        home.appendChild(chips);
         home.appendChild(stack);
         home.appendChild(sessionBox);
+        home.appendChild(stats);
+        home.appendChild(features);
         viewport.appendChild(home);
+    }
+
+    function makeStat(val, label) {
+        const s = document.createElement('div');
+        s.className = 'home-stat';
+        const b = document.createElement('b');
+        b.textContent = val;
+        const l = document.createElement('span');
+        l.textContent = label;
+        s.appendChild(b);
+        s.appendChild(l);
+        return s;
+    }
+
+    function loadStats(membersEl, articlesEl, editsEl) {
+        try {
+            fetch('https://stevscon-protocole-base-default-rtdb.firebaseio.com/handlers.json?shallow=true')
+                .then(function (r) { return r.json(); })
+                .then(function (j) {
+                    if (j && typeof j === 'object') membersEl.firstChild.textContent = String(Object.keys(j).length);
+                })
+                .catch(function () {});
+        } catch (e) {}
+        if (typeof window.StevsconFirebase !== 'undefined' && window.StevsconFirebase.database) {
+            const D = window.StevsconFirebase.database;
+            try {
+                D.ref('wiki/counters/articles').on('value', function (s) { articlesEl.firstChild.textContent = String(s.val() || 0); });
+                D.ref('wiki/counters/edits').on('value', function (s) { editsEl.firstChild.textContent = String(s.val() || 0); });
+            } catch (e) {}
+        }
+    }
+
+    function makeFeature(icon, name, desc, href) {
+        const a = document.createElement('a');
+        a.className = 'home-feature';
+        a.href = href;
+        const ic = document.createElement('span');
+        ic.className = 'home-fico';
+        const i = document.createElement('i');
+        i.className = icon;
+        ic.appendChild(i);
+        const b = document.createElement('b');
+        b.textContent = name;
+        const p = document.createElement('p');
+        p.textContent = desc;
+        a.appendChild(ic);
+        a.appendChild(b);
+        a.appendChild(p);
+        return a;
     }
 
 
@@ -167,6 +252,9 @@
         ].join(';');
         avatar.textContent = 'S';
 
+        const avatarWrap = document.createElement('span');
+        avatarWrap.style.cssText = 'position:relative;flex:none;display:inline-flex;';
+
         const info = document.createElement('span');
         info.style.cssText = 'display:flex;flex-direction:column;justify-content:center;gap:2px;flex:1;min-width:0;overflow:hidden;';
 
@@ -196,10 +284,13 @@
         copyIcon.className = 'fa-solid fa-copy';
         copyBtn.appendChild(copyIcon);
 
-        card.appendChild(avatar);
+        card.appendChild(avatarWrap);
         card.appendChild(info);
         card.appendChild(copyBtn);
         container.appendChild(card);
+
+        const SCST = window.StevsconStatus;
+        if (SCST && typeof SCST.badge === 'function') SCST.badge(avatarWrap, 18);
 
         let currentId = null;
         copyBtn.addEventListener('click', function () { if (currentId) copyId(currentId); });

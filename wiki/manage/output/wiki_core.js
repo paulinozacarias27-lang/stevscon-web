@@ -457,7 +457,10 @@
             avWrap.type = 'button';
             avWrap.setAttribute('data-scsoc-profile', a.authorUid || '');
             const avatar = el('span', 'wk-avatar', 'S');
-            avWrap.appendChild(avatar);
+            const avBox = el('span');
+            avBox.style.cssText = 'position:relative;display:inline-flex;flex:none;';
+            avBox.appendChild(avatar);
+            avWrap.appendChild(avBox);
             avWrap.appendChild(el('span', 'wk-author-name', a.authorName || 'Miembro'));
             meta.appendChild(avWrap);
             meta.appendChild(el('span', 'wk-meta-sep', '·'));
@@ -465,6 +468,19 @@
             meta.appendChild(el('span', 'wk-meta-sep', '·'));
             meta.appendChild(el('span', null, '👁 ' + fmtNum(a.views)));
             art.appendChild(meta);
+
+            const ST_COLORS = { online: '#22c55e', inactive: '#f59e0b', busy: '#ef4444', offline: '#6b7280' };
+            if (a.authorUid && typeof firebase !== 'undefined' && firebase.database) {
+                try {
+                    const stDot = el('span');
+                    stDot.style.cssText = 'position:absolute;right:-3px;bottom:-3px;width:12px;height:12px;border-radius:50%;border:2.5px solid #17121f;background:#6b7280;box-sizing:border-box;';
+                    avBox.appendChild(stDot);
+                    firebase.database().ref('users/' + a.authorUid + '/status/state').on('value', function (s) {
+                        const v = String(s.val() || '');
+                        stDot.style.background = ST_COLORS[v] || '#6b7280';
+                    });
+                } catch (e) {}
+            }
 
             this.avatar(a.authorUid).then(function (info) {
                 if (!info) return;
