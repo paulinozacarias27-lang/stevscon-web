@@ -88,13 +88,14 @@ C.check = function () {
 
 C.boot = function () {
     if (C.__booted) return;
-    C.__booted = true;
-
     var missing = C.check();
     if (missing.length) {
+        C.__tries = (C.__tries || 0) + 1;
+        if (C.__tries <= 40) { setTimeout(C.boot, 200); return; }
         console.warn('[Stevscon][Forms] En construcción — faltan módulos: ' + missing.join(' · '));
         return;
     }
+    C.__booted = true;
 
     var boot = document.getElementById('sc-boot');
     var root = document.getElementById('fm-root');
@@ -109,6 +110,20 @@ C.boot = function () {
     wireAuth();
     window.addEventListener('hashchange', function () { route(); });
     setTimeout(firstRoute, 1500);
+
+    FM.connect = {
+        mount: function (user) {
+            if (viewEl) { refreshUser(); refreshBadge(); return; }
+            var root2 = document.getElementById('fm-root');
+            if (!root2) return;
+            style();
+            buildShell(root2);
+            wireAuth();
+            firstRoute();
+        },
+        route: function () { route(); },
+        check: C.check
+    };
 };
 
 var viewEl = null, tabs = {}, badgeEl = null, staffTab = null, userHost = null;
