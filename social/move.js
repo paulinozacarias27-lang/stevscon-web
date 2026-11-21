@@ -8,6 +8,12 @@
  *  - NUEVO v2: si la página no scrollea en el documento sino en una capa
  *    interna GRANDE (como la página Social de social.html), MOVE la ADOPTA:
  *    esconde su barra nativa y la misma barra púrpura sigue al feed.
+ *  - NUEVO v3: la barra SIGUE a cualquier panel interno que el usuario
+ *    scrollee (chats MD, paneles de seguridad, reportes, listas grandes):
+ *    al scrollear un panel adoptable, MOVE cambia a ese panel al instante.
+ *    Además ESCANEA las capas de la página (al abrir, al cerrar, en resize
+ *    y con un MutationObserver): la barra aparece ANTES del primer scroll
+ *    y se libera sola cuando el panel se cierra o se esconde.
  *  - Animación fluida: el pulido PERSIGUE el scroll con easing suave,
  *    aparece al scroll y se desvanece solo; crece y brilla al hover.
  *  - Interactiva: se puede ARRASTRAR, y clic en la pista salta de página
@@ -87,7 +93,9 @@
         if (!el || el.nodeType !== 1 || el === doc || el === document.body) return false;
         try {
             var r = el.getBoundingClientRect();
+            if (!r.width || !r.height) return false;
             if (r.height < window.innerHeight * 0.45) return false;
+            if (r.left >= window.innerWidth || r.top >= window.innerHeight || r.right <= 0 || r.bottom <= 0) return false;
         } catch (e) { return false; }
         return el.scrollHeight - el.clientHeight > 2;
     }
@@ -99,22 +107,46 @@
         if (adopted) sc.classList.add('scm-hidesb');
         curY = -1;
     }
+    function scan() {
+        if (docMax() > 2) return;
+        if (adopted && adoptable(sc)) return;
+        var best = null, bestH = 0;
+        try {
+            var els = document.querySelectorAll('div,section,aside,main,ul,ol');
+            for (var i = 0; i < els.length; i++) {
+                var el = els[i];
+                if (!adoptable(el)) continue;
+                var oy = '';
+                try { oy = getComputedStyle(el).overflowY; } catch (err) {}
+                if (oy !== 'auto' && oy !== 'scroll') continue;
+                var r = el.getBoundingClientRect();
+                if (r.height > bestH) { bestH = r.height; best = el; }
+            }
+        } catch (e) {}
+        if (best) adopt(best);
+    }
+    function release() {
+        if (adopted) adopt(null);
+        scan();
+    }
     function onScroll(e) {
         var t = e.target;
         var isDoc = (t === document || t === document.documentElement || t === window);
         if (isDoc) {
-            if (adopted && docMax() > 2) adopt(null);
-        } else if (!adopted && docMax() <= 2 && adoptable(t)) {
+            if (adopted && docMax() > 2) release();
+        } else if (adopted && t !== sc && adoptable(t)) {
             adopt(t);
         } else if (adopted && t === sc && !adoptable(sc)) {
-            adopt(null);
+            release();
+        } else if (!adopted && docMax() <= 2 && adoptable(t)) {
+            adopt(t);
         }
         wake(); pulse();
     }
 
     function compute() {
         if (!sc) return;
-        if (adopted && sc.scrollHeight - sc.clientHeight <= 2) adopt(null);
+        if (adopted && sc.scrollHeight - sc.clientHeight <= 2) release();
 
         var view = sc.clientHeight;
         var total = sc.scrollHeight;
@@ -200,8 +232,23 @@
 
     function bind() {
         document.addEventListener('scroll', onScroll, { passive: true, capture: true });
-        window.addEventListener('resize', function () { wake(); pulse(); });
-        window.SCMOVE = { refresh: function () { wake(); pulse(); } };
+        window.addEventListener('resize', function () { wake(); pulse(); scan(); });
+        var mutTimer = 0;
+        try {
+            new MutationObserver(function (recs) {
+                for (var i = 0; i < recs.length; i++) {
+                    var tg = recs[i].target;
+                    if (tg && tg.nodeType === 1 && (tg === bar || (bar && bar.contains(tg)))) return;
+                }
+                clearTimeout(mutTimer);
+                mutTimer = setTimeout(function () {
+                    if (sc && adopted && !adoptable(sc)) { adopt(null); scan(); }
+                    else if (!adopted && docMax() <= 2) scan();
+                    wake();
+                }, 150);
+            }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
+        } catch (e) {}
+        window.SCMOVE = { refresh: function () { scan(); wake(); pulse(); } };
     }
 
     function init() {
@@ -225,8 +272,8 @@
         root.classList.add('scm-on');
 
         bind(); bindDrag();
-        wake();
-        console.log('[Stevscon] move.js listo (v2) — barra MOVE activa (documento + capas internas).');
+        wake(); scan();
+        console.log('[Stevscon] move.js listo (v3) — barra MOVE activa (documento + paneles internos).');
     }
     init();
 })(window, document);
