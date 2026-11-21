@@ -52,6 +52,16 @@ eso si, porfavor dime siempre que cosas cambiaste o si cambiaste algo minimo en 
       ".read": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin' || root.child('social/staff').child(auth.uid).child('role').val() == 'mod' || root.child('social/staff').child(auth.uid).val() == 'mod')",
       "$uid": { ".read": true, ".write": "auth != null && auth.uid === $uid" }
     },
+    "friendReqs": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$from": {
+          ".read": "auth != null && (auth.uid === $uid || auth.uid === $from)",
+          ".write": "auth != null && !root.child('security/accounts/bans/' + auth.uid).exists() && (auth.uid === $from || auth.uid === $uid)",
+          ".validate": "!newData.exists() || ((auth.uid === $from && newData.child('status').val() == 'pendiente' && newData.child('at').isNumber()) || (auth.uid === $uid && (newData.child('status').val() == 'aceptada' || newData.child('status').val() == 'rechazada')))"
+        }
+      }
+    },
     "social": {
       ".read": true,
       "posts": {

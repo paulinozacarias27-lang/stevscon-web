@@ -666,3 +666,6 @@ body.theme-light .navbar {
 .home-fico{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--purple-dark),var(--purple-accent));display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;box-shadow:0 6px 16px var(--purple-glow)}
 .home-feature b{font-size:.98rem;font-weight:800}
 .home-feature p{font-size:.8rem;color:var(--text-muted);line-height:1.45}
+
+[data-sc-status-wrap]{position:relative !important}
+[data-sc-status-badge]{position:absolute !important;right:-3px;bottom:-2px;z-index:5 !important}

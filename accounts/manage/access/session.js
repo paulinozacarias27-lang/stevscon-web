@@ -102,6 +102,10 @@
         const rank = p.rank || 'USER';
         const letter = String(name).trim().charAt(0).toUpperCase() || 'S';
 
+        const avBox = document.createElement('span');
+        avBox.dataset.scStatusWrap = '1';
+        avBox.style.cssText = 'position:relative;display:inline-flex;flex:none;';
+
         const wrap = document.createElement('div');
         wrap.style.cssText = 'position:relative;flex:none;';
 
@@ -115,7 +119,9 @@
         paintHeaderAvatar(avatar, p);
 
         const SCST = window.StevsconStatus;
-        if (SCST && typeof SCST.badge === 'function') SCST.badge(avatar, 14);
+        wrap.appendChild(avBox);
+        avBox.appendChild(avatar);
+        if (SCST && typeof SCST.badge === 'function') SCST.badge(avBox, 14);
 
         const menu = document.createElement('div');
         menu.hidden = true;
@@ -172,7 +178,6 @@
             menuRef = menu.hidden ? null : menu;
         });
 
-        wrap.appendChild(avatar);
         wrap.appendChild(menu);
         slot.appendChild(wrap);
     }
