@@ -25,13 +25,12 @@
     let spinnerEl = null;
     let busy = false;
 
-    // Rastreo de lo reservado en este intento (para limpieza total)
     let currentAuthUser = null;
     let reservedId = null;
     let reservedHandlerKey = null;
 
     function generateId() {
-        let id = String(Math.floor(Math.random() * 9) + 1); // primer dígito 1-9
+        let id = String(Math.floor(Math.random() * 9) + 1);
         for (let i = 1; i < ID_LENGTH; i++) {
             id += String(Math.floor(Math.random() * 10));
         }
@@ -43,7 +42,6 @@
             ? window.StevsconFirebase.database : null;
     }
 
-    // Reserva un ID numérico único en ids/ vía transacción atómica
     function reserveId(uid, tries) {
         const db = getDatabase();
         const id = generateId();
@@ -56,7 +54,6 @@
         });
     }
 
-    // Reserva el handler en handlers/ vía transacción atómica
     function reserveHandler(handler, uid) {
         const db = getDatabase();
         const key = (typeof SC.handlerKey === 'function')
@@ -73,7 +70,6 @@
         });
     }
 
-    // Limpieza total: base de datos + usuario de Auth recién creado
     function cleanup() {
         const db = getDatabase();
         const tasks = [];
@@ -93,7 +89,6 @@
         });
     }
 
-    // ---- Render y estados del botón ----
 
     function render() {
         btnEl = document.createElement('button');
@@ -134,7 +129,6 @@
         labelEl.textContent = labelText || 'Crear cuenta';
     }
 
-    // ---- El registro completo ----
 
     function submit() {
         if (busy) return;
@@ -142,18 +136,15 @@
         if (!errors) return;
         errors.clear();
 
-        // 1. Validar todos los campos OUTPUT
         const v = (typeof SC.output !== 'undefined' && typeof SC.output.validateAll === 'function')
             ? SC.output.validateAll() : { ok: false, firstError: 'Error interno: no hay formulario cargado.' };
         if (!v.ok) { errors.show(v.firstError); return; }
 
-        // 2. Verificar anti-bot
         if (!isAllowChecked()) {
             errors.show('Confirma que no eres un robot para continuar.');
             return;
         }
 
-        // 3. Firebase disponible
         const db = getDatabase();
         const auth = (typeof window.StevsconFirebase !== 'undefined') ? window.StevsconFirebase.auth : null;
         if (!db || !auth) {
@@ -176,12 +167,10 @@
 
         setBusy(true, 'Creando tu cuenta...');
 
-        // 4. Crear usuario en Auth (queda autenticado desde ya)
         auth.createUserWithEmailAndPassword(email, password)
             .then(function (cred) {
                 currentAuthUser = cred.user;
 
-                // 5. Ya autenticados: handler único y reserva del ID
                 return db.ref('handlers/' + handlerKey).once('value').then(function (snap) {
                     if (snap.exists()) throw new Error('handler_taken');
                     return reserveId(currentAuthUser.uid, 0);
@@ -204,7 +193,6 @@
                 });
             })
             .then(function (done) {
-                // 6. Éxito: el correo de bienvenida va blindado — si falla, no importa
                 try {
                     const mailResult = (SC.mail && typeof SC.mail.sendWelcome === 'function')
                         ? SC.mail.sendWelcome({
@@ -236,7 +224,6 @@
                 reservedHandlerKey = null;
             })
             .catch(function (err) {
-                // 7. Error real en consola + detalle visible en pantalla
                 console.error('[Stevscon Create] Error en el registro:', err);
 
                 if (currentAuthUser) cleanup();

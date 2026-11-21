@@ -48,7 +48,6 @@
 
     const MQ = window.matchMedia('(max-width: 899px)');
 
-    /* ==== ESTILOS v2 ==== */
     const css = document.createElement('style');
     css.textContent = ''
         + '.scsoc-grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start;'
@@ -82,7 +81,6 @@
         + '}';
     document.head.appendChild(css);
 
-    /* ==== SEGURIDAD: ¿algún abuelo recortaría el grid ancho? ==== */
     function hasClipper(el) {
         let p = el.parentElement;
         while (p && p !== document.body) {
@@ -93,15 +91,13 @@
         return false;
     }
 
-    /* ==== CONSTRUCCIÓN (a prueba de crash: el grid se ancla al FEED) ==== */
     function tryBuild() {
         if (L.ready || L.failed) return;
         const f = L.feedHost;
-        if (!f || !f.parentNode) return; /* el feed aún no está en el DOM; se reintenta */
+        if (!f || !f.parentNode) return;
 
-        /* host del composer: el oficial (category_posts.js) o uno de respaldo */
         let c = L.composerHost;
-        if (c && (c === f || c.contains(f))) c = L.composerHost = null; /* inválido -> respaldo */
+        if (c && (c === f || c.contains(f))) c = L.composerHost = null;
         if (!c) {
             c = SCSOC.el('div');
             const ph = SCSOC.el('p', 'color:var(--text-muted,#94a3b8);font:600 12.5px Inter,sans-serif;text-align:center;padding:18px 0;');
@@ -130,14 +126,13 @@
         side.appendChild(card);
         grid.appendChild(left); grid.appendChild(side);
 
-        slot.appendChild(c);                    /* 1: composer a la tarjeta (si vivía dentro del feed, se rescata) */
-        f.parentNode.insertBefore(grid, f);     /* 2: el grid ocupa el lugar del feed — f TODAVÍA es hijo de su padre */
-        left.appendChild(f);                    /* 3: el feed baja a la columna izquierda */
+        slot.appendChild(c);
+        f.parentNode.insertBefore(grid, f);
+        left.appendChild(f);
 
         L.ready = true;
         L.refs = { grid: grid, left: left, side: side, slot: slot, card: card };
 
-        /* breakout seguro: si el ancho completo no cabe, modo contenido */
         requestAnimationFrame(function () {
             if (!L.refs || !document.contains(grid)) return;
             const r = grid.getBoundingClientRect();
@@ -150,7 +145,6 @@
         watchSlot();
         updateVis();
 
-        /* respaldo: si el composer es nuestro, lo montamos nosotros */
         if (L.ownComposer) {
             try { _mountCompose.call(SCSOC.posts, c); }
             catch (e) { console.error('[Stevscon] social_layout: respaldo del composer ->', e); }
@@ -159,7 +153,6 @@
         console.log('[Stevscon] social_layout v2: columnas listas — feed a la izquierda, POSTEAR en la esquina.');
     }
 
-    /* re-mounts: nuevos hosts se re-colocan solos, sin duplicados */
     function ensureComposer() {
         if (!L.ready) return;
         const r = L.refs, c = L.composerHost;
@@ -176,7 +169,7 @@
         if (!f) return;
         if (!document.contains(r.grid)) {
             if (!f.parentNode) return;
-            f.parentNode.insertBefore(r.grid, f); /* la página se reconstruyó: re-ancla */
+            f.parentNode.insertBefore(r.grid, f);
         }
         if (f.parentNode !== r.left) {
             const kids = r.left.children;
@@ -188,7 +181,6 @@
         }
     }
 
-    /* ==== MÓVIL: FAB + panel deslizante ==== */
     function setupMobile() {
         if (L.fab) return;
         const fab = SCSOC.el('button');
@@ -219,7 +211,6 @@
         else open();
     }
 
-    /* ==== VISIBILIDAD por contenido REAL (nada de adivinar el staff) ==== */
     function hasBox() {
         const c = L.composerHost;
         if (!c) return false;
@@ -242,7 +233,6 @@
             .observe(L.refs.slot, { childList: true, subtree: true });
     }
 
-    /* ==== ENVOLTURIOS (interceptamos la API de admin_post v10) ==== */
     const _mountCompose = SCSOC.posts.mountCompose;
     const _mountFeed = SCSOC.posts.mountFeed;
 

@@ -21,7 +21,6 @@
 
     const R = SCSOC.responses = {};
 
-    /* ==== crear respuesta (v2: una lectura, una escritura) ==== */
     R.create = function (commentId, postId, text, depth, replyTo) {
         SCSOC.requireLogin(function (auth) {
             const userOnce = SCSOC.users.once || SCSOC.users.get;
@@ -44,7 +43,6 @@
         });
     };
 
-    /* ==== tarjeta de respuesta ==== */
     R.render = function (parent, postId, commentId, r, parentCtx) {
         let live = r;
         const el = SCSOC.el('div', 'border-left:2px solid var(--border-color,#2e2440);padding:6px 0 4px 12px;margin-top:6px;');
@@ -54,7 +52,6 @@
         const right = SCSOC.el('span', 'flex:none;display:inline-flex;align-items:center;gap:6px;margin-left:auto;');
         const timeEl = SCSOC.el('span', 'color:var(--text-muted,#94a3b8);font:500 10.5px Inter,sans-serif;white-space:nowrap;');
         right.appendChild(timeEl);
-        /* v4: 3 puntitos (⋯) — edit.js y remove.js registran 'responseMenu' */
         if ((SCSOC.hooks.responseMenu || []).length) {
             const dots = SCSOC.el('button', 'border:0;background:transparent;color:var(--text-muted,#94a3b8);cursor:pointer;font-size:12px;padding:2px 5px;border-radius:7px;');
             dots.innerHTML = '<i class="fa-solid fa-ellipsis"></i>';
@@ -108,7 +105,6 @@
             SCSOC.requireLogin(function () {
                 const d = Number(live.depth) || 1;
                 if (d >= CONFIG.DEPTH_MAX) {
-                    /* nivel máximo alcanzado -> PING al usuario respondido */
                     if (parentCtx && parentCtx.ping) parentCtx.ping(live.authorHandler || live.authorName);
                 } else if (parentCtx && parentCtx.openReply) {
                     parentCtx.openReply(d + 1, live.authorHandler || live.authorName);
@@ -123,11 +119,9 @@
         };
     };
 
-    /* ==== engancharse a cada comentario ==== */
     SCSOC.onHook('commentCard', function (ctx) {
         const host = ctx.responsesHost;
 
-        /* hilo en vivo, siempre visible */
         const cards = {};
         const ref = SCSOC.db().ref(CONFIG.RESPONSES).child(ctx.commentId).orderByChild('createdAt').limitToLast(200);
         const onAdd = function (s) {
@@ -156,7 +150,6 @@
             ref.off('child_removed', onRm);
         };
 
-        /* composer de respuesta (inline, oculto hasta pulsar Responder) */
         const box = SCSOC.el('div', 'display:none;margin-top:8px;');
         const ta = SCSOC.el('textarea', 'width:100%;box-sizing:border-box;background:var(--bg-main,#0d0b14);color:var(--text-main,#f8fafc);border:1px solid var(--border-color,#2e2440);border-radius:10px;padding:8px 11px;font:400 12.5px/1.5 Inter,sans-serif;min-height:34px;resize:none;outline:none;');
         const row = SCSOC.el('div', 'display:flex;justify-content:flex-end;gap:8px;margin-top:6px;');
@@ -183,7 +176,6 @@
             if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendIt(); }
         });
 
-        /* Responder al comentario raíz -> nivel 1 */
         ctx.openReply = function (depth, replyHandler) {
             box.style.display = 'block';
             box.dataset.depth = String(depth || 1);
@@ -193,7 +185,6 @@
             ta.focus();
         };
 
-        /* PING desde una respuesta de nivel 3 -> respuesta con @handler */
         ctx.ping = function (handler) {
             box.style.display = 'block';
             box.dataset.depth = String(CONFIG.DEPTH_MAX);
@@ -203,7 +194,6 @@
             ta.focus();
         };
 
-        /* ==== v3 FIX: cablear el "Responder" del COMENTARIO ==== */
         if (ctx.replyBtn && !ctx.replyBtn.dataset.scsocReplyBound) {
             ctx.replyBtn.dataset.scsocReplyBound = '1';
             ctx.replyBtn.addEventListener('click', function (e) {

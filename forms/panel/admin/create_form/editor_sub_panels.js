@@ -32,7 +32,6 @@ C.questionEditor = {
 
         var m = ui.modal(isNew ? 'Nueva pregunta' : 'Editar pregunta', { icon: 'fa-circle-question' }, function (body, foot) {
 
-            /* 1 · tipo de respuesta */
             var tWrap = document.createElement('div');
             tWrap.className = 'fmc-types';
             body.appendChild(ui.field('Tipo de respuesta', tWrap));
@@ -56,12 +55,10 @@ C.questionEditor = {
                 tWrap.appendChild(c);
             });
 
-            /* 2 · texto de la pregunta */
             var inLabel = ui.input(q ? q.label : '', 'Ej: ¿Cuál es tu nombre de usuario en Discord?');
             inLabel.maxLength = 500;
             body.appendChild(ui.field('Pregunta', inLabel, 'Máximo 500 caracteres.'));
 
-            /* 3 · obligatoria */
             var sw = document.createElement('label');
             sw.className = 'fmc-switch';
             var cb = document.createElement('input');
@@ -75,7 +72,6 @@ C.questionEditor = {
             cb.addEventListener('change', function () { req = cb.checked; });
             body.appendChild(ui.field('¿Obligatoria?', sw, 'Si es obligatoria, no se puede enviar sin responderla.'));
 
-            /* 4 · opciones (solo tipos con opciones) */
             var optsBox = document.createElement('div');
             body.appendChild(optsBox);
             var inOpts = null;
@@ -90,7 +86,6 @@ C.questionEditor = {
             }
             drawOpts();
 
-            /* footer */
             foot.appendChild(ui.btn('Cancelar', 'ghost', function () { m.close(); }));
             foot.appendChild(ui.btn(isNew ? 'Añadir pregunta' : 'Guardar cambios', '', function () {
                 var label = (inLabel.value || '').trim();

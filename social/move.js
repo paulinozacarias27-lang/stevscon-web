@@ -33,25 +33,20 @@
     try { reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
     try { coarse = window.matchMedia('(pointer: coarse)').matches; } catch (e) {}
 
-    /* ==== CSS global (inyectado) ==== */
     function injectCss() {
         var st = document.createElement('style');
         st.setAttribute('data-scmove', '1');
         st.textContent = ''
-            /* -- Barras nativas de contenedores INTERNOS, al tema de la web -- */
             + '.scm-theming *::-webkit-scrollbar{width:10px;height:10px;}'
             + '.scm-theming *::-webkit-scrollbar-track{background:transparent;}'
             + '.scm-theming *::-webkit-scrollbar-thumb{background:#332a4d;border:3px solid transparent;background-clip:padding-box;border-radius:999px;}'
             + '.scm-theming *::-webkit-scrollbar-thumb:hover{background:#8b5cf6;}'
             + '.scm-theming *::-webkit-scrollbar-corner{background:transparent;}'
             + '.scm-theming *{scrollbar-color:#332a4d transparent;scrollbar-width:thin;}'
-            /* -- La barra del DOCUMENTO se oculta solo cuando MOVE ya corre -- */
             + 'html.scm-on::-webkit-scrollbar{display:none!important;width:0!important;height:0!important;}'
             + 'html.scm-on{scrollbar-width:none;-ms-overflow-style:none;}'
-            /* -- v2: la capa interna ADOPTADA también esconde su barra nativa -- */
             + '.scm-hidesb{scrollbar-width:none!important;-ms-overflow-style:none!important;}'
             + '.scm-hidesb::-webkit-scrollbar{display:none!important;width:0!important;height:0!important;}'
-            /* -- Barra personalizada del documento -- */
             + '.scm-bar{position:fixed;top:0;right:0;bottom:0;width:14px;z-index:2147483020;opacity:0;transition:opacity .35s ease;pointer-events:none;will-change:opacity;}'
             + '.scm-bar.scm-vis{opacity:1;pointer-events:auto;}'
             + '.scm-track{position:absolute;top:6px;right:2px;bottom:6px;width:10px;border-radius:999px;background:rgba(139,92,246,.09);box-shadow:inset 0 0 0 1px rgba(139,92,246,.13);opacity:0;transition:opacity .25s ease;}'
@@ -64,11 +59,10 @@
         document.head.appendChild(st);
     }
 
-    /* ==== ESTADO ==== */
     var bar, thumb;
-    var sc = null, doc = null;        /* scroller activo y el del documento */
-    var adopted = false;              /* v2: sc es una capa interna adoptada */
-    var awake = false, rafId = 0;        /* bucle de animación bajo demanda */
+    var sc = null, doc = null;
+    var adopted = false;
+    var awake = false, rafId = 0;
     var visible = false, hover = false, dragging = false, active = false;
     var curY = -1, targetY = 0, thumbH = 46;
     var hideTimer = 0, dragGuard = 0;
@@ -78,7 +72,7 @@
         visible = v;
         if (v) bar.classList.add('scm-vis'); else bar.classList.remove('scm-vis');
     }
-    function pulse() {          /* aparece y reinicia su auto-desvanecer */
+    function pulse() {
         active = true;
         setVis(true);
         clearTimeout(hideTimer);
@@ -88,13 +82,12 @@
         if (!active && !hover && !dragging) setVis(false);
     }
 
-    /* ==== v2 · ADOPCIÓN DE CAPAS INTERNAS ==== */
     function docMax() { return doc.scrollHeight - doc.clientHeight; }
     function adoptable(el) {
         if (!el || el.nodeType !== 1 || el === doc || el === document.body) return false;
         try {
             var r = el.getBoundingClientRect();
-            if (r.height < window.innerHeight * 0.45) return false;  /* solo capas principales */
+            if (r.height < window.innerHeight * 0.45) return false;
         } catch (e) { return false; }
         return el.scrollHeight - el.clientHeight > 2;
     }
@@ -104,22 +97,21 @@
         adopted = !!el;
         sc = el || doc;
         if (adopted) sc.classList.add('scm-hidesb');
-        curY = -1;   /* recoloca el pulido sin animación heredada */
+        curY = -1;
     }
     function onScroll(e) {
         var t = e.target;
         var isDoc = (t === document || t === document.documentElement || t === window);
         if (isDoc) {
-            if (adopted && docMax() > 2) adopt(null);          /* el documento volvió a vivir */
+            if (adopted && docMax() > 2) adopt(null);
         } else if (!adopted && docMax() <= 2 && adoptable(t)) {
-            adopt(t);                                          /* capa principal interna -> ADOPTADA */
+            adopt(t);
         } else if (adopted && t === sc && !adoptable(sc)) {
-            adopt(null);                                       /* la capa adoptada se quedó sin scroll */
+            adopt(null);
         }
         wake(); pulse();
     }
 
-    /* ==== MEDIR + ANIMAR (lerp: el pulido persigue al scroll) ==== */
     function compute() {
         if (!sc) return;
         if (adopted && sc.scrollHeight - sc.clientHeight <= 2) adopt(null);
@@ -127,10 +119,10 @@
         var view = sc.clientHeight;
         var total = sc.scrollHeight;
         var max = total - view;
-        if (max <= 2) { setVis(false); return; }   /* no hay nada que scrollear */
+        if (max <= 2) { setVis(false); return; }
 
-        var hMax = view - 12;                    /* pista: 6px arriba y abajo */
-        var h = view * (view / Math.max(total, 1)); /* pulido proporcional */
+        var hMax = view - 12;
+        var h = view * (view / Math.max(total, 1));
         h = Math.max(46, Math.min(hMax, h));
         if (Math.abs(h - thumbH) > 0.5) { thumbH = h; thumb.style.height = h.toFixed(2) + 'px'; }
 
@@ -149,14 +141,13 @@
         rafId = 0;
         compute();
         if (visible || hover || dragging) rafId = requestAnimationFrame(tick);
-        else awake = false;                    /* a dormir: cero CPU en reposo */
+        else awake = false;
     }
     function wake() {
         awake = true;
         if (!rafId) rafId = requestAnimationFrame(tick);
     }
 
-    /* ==== INTERACCIÓN: drag + clic en pista + hover ==== */
     function bindDrag() {
         var startY = 0, startTop = 0;
 
@@ -190,7 +181,6 @@
         thumb.addEventListener('pointerup', endDrag);
         thumb.addEventListener('pointercancel', endDrag);
 
-        /* clic en la pista (no en el pulido): salto de página suave */
         bar.addEventListener('click', function (e) {
             if (dragging || Date.now() - dragGuard < 150) return;
             if (e.target === thumb) return;
@@ -209,20 +199,17 @@
     }
 
     function bind() {
-        /* v2: capture -> pilla el scroll del documento Y de cualquier capa interna */
         document.addEventListener('scroll', onScroll, { passive: true, capture: true });
         window.addEventListener('resize', function () { wake(); pulse(); });
-        /* API mínima para tus files: SCSOC no requerido, pero se lleva bien */
         window.SCMOVE = { refresh: function () { wake(); pulse(); } };
     }
 
-    /* ==== ARRANQUE ==== */
     function init() {
         if (!document.body) { document.addEventListener('DOMContentLoaded', init); return; }
         injectCss();
         root.classList.add('scm-theming');
 
-        if (coarse) return;   /* móvil/touch: scroll nativo, no se dibuja nada */
+        if (coarse) return;
 
         bar = document.createElement('div');
         bar.className = 'scm-bar';
@@ -235,11 +222,10 @@
         doc = document.scrollingElement || root;
         sc = doc;
 
-        /* Recién AHORA escondemos la barra nativa del documento */
         root.classList.add('scm-on');
 
         bind(); bindDrag();
-        wake();   /* posiciona el pulido si el navegador restauró el scroll */
+        wake();
         console.log('[Stevscon] move.js listo (v2) — barra MOVE activa (documento + capas internas).');
     }
     init();

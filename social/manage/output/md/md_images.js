@@ -24,7 +24,7 @@
     const D = SCSOC.dm, U = SCSOC.dmUI;
 
     const MAX_DIM = 1280;
-    const TARGET_B64 = 55000;   /* v2: bajo el tope de 60000 de las rules */
+    const TARGET_B64 = 55000;
     const MAX_B64 = 60000;
 
     const I = SCSOC.dmImages = { MAX_DIM: MAX_DIM, MAX_B64: MAX_B64 };
@@ -33,7 +33,6 @@
     function me() { try { return firebase.auth().currentUser; } catch (e) { return null; } }
     function toast(t) { if (SCSOC.toast) SCSOC.toast(t); }
 
-    /* ==== COMPRENSIÓN: File -> dataURL liviano ==== */
     function readFile(file, cb) {
         const r = new FileReader();
         r.onload = function () { cb(String(r.result || '')); };
@@ -50,7 +49,7 @@
         const c = document.createElement('canvas');
         c.width = w; c.height = h;
         const ctx = c.getContext('2d');
-        ctx.fillStyle = '#1a1625'; /* fondo para PNGs con transparencia */
+        ctx.fillStyle = '#1a1625';
         ctx.fillRect(0, 0, w, h);
         ctx.drawImage(im, 0, 0, w, h);
         return c.toDataURL('image/jpeg', q);
@@ -58,7 +57,6 @@
     function toLightDataUrl(file, cb) {
         readFile(file, function (dataUrl) {
             if (!dataUrl || dataUrl.indexOf('data:image/') !== 0) { cb('bad'); return; }
-            /* GIF chico pasa intacto (se conserva la animación) */
             if (/^data:image\/gif/.test(dataUrl)) {
                 cb(dataUrl.length <= MAX_B64 ? dataUrl : 'big');
                 return;
@@ -82,7 +80,6 @@
         });
     }
 
-    /* ==== ENVIAR la imagen (misma ruta/formato que D.send, sin tocarlo) ==== */
     const _lastImg = { at: 0, len: 0 };
 
     I.sendImage = function (convId, dataUrl, caption, cb) {
@@ -92,7 +89,6 @@
             if (img.indexOf('data:image/') !== 0 || img.length > MAX_B64) {
                 toast('La imagen es muy pesada o inválida.'); if (cb) cb(new Error('img')); return;
             }
-            /* candado: la misma imagen en <10s = bloqueado */
             if (_lastImg.len === img.length && (Date.now() - _lastImg.at) < 10000) {
                 toast('Esa imagen ya se envió hace un momento.');
                 if (cb) cb(new Error('dup')); return;
@@ -108,9 +104,6 @@
                 }
                 const peerUid = D.peerOf(meta.users, a.uid);
                 const C = SCSOC.dmContacts;
-                /* v2: candado de BLOQUEOS — el mismo que respeta el texto.
-                 * err: 'mine' (yo lo bloqueé) | 'theirs' (me bloqueó) | null.
-                 * guard() ya muestra su propio toast. */
                 const goPrefs = function () {
                 D.prefOf(peerUid, function (p) {
                     const friend = !!(C && C.isFriend && C.isFriend(peerUid));
@@ -179,7 +172,6 @@
         });
     };
 
-    /* ==== RENDER: montar la imagen en la burbuja que crea md_ui ==== */
     let curWin = null;
 
     function paintImg(b, m) {
@@ -192,7 +184,7 @@
         im.className = 'scdm-img';
         im.alt = 'Imagen';
         im.loading = 'lazy';
-        im.src = src; /* img.src SIEMPRE — jamás innerHTML con datos */
+        im.src = src;
         im.addEventListener('click', function () { lightbox(src); });
         wrap.appendChild(im);
         if (b._txt && b._txt.parentNode === b) b.insertBefore(wrap, b._txt);
@@ -218,7 +210,6 @@
         document.body.appendChild(ov);
     }
 
-    /* envuelve D.watchConv: tras el onAdd de md_ui, monta la imagen */
     if (D && typeof D.watchConv === 'function' && !D.__imgWatch) {
         D.__imgWatch = true;
         const oldWatch = D.watchConv;
@@ -240,7 +231,6 @@
         };
     }
 
-    /* ==== COMPOSER: botón 📷 + pegar + soltar (sin editar md_ui) ==== */
     let obs = null;
 
     function hookComposer(win) {
@@ -315,7 +305,6 @@
         }
     }
 
-    /* md_ui avisa en cada cambio de vista (mismo patrón que md_actions) */
     document.addEventListener('sc:dm-view', function (e) {
         const d = (e && e.detail) || {};
         if (d.view === 'chat' && d.win) {
@@ -333,7 +322,6 @@
         }
     });
 
-    /* ==== CSS ==== */
     (function injectCss() {
         if (document.querySelector('style[data-scdmi]')) return;
         const css = document.createElement('style');

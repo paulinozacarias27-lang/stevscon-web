@@ -83,7 +83,6 @@
     const FIELD = { id: 'reset-email', order: 1, render, getValue, setValue, validate, clear };
     SC.reset.fields.push(FIELD);
 
-    // ---- Orquestador propio de RESET (mismo patrón que ACCESS) ----
     if (typeof SC.reset.get !== 'function') {
         SC.reset.get = function (id) {
             return SC.reset.fields.find(function (f) { return f.id === id; }) || null;

@@ -25,9 +25,9 @@
     const OWNER_EMAIL = 'steven23hd@gmail.com';
     const LIMITS = {
         title: 120, summary: 300, body: 20000, tags: 8, tagLen: 24,
-        cover: 9000000, /* 9MB: bajo el límite de 10MB por string de Firebase */
+        cover: 9000000,
         catName: 32, catIcon: 4,
-        imgFile: 20971500 /* 20MB de archivo fuente: EL único límite */
+        imgFile: 20971500
     };
     const VIDEO_MSG = 'Eso es un video: solo se permiten imágenes (hasta 20MB). Los GIFs sí cuentan como imágenes.';
 
@@ -39,19 +39,11 @@
             .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'pagina';
     }
 
-    /* ==== OPTIMIZADOR DE IMÁGENES v2 (20MB de entrada, cero errores de tamaño) ====
-     * cb(out, err): out = dataURI lista para guardar, err = mensaje.
-     * - Video → VIDEO_MSG (el único rechazo que no sea el límite de 20MB).
-     * - Archivo > 20MB → error (límite aprobado).
-     * - Si el original ya cabe en targetStr → tal cual (PNG/GIF intactos).
-     * - GIF grande pero bajo el techo → original (animación respetada).
-     * - Resto: escalera de tamaños x calidades que SIEMPRE converge
-     *   bajo hardStr (9MB). Nunca "demasiado grande incluso optimizada". */
     function shrinkImage(file, opts, cb) {
         const o = Object.assign({
             maxDim: 1920,
-            targetStr: 2000000, /* objetivo de calidad (~1.4MB reales) */
-            hardStr: 9000000,   /* techo duro: nunca por encima */
+            targetStr: 2000000,
+            hardStr: 9000000,
             fileMax: LIMITS.imgFile
         }, opts || {});
         if (typeof cb !== 'function') cb = opts;
@@ -66,20 +58,17 @@
             const raw = String(fr.result || '');
             if (/^data:video\//i.test(raw)) return cb(null, VIDEO_MSG);
             if (!/^data:image\/[a-zA-Z0-9.+-]+;base64,/.test(raw)) return cb(null, 'Ese archivo no es una imagen válida (solo imágenes; los GIFs sí valen).');
-            if (raw.length <= o.targetStr) return cb(raw, null); /* ya cabe: original intacto */
+            if (raw.length <= o.targetStr) return cb(raw, null);
             const isGif = /^data:image\/gif;base64,/i.test(raw);
 
             const im = new Image();
             im.onerror = function () { cb(null, 'Ese archivo no es una imagen válida.'); };
             im.onload = function () {
                 try {
-                    /* GIF bajo el techo se queda TAL CUAL (animación respetada) */
                     if (isGif && raw.length <= o.hardStr) return cb(raw, null);
 
                     const Qs = [0.9, 0.75, 0.6, 0.45, 0.35];
                     let best = null;
-                    /* Escalera que SIEMPRE converge: al llegar a 64px con
-                     * q0.35 el JPEG pesa unos KB — imposible no caber. */
                     for (let dim = o.maxDim; dim >= 64; dim = Math.round(dim * 0.7)) {
                         const sc = Math.min(1, dim / Math.max(im.width, im.height, 1));
                         const cv = document.createElement('canvas');
@@ -88,8 +77,8 @@
                         cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
                         for (let qi = 0; qi < Qs.length; qi++) {
                             const out = cv.toDataURL('image/jpeg', Qs[qi]);
-                            if (out.length <= o.targetStr) return cb(out, null); /* calidad ideal */
-                            if (out.length <= o.hardStr) { best = out; break; } /* la mejor que cabe */
+                            if (out.length <= o.targetStr) return cb(out, null);
+                            if (out.length <= o.hardStr) { best = out; break; }
                         }
                         if (best) break;
                     }
@@ -125,7 +114,7 @@
                     self.session.user = user;
                     self.session.uid = user.uid;
                     self.session.role = isOwner ? 'owner' : '';
-                    self.session.isStaff = isOwner; /* se confirma luego con social/staff */
+                    self.session.isStaff = isOwner;
                     self.session.name = email.split('@')[0] || 'Staff';
 
                     db().ref('users/' + user.uid).once('value').then(function (s) {
@@ -136,7 +125,6 @@
 
                     if (isOwner) { document.dispatchEvent(new CustomEvent('sc:wiki-auth')); return; }
 
-                    /* v3: SOLO role 'admin' gana permisos de Wiki. Un mod NO cuenta. */
                     db().ref('social/staff/' + user.uid).once('value').then(function (s) {
                         const node = s.val();
                         const role = (node && typeof node === 'object' && node.role)
@@ -152,7 +140,6 @@
             } catch (e) { console.warn('[Wiki] auth no disponible:', e && e.message); }
         },
 
-        /* ==== VALIDACIONES ==== */
         validateArticle: function (d) {
             if (!d.title || d.title.length > LIMITS.title) return 'El título es obligatorio (máx ' + LIMITS.title + ' caracteres).';
             if (d.summary && d.summary.length > LIMITS.summary) return 'El resumen no puede pasar de ' + LIMITS.summary + ' caracteres.';
@@ -196,7 +183,6 @@
                 .catch(function () {});
         },
 
-        /* ==== ARTÍCULOS ==== */
         saveArticle: function (data, id) {
             const self = this;
             if (!this.session.isStaff) return Promise.reject(new Error('Solo el Owner y los Administradores pueden editar la Wiki.'));
@@ -298,7 +284,6 @@
             } catch (e) {}
         },
 
-        /* ==== CATEGORÍAS ==== */
         createCategory: function (name, icon, color, order) {
             if (!this.session.isStaff) return Promise.reject(new Error('Solo el Owner y los Administradores pueden crear categorías.'));
             name = String(name || '').trim();

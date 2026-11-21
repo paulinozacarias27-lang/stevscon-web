@@ -26,7 +26,6 @@
     const toast = function (m, k) { if (WK.toast) WK.toast(m, k); };
     const dbf = function () { return firebase.database(); };
 
-    /* ==== HELPERS ==== */
     function el(tag, cls, txt) {
         const e = document.createElement(tag);
         if (cls) e.className = cls;
@@ -46,7 +45,7 @@
     }
     function safeLink(u) {
         u = String(u || '').trim();
-        if (/^#(a|c|s)\//.test(u)) return u; /* rutas internas de la wiki */
+        if (/^#(a|c|s)\//.test(u)) return u;
         if (WK.formats && typeof WK.formats.safeUrl === 'function') {
             try { return WK.formats.safeUrl(u) || ''; } catch (e) {}
         }
@@ -54,7 +53,6 @@
     }
     function isInternal(u) { return /^#(a|c|s)\//.test(String(u || '')); }
 
-    /* ---- Marcas reconocidas para los botones (icono + color) ---- */
     const BRANDS = [
         { re: /discord\.(com|gg|me)/i,        icon: 'fa-brands fa-discord',    color: '#5865F2' },
         { re: /youtube\.com|youtu\.be/i,      icon: 'fa-brands fa-youtube',    color: '#FF0000' },
@@ -84,7 +82,6 @@
         enlaces: { label: 'Botones', icon: 'fa-link' }
     };
 
-    /* ==== CSS (bloques + editor, tema claro y oscuro) ==== */
     const CSS = `
     .wkh-block{position:relative}
     .wkh-has-tools h2{padding-right:150px}
@@ -139,7 +136,6 @@
         document.head.appendChild(st);
     }
 
-    /* ==== FALLBACK: optimizador de imágenes (si falta wiki_system v2) ==== */
     function shrink(file, cb) {
         try {
             const fr = new FileReader();
@@ -166,7 +162,6 @@
         } catch (e) { cb(null, 'No se pudo procesar la imagen.'); }
     }
 
-    /* ==== NÚCLEO ==== */
     WK.homeblocks = {
         map: {}, wrapped: false,
 
@@ -188,7 +183,6 @@
         },
         isStaff: function () { return !!(WK.core && WK.core.staffView && WK.core.staffView()); },
 
-        /* ---- Escritura (solo Owner/Admins, las rules lo refuerzan) ---- */
         create: function (data) {
             data.order = Date.now();
             data.createdAt = Date.now();
@@ -213,7 +207,6 @@
             return dbf().ref().update(upd);
         },
 
-        /* ---- Botones de edición (solo staff los ve) ---- */
         tools: function (bk, idx, total) {
             const self = this;
             const t = el('div', 'wkh-tools');
@@ -253,7 +246,6 @@
             return t;
         },
 
-        /* ---- EDITOR DE BLOQUES ---- */
         openEditor: function (id) {
             if (!this.isStaff()) { toast('Solo el Owner y los Administradores pueden editar la Wiki.', 'error'); return; }
             const self = this;
@@ -294,7 +286,6 @@
 
             const hint = el('p', 'wk-hint', '');
 
-            /* ==== BOTONES · editor visual de filas (v2) ==== */
             const rowsBox = el('div', 'wkh-rows');
             function makeRow(txt, url) {
                 const row = el('div', 'wkh-row');
@@ -343,7 +334,6 @@
             linksW.appendChild(addRow);
             linksW.appendChild(hint);
 
-            /* Campos de IMAGEN */
             const img = document.createElement('input');
             img.type = 'text';
             img.placeholder = 'Pega una URL https o sube una imagen…';
@@ -390,7 +380,6 @@
             }
             typeSel.addEventListener('change', syncType);
 
-            /* URL pegada -> previsualizar */
             img.addEventListener('change', function () {
                 const u = String(img.value || '').trim();
                 if (/^https:\/\//i.test(u) || /^data:image\//.test(u)) {
@@ -402,7 +391,6 @@
                 }
             });
 
-            /* Subida local -> optimizador (igual que las portadas) */
             imgFile.addEventListener('change', function () {
                 const f = imgFile.files && imgFile.files[0];
                 if (!f) return;
@@ -433,7 +421,6 @@
             form.appendChild(imgW);
             form.appendChild(capW);
 
-            /* Cargar datos existentes */
             if (cur) {
                 typeSel.value = TYPES[cur.type] ? cur.type : 'texto';
                 title.value = cur.title || '';
@@ -505,13 +492,11 @@
             setTimeout(function () { try { title.focus(); } catch (e2) {} }, 50);
         },
 
-        /* ==== PINTAR BLOQUES (tras el render normal del home) ==== */
         paint: function (main) {
             if (!main) return;
             const staff = this.isStaff();
             const blocks = this.all();
 
-            /* Fuera "Últimas páginas" (se queda Explorar por categoría) */
             Array.prototype.forEach.call(main.children, function (sec) {
                 if (!sec.classList || !sec.classList.contains('wk-sec')) return;
                 const h = sec.querySelector('h2');
@@ -520,7 +505,6 @@
                 }
             });
 
-            /* Si ya hay bloques, el aviso de "wiki vacía" estorba */
             if (blocks.length) {
                 const emp = main.querySelector('.wk-empty');
                 if (emp && emp.parentNode) {
@@ -529,7 +513,6 @@
                 }
             }
 
-            /* Barra staff para añadir bloques */
             if (staff) {
                 const bar = el('div', 'wkh-addbar');
                 const add = el('button', 'wkh-addbtn');
@@ -603,7 +586,6 @@
                     if (wrapL.children.length) { sec.appendChild(wrapL); has = true; }
                     else if (staff) { sec.appendChild(el('p', 'wkh-addhint', 'Este bloque de botones está vacío: edítalo para añadir botones.')); has = true; }
                 } else if (type === 'aviso') {
-                    /* AVISO v2: callout limpio dentro de la sección */
                     if (String(bk.body || '').trim()) {
                         const co = el('div', 'wkh-callout');
                         const bd = el('div', 'wk-body');
@@ -616,7 +598,6 @@
                         has = true;
                     }
                 } else {
-                    /* TEXTO: todo el poder de formats.js */
                     const bd = el('div', 'wk-body');
                     bd.innerHTML = renderMd(bk.body || '');
                     sec.appendChild(bd);
@@ -632,7 +613,6 @@
                         sec.classList.add('wkh-has-tools');
                         sec.appendChild(t);
                     } else {
-                        /* Sin título: los botones van en fila propia para no tapar nada */
                         const row = el('div', 'wkh-toolrow');
                         row.appendChild(t);
                         sec.appendChild(row);
@@ -643,7 +623,6 @@
             });
         },
 
-        /* ---- Conexión segura con el Core (una sola vez) ---- */
         wrap: function () {
             if (this.wrapped || !WK.core || typeof WK.core.renderHome !== 'function') return;
             this.wrapped = true;
@@ -656,7 +635,6 @@
         }
     };
 
-    /* ---- Init: envuelve renderHome ANTES del primer boot ---- */
     function boot() {
         injectStyles();
         if (!window.firebase) { console.warn('[Stevscon] edit_page.js: Firebase no está cargado.'); return; }

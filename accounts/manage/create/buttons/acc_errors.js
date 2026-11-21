@@ -83,6 +83,5 @@
     SC.buttons = SC.buttons || {};
     SC.buttons.errors = { id: 'errors', render, show, success, clear, translateAuthError };
 
-    // Atajo global para cualquier módulo de la categoría
     SC.translateAuthError = translateAuthError;
 })(window, document);

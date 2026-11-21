@@ -72,7 +72,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
-    /* Mismas variables que social (todo el stack de forms las hereda de aquí) */
     :root{
         --bg-main:#0d0b14; --border-color:#2e2440; --bg-hover:#261f36; --bg-card:#1a1625;
         --purple-accent:#8b5cf6; --purple-dark:#6d28d9; --purple-glow:rgba(139,92,246,.35);
@@ -87,10 +86,8 @@
     html,body{margin:0;padding:0}
     body{background:var(--bg-main);color:var(--text-main);font-family:Inter,system-ui,sans-serif;min-height:100vh}
 
-    /* ---- Raíz donde el CONECTADOR monta toda la página ---- */
     #fm-root{max-width:980px;margin:0 auto;padding:26px 18px 70px;min-height:60vh}
 
-    /* ---- Pantalla de arranque (se apaga sola cuando el conector pinta) ---- */
     #sc-boot{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:var(--bg-main);z-index:100}
     #sc-boot .sc-boot-logo{font-size:26px;font-weight:800;letter-spacing:-.02em}
     #sc-boot .sc-boot-logo span{color:var(--purple-accent)}
@@ -99,14 +96,11 @@
     @keyframes sc-boot-spin{to{transform:rotate(360deg)}}
     #sc-boot .sc-boot-error{display:none;max-width:540px;margin:0 20px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.08);color:#f87171;border-radius:12px;padding:14px 16px;font-size:13px;font-weight:600;line-height:1.6;text-align:center}
 
-    /* ---- Destello del form llegado por deep link ---- */
     .fm-flash{animation:fmFlash 1.1s ease-in-out 2}
     @keyframes fmFlash{50%{box-shadow:0 0 0 3px var(--purple-glow)}}
 </style>
-<!-- MOVE v2 · la barra de scroll del sitio (la misma de todo el sitio) -->
 <script src="/social/move.js?v=2"></script>
 <script>
-/* TEMA · aplica al instante el Oscuro/Claro guardado desde Preferencias */
 (function () {
     var t = 'dark';
     try { t = localStorage.getItem('stevscon_theme') || 'dark'; } catch (e) {}
@@ -125,7 +119,6 @@
 <script defer src="/translate.js?v=5"></script>
 <body>
 
-<!-- Arranque: se apaga solo cuando el CONECTADOR monta la página -->
 <div id="sc-boot" aria-live="polite">
     <div class="sc-boot-logo">Stevscon<span>.</span></div>
     <span class="sc-boot-spin"></span>
@@ -133,10 +126,8 @@
     <div class="sc-boot-error" id="sc-boot-error"></div>
 </div>
 
-<!-- Raíz de la página (el conector llena esto) -->
 <main id="fm-root"></main>
 
-<!-- Fallback sin-JS / crawlers: contenido legible sin esperar a nada -->
 <noscript>
     <div style="max-width:720px;margin:40px auto;padding:0 20px;font-family:Inter,sans-serif;line-height:1.7">
         <h1>Apostulaciones — Stevscon.com</h1>
@@ -144,29 +135,23 @@
     </div>
 </noscript>
 
-<!-- ==== FIREBASE · SDK compat 9.23.0, LOS MISMOS de tu index y social ==== -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 
-<!-- ==== CONFIG · tu firebase_data.js de la raíz (el MISMO del index). Cero pegar configs. ==== -->
 <script src="/firebase_data.js?v=13"></script>
 <script>
-    /* Defensa: si firebase_data.js solo expone el config (window.StevsconFirebase)
-       y no llama a initializeApp, lo inicializamos aquí. Si ya inicializó, no se toca. */
     try {
         if (typeof firebase !== 'undefined' && !firebase.apps.length &&
             window.StevsconFirebase && window.StevsconFirebase.apiKey) {
             firebase.initializeApp(window.StevsconFirebase);
         }
     } catch (e) { console.warn('[Forms] Firebase config:', e && e.message); }
-    /* Namespace de Apostulaciones garantizado desde el arranque */
     window.StevsconForms = window.StevsconForms || {};
 </script>
 
 <script>
-/* TEMA · al iniciar sesión, manda el guardado en Firebase (Preferencias) */
 firebase.auth().onAuthStateChanged(function (u) {
     if (!u || !firebase.database) return;
     firebase.database().ref('users/' + u.uid + '/settings/theme').once('value').then(function (s) {
@@ -179,15 +164,10 @@ firebase.auth().onAuthStateChanged(function (u) {
 });
 </script>
 
-<!-- ==== EL STACK DE APOSTULACIONES · TU ESTRUCTURA EXACTA ====
-     Orden de tu captura: create_form → data_save → create_button → public.
-     TU REGLA DE SIEMPRE: el coordinador (connect_form.js) va AL FINAL. ==== -->
 
-<!-- 1) BASE · tipografía + helpers compartidos (FM.core) -->
 <script src="/forms/fonts.js?v=1"></script>
 <script src="/forms/forms_core.js?v=1"></script>
 
-<!-- 2) EL CREADOR · /forms/panel/admin/create_form/ -->
 <script src="/forms/panel/admin/create_form/panels.js?v=1"></script>
 <script src="/forms/panel/admin/create_form/sub_panels.js?v=1"></script>
 <script src="/forms/panel/admin/create_form/editor_panels.js?v=1"></script>
@@ -196,41 +176,25 @@ firebase.auth().onAuthStateChanged(function (u) {
 <script src="/forms/panel/admin/create_form/submit_form_panels.js?v=1"></script>
 <script src="/forms/panel/admin/create_form/view_panel.js?v=1"></script>
 
-<!-- 3) DATOS Y REVISIÓN · /forms/panel/admin/data_save/ -->
 <script src="/forms/panel/admin/data_save/gmail_profile.js?v=1"></script>
 <script src="/forms/panel/admin/data_save/public_forms.js?v=1"></script>
 <script src="/forms/panel/admin/data_save/data_panel.js?v=1"></script>
 <script src="/forms/panel/admin/data_save/accept_decline.js?v=1"></script>
 
-<!-- 4) BOTÓN DE LA ESQUINA · /forms/panel/admin/create_button.js (Owner/Admins) -->
 <script src="/forms/panel/admin/create_button.js?v=1"></script>
 
-<!-- 5) LADO PÚBLICO · /forms/panel/public/ -->
 <script src="/forms/panel/public/main_panel.js?v=2"></script>
 <script src="/forms/panel/public/see_form.js?v=1"></script>
 <script src="/forms/panel/public/submit_form.js?v=1"></script>
 
-<!-- 6) EL CONECTADOR · connect_form.js (SIEMPRE el último) -->
 <script src="/forms/panel/public/connect_form.js?v=2"></script>
 
-<!-- BAN · pantalla de baneado también aquí (los trolls no postulan) -->
 <script src="/banned.js?v=4"></script>
 <script src="/unban.js?v=1"></script>
 
 <script>
 (function () {
     'use strict';
-    /* ====
-       Arranque de forms.html:
-       1) Espera al CONECTADOR (connect_form.js expone FM.connect.mount)
-       2) Espera a que Auth resuelva la sesión (o invitado)
-       3) FM.connect.mount(user) monta TODA la página dentro de #fm-root
-       4) Primer pintado -> se apaga la pantalla de carga -> rutea el hash
-       5) Deep links: #form/{id} · #mis · #staff
-       6) ROLLOUT: si forms_core.js cargó pero el conector no existe
-          todavía (partes 2-4 sin subir), muestra "en construcción" —
-          nunca un error rojo en la web pública.
-       ==== */
     var boot = document.getElementById('sc-boot');
 
     function coreReady() {
@@ -277,7 +241,6 @@ firebase.auth().onAuthStateChanged(function (u) {
         boot.appendChild(back);
     }
 
-    /* Auth resuelto (sesión guardada o invitado) con tope de 3.5s */
     function warmAuth(cb) {
         try {
             var a = firebase.auth();
@@ -295,7 +258,6 @@ firebase.auth().onAuthStateChanged(function (u) {
         } catch (e) { cb(null); }
     }
 
-    /* Espera (tope 6s) al primer pintado del conector dentro de #fm-root */
     function waitFirstPaint(cb) {
         var n = 0;
         (function look() {
@@ -324,13 +286,11 @@ firebase.auth().onAuthStateChanged(function (u) {
     (function waitCore() {
         if (coreReady()) { bootFlow(); return; }
         tries++;
-        /* core cargó pero el conector no -> módulos aún sin publicar */
         if (tries > 30 && coreOnly()) return soon();
-        if (tries > 75) return coreOnly() ? soon() : fail();   /* 15s y nada */
+        if (tries > 75) return coreOnly() ? soon() : fail();
         setTimeout(waitCore, 200);
     })();
 
-    /* Rutas -> el CONECTADOR decide qué abrir (#form/{id} · #mis · #staff) */
     function route() {
         var F = window.StevsconForms;
         try { if (F && F.connect && typeof F.connect.route === 'function') F.connect.route(location.hash || ''); }

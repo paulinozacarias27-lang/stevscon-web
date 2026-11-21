@@ -12,7 +12,6 @@
 
     const Ranks = window.StevsconRanks = {};
 
-    // ===== IDENTIDAD DEL OWNER (guardada AQUÍ y solo aquí) =====
     const OWNER = {
         email: 'steven23hd@gmail.com',
         username: 'StevsLoL',
@@ -65,7 +64,7 @@
         ['account', 'handler', 'password'].forEach(function (id) {
             const f = SC.output && SC.output.get ? SC.output.get(id) : null;
             if (f && typeof f.refresh === 'function') {
-                try { f.refresh(); } catch (e) { /* campo aún no renderizado */ }
+                try { f.refresh(); } catch (e) {  }
             }
         });
     };

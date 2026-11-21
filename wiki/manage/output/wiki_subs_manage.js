@@ -65,7 +65,6 @@
         if (!WK.subsSystem) { toast('Falta wiki_subs_system.js en wiki.html', 'error'); return; }
         close();
 
-        /* ===== estado local del modal (la fuente de verdad) ===== */
         const st = {
             type: 'normal', title: '',
             body: '', image: '', imgPos: 'abajo',
@@ -136,8 +135,6 @@
         document.addEventListener('keydown', ovl._key);
         document.body.appendChild(ovl);
 
-        /* ==== fila de imagen reutilizable (input + archivo + preview) ====
-         * v3: el archivo se OPTIMIZA (hasta 20MB) en vez de rechazarse. */
         function imgRow(onVal, initVal, ph) {
             const wrap = el('div', 'wksm-imgrow');
             const inp = el('input', 'wksm-input');
@@ -203,7 +200,6 @@
             return wrap;
         }
 
-        /* ===== editores por tipo ===== */
         function renderFields() {
             typeHint.textContent = TYPE_HINTS[st.type] || '';
             fields.textContent = '';
@@ -385,7 +381,6 @@
             renderRows();
         }
 
-        /* ==== guardar ==== */
         function collect() {
             if (st.type === 'normal') {
                 return { type: 'normal', title: st.title, body: st.body, image: st.image, imgPos: st.imgPos };
@@ -407,7 +402,6 @@
             });
         });
 
-        /* ===== cargar existente ===== */
         if (subId) {
             db().ref('wiki/subs/' + artId + '/' + subId).once('value').then(function (s) {
                 const v = s.val();
@@ -442,7 +436,6 @@
         renderFields();
     }
 
-    /* ==== CSS del modal ==== */
     const CSS = [
         '.wksm-ovl{position:fixed;inset:0;z-index:4500;background:rgba(5,3,10,.78);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:18px}',
         '.wksm-panel{width:100%;max-width:660px;max-height:88vh;display:flex;flex-direction:column;background:var(--bg-card,#17131f);border:1px solid var(--border-color,#2e2440);border-radius:18px;box-shadow:0 30px 90px rgba(0,0,0,.65);overflow:hidden}',

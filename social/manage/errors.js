@@ -36,7 +36,6 @@
         setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 4500);
     }
 
-    /* aviso amistoso con tope de frecuencia (1 por ventana de ms) */
     function warn(msg, ms) {
         const now = Date.now();
         if (now - lastToastAt < (ms || 15000)) return;
@@ -44,7 +43,6 @@
         toast(msg);
     }
 
-    /* 1) Errores no manejados — solo avisan si el Social está vivo */
     window.addEventListener('error', function (e) {
         console.error('[Stevscon][Social] error en', (e && e.filename) || '?',
             'línea', (e && e.lineno) || '?', '→', (e && e.message) || e);
@@ -56,7 +54,6 @@
         console.error('[Stevscon][Social] promesa rechazada:', (e && e.reason) || e);
     });
 
-    /* 2) Guardia de sesión (niega interacción a visitantes) */
     function isUser() {
         try { return !!(window.firebase && firebase.auth() && firebase.auth().currentUser); }
         catch (e) { return false; }
@@ -72,7 +69,6 @@
         return false;
     }
 
-    /* 3) Envoltorio a prueba de fallos para acciones de otros módulos */
     function safe(fn, etiqueta) {
         return function () {
             try { return fn.apply(this, arguments); }

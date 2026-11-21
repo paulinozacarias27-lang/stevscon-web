@@ -21,7 +21,6 @@ var FM = window.StevsconForms = window.StevsconForms || {};
 var C = FM.creator = FM.creator || {};
 var core = FM.core;
 
-/* ==== LOS 9 TIPOS ==== */
 C.TYPES = [
     { id: 'text',      label: 'Texto corto',       icon: 'fa-font' },
     { id: 'paragraph', label: 'Párrafo',           icon: 'fa-align-left' },
@@ -40,7 +39,6 @@ C.typeOf = function (id) {
 
 function touch() { C.draft.dirty = true; }
 
-/* ==== PREGUNTAS ==== */
 C.questions = {
     add: function (panelId, data) {
         var q = {
@@ -93,7 +91,6 @@ C.questions = {
     }
 };
 
-/* ==== FILAS DE PREGUNTAS (dentro de la tarjeta de su categoría) ==== */
 C.questions.renderRows = function (panelId, container) {
     var qs = this.byPanel(panelId);
     container.textContent = '';

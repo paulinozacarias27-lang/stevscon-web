@@ -20,24 +20,18 @@
     const CONFIG = SCSOC.CONFIG;
 
     const C = SCSOC.comments = {};
-    const open = {}; // postId -> unmount
+    const open = {};
 
-    /* Candado anti-doble-envío (igual que el de admin_post.js) */
     const _lastCmt = { uid: '', text: '', at: 0 };
 
-    /* ==== crear comentario (v2: una lectura, una escritura) ==== */
     C.create = function (postId, text) {
         SCSOC.requireLogin(function (auth) {
             text = String(text || '').trim();
             if (!text) return;
-            /* Candado 1: mismo autor + mismo texto en <10s = bloqueado */
             if (_lastCmt.uid === auth.uid && _lastCmt.text === text && (Date.now() - _lastCmt.at) < 10000) {
                 SCSOC.toast('Ese comentario ya se envió hace un momento.');
                 return;
             }
-            /* Candado 2 (LA RAÍZ del bug): lectura de UNA sola vez.
-             * users.get() dejaba el callback vivo y cada cambio de
-             * status re-creaba el comentario. once() muere al leer. */
             const userOnce = SCSOC.users.once || SCSOC.users.get;
             userOnce(auth.uid, function (u) {
                 _lastCmt.uid = auth.uid;
@@ -58,11 +52,10 @@
         });
     };
 
-    /* ==== tarjeta de comentario ==== */
     C.render = function (parent, postId, c) {
         let live = c;
         const el = SCSOC.el('div', 'background:var(--bg-main,#0d0b14);border:1px solid var(--border-color,#2e2440);border-radius:12px;padding:12px 14px;box-sizing:border-box;');
-        el.dataset.scsocComment = c.id;   /* huella en el DOM (dedupe extra) */
+        el.dataset.scsocComment = c.id;
 
         const head = SCSOC.el('div', 'display:flex;align-items:flex-start;gap:10px;');
         head.appendChild(SCSOC.userHead(c.authorUid, 32, { nameSize: 13.5, handlerSize: 11.5, badgeSize: 13 }));
@@ -97,7 +90,6 @@
         foot.appendChild(likeBtn); foot.appendChild(repBtn); foot.appendChild(repInfo);
         el.appendChild(foot);
 
-        /* hilo de respuestas (responses.js lo llena) */
         const rHost = SCSOC.el('div', 'margin:8px 0 0 42px;');
         el.appendChild(rHost);
         parent.appendChild(el);
@@ -130,7 +122,6 @@
         };
     };
 
-    /* ==== montar / desmontar la sección de un post ==== */
     C.mount = function (host, postId) {
         if (open[postId]) return;
         host.innerHTML = '';
@@ -177,7 +168,6 @@
         const onAdd = function (s) {
             const c = s.val();
             if (!c || !c.id || cards[c.id]) return;
-            /* Doble candado: por mapa Y por DOM (como el feed de posts) */
             if (list.querySelector('[data-scsoc-comment="' + c.id + '"]')) return;
             cards[c.id] = C.render(list, postId, c);
         };
@@ -208,7 +198,6 @@
 
     C.unmount = function (postId) { if (open[postId]) open[postId](); };
 
-    /* botón 💬 de cada post -> abrir/cerrar */
     SCSOC.onHook('postCard', function (ctx) {
         const btn = ctx.el.querySelector('[data-scsoc-comments-btn]');
         if (!btn || btn.dataset.scsocCommentsBound) return;

@@ -38,14 +38,12 @@
     let gearEl = null;
     let currentTab = 'preferencias';
 
-    /* ==== REGISTRO DE PESTAÑAS ==== */
 
     SCSET.registerTab = function (t) {
         if (!t || !t.id || typeof t.render !== 'function') return;
         SCSET.tabs[t.id] = t;
     };
 
-    /* ==== HELPERS DE UI ==== */
 
     const ui = SCSET.ui = {};
 
@@ -144,7 +142,6 @@
         return c;
     };
 
-    /* ==== TOAST PROPIO ==== */
 
     SCSET.toast = function (msg) {
         const t = document.createElement('div');
@@ -159,27 +156,10 @@
         }, 2300);
     };
 
-    /* ==== TEMA (v7: claro real + blancos inline legibles) ==== */
 
     const LIGHT_STYLE_ID = 'sc-theme-light';
 
-    /*
-     * ESTRATEGIA v7 (3 capas):
-     *
-     * CAPA 1 · VARIABLES: redefinimos las variables de styles.css dentro de
-     *   body.theme-light. Los componentes con var() se pintan solos.
-     *
-     * CAPA 2 · CLASES con color fijo en styles.css que en claro no leían bien.
-     *
-     * CAPA 3 · INLINE: lo generado por JS con colores escritos a mano.
-     *   - Barrido de fondos -> claros, con restauración de los que eran COLOR.
-     *   - Textos de tu paleta -> tinta/grises/morados.
-     *   - NUEVO v7: blanco puro inline -> tinta (nombre de "Mi perfil",
-     *     título de ACCESS), con excepciones para conservarlo sobre fondos
-     *   sólidos de color (botones violeta/rojo/verde, avatares).
-     */
     const LIGHT_CSS = [
-        /* ===== CAPA 1 · VARIABLES (fix maestro) ===== */
         'body.theme-light{',
         '  --bg-main:#f4f2fa; --bg-card:#ffffff; --bg-hover:#ece7f8; --bg-elevated:#f1edf9;',
         '  --purple-accent:#7c3aed; --purple-dark:#6d28d9; --purple-light:#6d28d9;',
@@ -189,7 +169,6 @@
         '}',
         'body.theme-light{background:#f4f2fa !important;color:#1e1b2e !important}',
 
-        /* ===== CAPA 2 · CLASES con color fijo ===== */
         'body.theme-light .navbar{background:rgba(244,242,250,.92) !important;border-bottom-color:#e2dcf3 !important;box-shadow:none !important}',
         'body.theme-light .field-hint.hint-ok{color:#15803d !important}',
         'body.theme-light .field-hint.hint-error{color:#b91c1c !important}',
@@ -199,19 +178,15 @@
         'body.theme-light .strength-bar{background:#ddd5f0 !important}',
         'body.theme-light .modal-overlay{background:rgba(30,27,46,.45) !important}',
 
-        /* ===== CAPA 3 · INLINE ===== */
 
-        /* 3a) BARRIDO: todo fondo rgb/rgba oscuro conocido -> claro */
         'body.theme-light [style*="background-color: rgb"],body.theme-light [style*="background: rgb"]{background-color:#ffff !important}',
 
-        /* 3b) Fondos oscuros escritos como hex (innerHTML no normaliza) */
         'body.theme-light [style*="background-color:#0d0b14"],body.theme-light [style*="background:#0d0b14"]{background-color:#f4f2fa !important}',
         'body.theme-light [style*="background-color:#1a1625"],body.theme-light [style*="background:#1a1625"]{background-color:#ffff !important}',
         'body.theme-light [style*="background-color:#120f1b"],body.theme-light [style*="background:#120f1b"]{background-color:#ffff !important}',
         'body.theme-light [style*="background-color:#221b33"],body.theme-light [style*="background:#221b33"]{background-color:#f1edf9 !important}',
         'body.theme-light [style*="background-color:#261f36"],body.theme-light [style*="background:#261f36"]{background-color:#ece7f8 !important}',
 
-        /* 3c) RESTAURAR fondos que eran COLOR a propósito (pisan el barrido) */
         'body.theme-light [style*="background: rgb(139"],body.theme-light [style*="background-color: rgb(139"]{background-color:#8b5cf6 !important}',
         'body.theme-light [style*="background:#8b5cf6"],body.theme-light [style*="background-color:#8b5cf6"]{background-color:#8b5cf6 !important}',
         'body.theme-light [style*="background: rgb(239"],body.theme-light [style*="background-color: rgb(239"]{background-color:#ef4444 !important}',
@@ -229,7 +204,6 @@
         'body.theme-light [style*="background: rgba(13"],body.theme-light [style*="background-color: rgba(13"]{background-color:rgba(244,242,250,.92) !important}',
         'body.theme-light [style*="background: rgba(0"],body.theme-light [style*="background-color: rgba(0"]{background-color:rgba(0,0,0,.45) !important}',
 
-        /* 3d) TEXTOS: hex (innerHTML) y rgb (element.style), negro tinta + morados */
         'body.theme-light [style*="color:#f8fafc"],body.theme-light [style*="color: rgb(248, 250, 252)"]{color:#1e1b2e !important}',
         'body.theme-light [style*="color:#e2e8f0"],body.theme-light [style*="color: rgb(226, 232, 240)"]{color:#2a2740 !important}',
         'body.theme-light [style*="color:#cbd5e1"],body.theme-light [style*="color: rgb(203, 213, 225)"]{color:#3a3654 !important}',
@@ -245,36 +219,28 @@
         'body.theme-light [style*="color:#4ade80"],body.theme-light [style*="color: rgb(74, 222, 128)"]{color:#15803d !important}',
         'body.theme-light [style*="color:#22c55e"],body.theme-light [style*="color: rgb(34, 197, 94)"]{color:#15803d !important}',
 
-        /* 3d+) BLANCO PURO inline -> tinta (v7: nombre de "Mi perfil", título de ACCESS) */
         'body.theme-light [style*="color: rgb(255, 255, 255)"]{color:#1e1b2e !important}',
         'body.theme-light [style*="color: rgb(255,255,255)"]{color:#1e1b2e !important}',
         'body.theme-light [style*="color:#fff"],body.theme-light [style*="color: #fff"]{color:#1e1b2e !important}',
         'body.theme-light [style*="color:#FFF"],body.theme-light [style*="color: #FFF"]{color:#1e1b2e !important}',
         'body.theme-light [style*="color:white"],body.theme-light [style*="color: white"]{color:#1e1b2e !important}',
 
-        /* 3d++) EXCEPCIONES: el blanco se conserva sobre fondos sólidos de color */
-        /* mismo elemento lleva fondo de color + texto blanco */
         'body.theme-light [style*="background: rgb(139"][style*="color: rgb(255"],body.theme-light [style*="background-color: rgb(139"][style*="color: rgb(255"]{color:#ffff !important}',
         'body.theme-light [style*="background: rgb(239"][style*="color: rgb(255"],body.theme-light [style*="background-color: rgb(239"][style*="color: rgb(255"]{color:#ffff !important}',
         'body.theme-light [style*="background: rgb(34"][style*="color: rgb(255"],body.theme-light [style*="background-color: rgb(34"][style*="color: rgb(255"]{color:#ffff !important}',
         'body.theme-light [style*="background: rgb(74"][style*="color: rgb(255"],body.theme-light [style*="background-color: rgb(74"][style*="color: rgb(255"]{color:#ffff !important}',
-        /* texto blanco dentro de un botón/bloque con fondo de color inline */
         'body.theme-light [style*="background: rgb(139"] [style*="color: rgb(255"],body.theme-light [style*="background-color: rgb(139"] [style*="color: rgb(255"]{color:#ffff !important}',
         'body.theme-light [style*="background: rgb(239"] [style*="color: rgb(255"],body.theme-light [style*="background-color: rgb(239"] [style*="color: rgb(255"]{color:#ffff !important}',
         'body.theme-light [style*="background: rgb(34"] [style*="color: rgb(255"],body.theme-light [style*="background-color: rgb(34"] [style*="color: rgb(255"]{color:#ffff !important}',
         'body.theme-light [style*="background: rgb(74"] [style*="color: rgb(255"],body.theme-light [style*="background-color: rgb(74"] [style*="color: rgb(255"]{color:#ffff !important}',
-        /* versiones hex (innerHTML) */
         'body.theme-light [style*="background:#8b5cf6"][style*="color:#fff"],body.theme-light [style*="background-color:#8b5cf6"][style*="color:#fff"]{color:#ffff !important}',
         'body.theme-light [style*="background:#ef4444"][style*="color:#fff"],body.theme-light [style*="background-color:#ef4444"][style*="color:#fff"]{color:#ffff !important}',
         'body.theme-light [style*="background:#22c55e"][style*="color:#fff"],body.theme-light [style*="background-color:#22c55e"][style*="color:#fff"]{color:#ffff !important}',
-        /* avatares/iconos con fondo violeta por clase: su blanco inline no se toca */
         'body.theme-light .session-avatar [style*="color: rgb(255"],body.theme-light .session-avatar [style*="color:#fff"],body.theme-light .category-icon [style*="color: rgb(255"],body.theme-light .category-icon [style*="color:#fff"]{color:#ffff !important}',
 
-        /* 3e) BORDES: lila suave */
         'body.theme-light [style*="rgb(46, 36, 64"]{border-color:#ddd5f0 !important}',
         'body.theme-light [style*="#2e2440"]{border-color:#ddd5f0 !important}',
 
-        /* 3f) TOQUES MORADOS EXTRA en claro */
         'body.theme-light p[data-sc-title]{color:#5b21b6 !important}',
         'body.theme-light [data-sc-tab][style*="rgba(139"]{color:#5b21b6 !important}'
     ].join('\n');
@@ -297,11 +263,8 @@
         }
     };
 
-    /* v8: aplicador del core expuesto — el puente de set_preferences
-       lo busca al USARLO, así el orden de carga ya no puede romper el claro */
     SCSET._applyThemeCore = SCSET.applyTheme;
 
-    /* ==== ENGRANAJE JUNTO AL AVATAR (cluster horizontal) ==== */
 
     function findHeaderAvatar(host) {
         const els = host.querySelectorAll('img, div, span, button');
@@ -340,7 +303,6 @@
         const host = document.getElementById('user-header-actions');
         if (!host) return;
 
-        // Sin sesión: desarmar el cluster si quedó alguno
         if (!SCSET.authed) {
             const stale = host.querySelector('[data-sc-settings-cluster]');
             if (stale) {
@@ -351,7 +313,6 @@
             return;
         }
 
-        // Forzar el contenedor del header a fila horizontal (arregla el apilado)
         host.style.display = 'flex';
         host.style.flexDirection = 'row';
         host.style.flexWrap = 'nowrap';
@@ -369,7 +330,6 @@
 
         let cluster = host.querySelector('[data-sc-settings-cluster]');
 
-        // session.js re-pintó el avatar y quedó fuera del cluster: reconstruir
         if (cluster && !cluster.contains(anchor)) {
             host.removeChild(cluster);
             cluster = null;
@@ -401,7 +361,6 @@
         const iv = setInterval(function () { injectGear(); if (++n > 40) clearInterval(iv); }, 500);
     }
 
-    /* ==== PANEL ==== */
 
     function navItem(t) {
         const b = document.createElement('button');
@@ -522,7 +481,6 @@
         setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 140);
     };
 
-    /* ==== PESTAÑA INTEGRADA: SEGURIDAD (cascarón, solo si ui_security.js no carga) ==== */
 
     SCSET.registerTab({
         id: 'seguridad', label: 'Seguridad', icon: 'fa-user-shield', badge: 'PRONTO',
@@ -543,7 +501,6 @@
         }
     });
 
-    /* ==== INIT ==== */
     try {
         const saved = localStorage.getItem('stevscon_theme');
         if (saved === 'light' || saved === 'dark') SCSET.applyTheme(saved);

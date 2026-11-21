@@ -31,7 +31,6 @@
         });
     };
 
-    /* ==== AUTO-SINCRONÍA auth email -> users/{uid}/email ==== */
     (function () {
         if (typeof firebase === 'undefined' || !firebase.auth || !firebase.database) return;
         firebase.auth().onAuthStateChanged(function (u) {

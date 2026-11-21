@@ -70,7 +70,6 @@
         cooldownTimer = setTimeout(tickCooldown, 1000);
     }
 
-    /* ==== CEREBRO: ENVIAR ENLACE ==== */
     function send() {
         if (busy || cooldownLeft > 0 || !SC.reset.errors) return;
         SC.reset.errors.clear();
@@ -94,7 +93,6 @@
             .catch(function (err) {
                 const code = (err && err.code) || '';
                 console.error('[Stevscon Reset] Error al enviar el enlace:', err);
-                // Si el correo no existe, NO lo confirmamos: éxito igual.
                 if (code === 'auth/user-not-found' || code === 'auth/invalid-credential') {
                     finishSent(email);
                     return;
@@ -114,7 +112,6 @@
         setBusy(false, 'Enviar enlace');
         startCooldown();
 
-        // Aviso bonito (EmailJS): si falla, avisa en pantalla pero NO bloquea.
         if (SC.reset.mail && typeof SC.reset.mail.sendNotice === 'function') {
             Promise.resolve(SC.reset.mail.sendNotice({ email: email }))
                 .then(function (r) {
@@ -145,7 +142,6 @@
         if (SC.access && typeof SC.access.open === 'function') SC.access.open();
     }
 
-    /* ==== MODAL ==== */
     function makeLink(text, onClick) {
         const b = document.createElement('button');
         b.type = 'button';
@@ -172,7 +168,6 @@
         card.setAttribute('aria-label', 'Recuperar contraseña');
         card.style.cssText = 'width:100%;max-width:400px;background:#161221;border:1px solid rgba(167,139,250,.35);border-radius:14px;padding:26px 24px;font-family:Inter,sans-serif;color:#ede9fe;';
 
-        // ---- VISTA 1: formulario ----
         viewForm = document.createElement('div');
 
         const head = document.createElement('div');
@@ -228,7 +223,6 @@
         viewForm.appendChild(formEl);
         viewForm.appendChild(makeLink('Volver a iniciar sesión', openAccess));
 
-        // ---- VISTA 2: enviado ----
         viewSent = document.createElement('div');
         viewSent.classList.add('hidden');
 
@@ -294,7 +288,6 @@
     SC.reset.open = open;
     SC.reset.close = close;
 
-    /* ==== AUTO-APERTURA: botón del correo (reset_password.html) ==== */
     function checkDeepLink() {
         try {
             const params = new URLSearchParams(window.location.search || '');

@@ -23,7 +23,7 @@
 
     const ORDER = ['online', 'inactive', 'busy', 'offline'];
     const PANEL_W = 236;
-    const RING = '#1a1625'; // color de la tarjeta: el aro del badge
+    const RING = '#1a1625';
 
     let authUser = null;
     let statusRef = null;
@@ -39,7 +39,6 @@
     const badges = new Set();
     const rows = {};
 
-    /* ==== Puentes Firebase ==== */
 
     function fb() { return (typeof window.StevsconFirebase !== 'undefined') ? window.StevsconFirebase : null; }
 
@@ -77,7 +76,6 @@
         return m;
     }
 
-    /* ==== BADGES ==== */
 
     function setIcon(badge, stateId) {
         const d = def(stateId) || fallbackDef();
@@ -106,7 +104,6 @@
         return badge;
     }
 
-    /* ==== PANEL ESTILO DISCORD ==== */
 
     function refreshPanelChecks() {
         ORDER.forEach(function (id) {
@@ -241,7 +238,6 @@
         }));
     }
 
-    /* ==== CONEXIÓN FIREBASE ==== */
 
     function armDisconnect() {
         if (!statusRef) return;
@@ -252,10 +248,6 @@
         catch (e) { console.error('[Stevscon Status] onDisconnect falló:', e); }
     }
 
-    /* ==== v3 · escrituras automáticas SOLO con pestaña VISIBLE ====
-       Así la reconexión en 2º plano (celular) ya NO revive el estado:
-       el 'offline' que dejó el onDisconnect se respeta hasta que el
-       usuario vuelva de verdad. Esto mata al fantasma "Inactivo". */
     function isVisible() { return document.visibilityState === 'visible'; }
 
     function pushState() {
@@ -277,8 +269,6 @@
     function onConnected(s) {
         if (!s.val() || !statusRef) return;
         armDisconnect();
-        /* v3 · si la pestaña está en 2º plano NO se escribe nada: el
-           'offline' del onDisconnect se queda limpio hasta que vuelvas. */
         if (isVisible()) pushState();
     }
 
@@ -286,7 +276,7 @@
         if (!statusRef) return;
         const t = (e.detail && e.detail.type) || '';
         const m = cached.manual || 'online';
-        if (m === 'busy' || m === 'offline') return;   // manual NUNCA se sobreescribe
+        if (m === 'busy' || m === 'offline') return;
         if (t === 'away' && cached.state !== 'inactive') {
             statusRef.update({ state: 'inactive', updated: TS() }).catch(function () {});
         } else if (t === 'back' && (cached.state === 'inactive' || cached.state === 'offline')) {
@@ -317,7 +307,6 @@
 
         if (SCST.auto && SCST.auto.start) SCST.auto.start();
         document.addEventListener('sc:status-auto', onAuto);
-        /* v3 · al VOLVER a la pestaña: re-armar el onDisconnect y sincronizar. */
         document.addEventListener('visibilitychange', function () {
             if (!statusRef || !isVisible()) return;
             armDisconnect();
@@ -338,7 +327,6 @@
         repaintBadges();
     }
 
-    /* ==== ENGANCHE CON LA TARJETA DE PERFIL ==== */
 
     function findAvatarInCard(box) {
         const els = box.querySelectorAll('img, div, span');
@@ -361,7 +349,6 @@
         closePanel();
         const av = findAvatarInCard(box);
         if (!av) {
-            // La tarjeta puede pintarse async (Firebase): reintentamos un poco.
             if ((tries || 0) < 5) {
                 setTimeout(function () {
                     try { enhanceCard(box, (tries || 0) + 1); } catch (e) {}
@@ -406,7 +393,7 @@
 
     function installCardHook() {
         if (hookInstalled) return true;
-        if (!SCp.ui || typeof SCp.ui.renderProfileCard !== 'function') return false; // ui_profile.js aún no cargó
+        if (!SCp.ui || typeof SCp.ui.renderProfileCard !== 'function') return false;
         if (SCp.ui.renderProfileCard.__scStatusHook) { hookInstalled = true; return true; }
         const orig = SCp.ui.renderProfileCard;
         SCp.ui.renderProfileCard = function (box) {
@@ -420,7 +407,6 @@
         return true;
     }
 
-    // NUEVO EN v2: en vez de rendirse si ui_profile.js no existe, ESPERA.
     function waitForUiAndHook() {
         if (installCardHook()) return;
         console.log('[Stevscon Status] ui_profile.js aún no carga: esperando...');
@@ -435,7 +421,6 @@
         }, 100);
     }
 
-    /* ==== INIT ==== */
 
     function init() {
         waitForUiAndHook();

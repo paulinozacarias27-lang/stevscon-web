@@ -42,7 +42,6 @@
     SCSET.api.privacy = {
         setInvisible: function (on) {
             SCSET.toast(on ? 'Modo invisible activado' : 'Modo invisible desactivado');
-            // Invisible = pareces Desconectado. Al salir, vuelves a tu estado por defecto.
             writeStatus(on ? 'offline' : (SCSET.settings.defaultStatus || 'online'));
             return patchPrivacy({ invisible: !!on });
         },

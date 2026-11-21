@@ -29,40 +29,36 @@
     if (SCSOC._utilsLoaded) return;
     SCSOC._utilsLoaded = true;
 
-    /* ==== CONFIG GENERAL (todo se ajusta SOLO aquí) ==== */
     const CONFIG = SCSOC.CONFIG = {
-        POSTS: 'social/posts',            // social/posts/{postId}
-        COMMENTS: 'social/comments',      // social/comments/{postId}/{commentId}
-        RESPONSES: 'social/responses',    // social/responses/{commentId}/{responseId}
-        LIKES: 'social/likes',            // social/likes/{tipo}/{id}/{uid} = true
-        COUNTERS: 'social/counters',      // social/counters/{tipo}/{id}/{campo} = n
-        STAFF: 'social/staff',            // social/staff/{uid} = { role: 'admin'|'mod' }
+        POSTS: 'social/posts',
+        COMMENTS: 'social/comments',
+        RESPONSES: 'social/responses',
+        LIKES: 'social/likes',
+        COUNTERS: 'social/counters',
+        STAFF: 'social/staff',
         USERS: 'users',
         OWNER_EMAIL: 'steven23hd@gmail.com',
-        MAX_POST: 15000,                  // límite de caracteres por post
+        MAX_POST: 15000,
         MAX_COMMENT: 2000,
         MAX_RESPONSE: 1000,
         FEED_SIZE: 50,
-        DEPTH_MAX: 3                    // comentario -> resp -> resp (máx 3)
+        DEPTH_MAX: 3
     };
 
     const db = SCSOC.db = function () { return firebase.database(); };
 
-    /* ==== IDs numéricos de 16 dígitos (convención Stevscon) ==== */
     SCSOC.ids = {
         make: function () {
             return String(Date.now()) + String(100 + Math.floor(Math.random() * 900));
         }
     };
 
-    /* ==== ANTI-XSS ==== */
     SCSOC.esc = function (s) {
         const d = document.createElement('div');
         d.textContent = String(s == null ? '' : s);
         return d.innerHTML;
     };
 
-    /* Creador rápido de elementos */
     SCSOC.el = function (tag, css, cls) {
         const e = document.createElement(tag);
         if (css) e.style.cssText = css;
@@ -70,7 +66,6 @@
         return e;
     };
 
-    /* ==== TIEMPO: "ahora", "hace 5 min", "hace 2 h", "hace 3 d" ==== */
     SCSOC.timeAgo = function (ts) {
         if (!ts) return '';
         const s = Math.max(0, (Date.now() - ts) / 1000);
@@ -81,7 +76,6 @@
         return new Date(ts).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' });
     };
 
-    /* ==== TEXTO con PING @handler (100% seguro: textContent) ==== */
     const PING_RE = /@([a-z0-9_.-]{3,20})/gi;
     SCSOC.richText = function (text) {
         const frag = document.createDocumentFragment();
@@ -99,7 +93,6 @@
         return frag;
     };
 
-    /* ==== INSIGNIA VERIFICADO (estilo X, morado Stevscon) ==== */
     SCSOC.verifiedBadge = function (px) {
         const s = SCSOC.el('span', 'display:inline-flex;flex:none;');
         s.title = 'Verificado';
@@ -110,8 +103,6 @@
         return s;
     };
 
-    /* ==== AVATAR (v3): imagen propia (Base64/GIF o URL http) + presets
-     * de Profiles + letra inicial de respaldo + circulito de status ==== */
     const STATUS_COLORS = { online: '#22c55e', inactive: '#f59e0b', busy: '#ef4444', offline: '#6b7280' };
 
     function initialOf(u) {
@@ -120,14 +111,11 @@
 
     function innerAvatar(u, size) {
         const av = (u && u._avatar) || '';
-        /* 1) Imagen propia: Base64/GIF o URL http(s). Antes solo se
-         *    aceptaba data:image -> muchas caían a la letra por error. */
         if (av && /^(data:image|https?:\/\/)/i.test(av)) {
             const img = SCSOC.el('img', 'width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;background:var(--bg-hover,#221b33);');
             img.src = av; img.alt = 'Avatar'; img.draggable = false;
             return img;
         }
-        /* 2) Preset de Profiles (el MISMO look que la página de Perfiles) */
         const preset = (u && u._avatarPreset) || '';
         if (preset && window.StevsconProfiles && window.StevsconProfiles.ui &&
             typeof window.StevsconProfiles.ui.avatarEl === 'function') {
@@ -135,9 +123,8 @@
                 const el = window.StevsconProfiles.ui.avatarEl(
                     { avatarUrl: '', avatarPreset: preset }, size, initialOf(u));
                 if (el) return el;
-            } catch (e) { /* cae al fallback de letra */ }
+            } catch (e) {  }
         }
-        /* 3) Letra inicial (igual que siempre) */
         const f = SCSOC.el('span', 'width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center;' +
             'background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;font-weight:800;user-select:none;' +
             'font-size:' + Math.round(size * 0.42) + 'px;font-family:Inter,sans-serif;');
@@ -158,11 +145,6 @@
         return wrap;
     };
 
-    /* ==== CACHE LIVE DE USUARIOS ====
-     * ADAPTADOR (v3): alineado a como escribe Profiles — campos de
-     * cuenta (username, handler) en la RAÍZ de users/{uid} y campos
-     * editables (avatarUrl, bannerUrl, description, gender...) en
-     * users/{uid}/profile. Si un día cambias rutas, toca SOLO aquí. */
     const _ucache = {};
 
     function presenceOf(raw) {
@@ -181,8 +163,6 @@
         return {
             _name: raw.name || raw.displayName || raw.username || p.name || p.username || 'Usuario',
             _handler: String(raw.handler || raw.tag || p.handler || '').toLowerCase().replace(/^@/, ''),
-            /* v3: el avatar vive en profile/avatarUrl (y puede ser URL http,
-             * no solo Base64). profile/avatar era una ruta que NADIE escribe. */
             _avatar: raw.avatarUrl || raw.avatar || p.avatarUrl || p.avatar ||
                 (raw.media && (raw.media.avatar || raw.media.avatarUrl)) || '',
             _avatarPreset: raw.avatarPreset || p.avatarPreset || '',
@@ -192,7 +172,6 @@
     }
 
     SCSOC.users = {
-        /* get: suscripción VIVA (avatar, nombre, status en pantalla) */
         get: function (uid, cb) {
             if (!uid) { if (cb) cb(null); return null; }
             const c = _ucache[uid] || (_ucache[uid] = { cbs: [], ready: false, data: null, on: false });
@@ -206,8 +185,6 @@
             });
             return null;
         },
-        /* once: UNA sola lectura (crear posts/comentarios/respuestas
-         * sin dejar listeners vivos = cero duplicados) */
         once: function (uid, cb) {
             if (!uid) { if (cb) cb(null); return; }
             const c = _ucache[uid];
@@ -219,13 +196,6 @@
             }, function () { if (cb) cb(null); });
         }
     };
-/* ==== CABEZA DE USUARIO: avatar + nombre + verificado + @handler ====
-     * Cliqueable: lleva data-scsoc-profile -> profiles_show.js abre el panel.
-     * v5: CONSTRUCCIÓN FIJA — nombre, hueco de insignia y @handler se crean
-     * UNA sola vez; los repintados de users/{uid} (status, avatar...) solo
-     * actualizan textos. La insignia vive en su propio slot con watcher
-     * propio -> NUNCA la borra un repintado y sale AL INSTANTE aunque el
-     * card sea recién creado. */
     SCSOC.userHead = function (uid, size, opts) {
         opts = opts || {};
         const head = SCSOC.el('span', 'display:inline-flex;align-items:center;gap:10px;min-width:0;flex:1;cursor:pointer;');
@@ -239,9 +209,6 @@
         nm.textContent = 'Usuario';
         line.appendChild(nm);
 
-        /* HUECO de la insignia — se crea UNA vez. verified.js lo llena
-         * en vivo (social/verified/{uid}). Si verified.js no cargó,
-         * respaldo: la vieja users/{uid}/verified. */
         const slot = SCSOC.el('span', 'display:inline-flex;flex:none;align-items:center;');
         line.appendChild(slot);
         let paintedFallback = false;
@@ -268,7 +235,6 @@
         return head;
     };
 
-    /* ==== STAFF: owner automático + elegidos en social/staff/{uid} ==== */
     let _staffCache = null;
     SCSOC.staff = {
         role: function (cb) {
@@ -289,9 +255,6 @@
     };
     SCSOC.isStaff = function (cb) { SCSOC.staff.role(function (r) { if (cb) cb(!!r); }); };
 
-    /* ==== VISITANTES: negación (se conecta con errors.js) ====
-     * errors.js puede escuchar 'sc:social-deny' y mostrar SU panel;
-     * si hace SCSOC.denySilent = true, el toast de respaldo se apaga. */
     SCSOC.toast = function (msg) {
         const t = SCSOC.el('div');
         t.textContent = msg;
@@ -314,7 +277,6 @@
         return true;
     };
 
-    /* ==== HOOKS: los files se conectan entre sí sin tocarse ==== */
     const HOOKS = SCSOC.hooks = { postCard: [], commentCard: [], postMenu: [], commentMenu: [] };
     SCSOC.onHook = function (name, fn) { (HOOKS[name] || (HOOKS[name] = [])).push(fn); };
     SCSOC.runHooks = function (name) {
@@ -325,7 +287,6 @@
         }
     };
 
-    /* ==== CONTADORES (nodos aparte para que las reglas queden limpias) ==== */
     SCSOC.counters = {
         ref: function (type, id, field) { return SCSOC.db().ref(CONFIG.COUNTERS).child(type).child(id).child(field); },
         bump: function (type, id, field, delta) {
@@ -340,14 +301,12 @@
         }
     };
 
-    /* ==== CATEGORÍAS (conecta aquí la variable de tu category_set.js) ==== */
     SCSOC.categories = function () {
         const g = window.StevsconSocialCategories;
         if (Array.isArray(g) && g.length) return g;
         return ['General', 'Anuncios', 'Actualizaciones'];
     };
 
-    /* fallback por si numbers.js no cargó antes */
     if (!SCSOC.nums) SCSOC.nums = {
         fmt: function (n) { return String(n || 0); },
         full: function (n) { return String(n || 0); }

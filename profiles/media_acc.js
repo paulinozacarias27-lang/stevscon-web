@@ -21,8 +21,6 @@
     const SCp = window.StevsconProfiles = window.StevsconProfiles || {};
     const SC = window.StevsconCreate = window.StevsconCreate || {};
 
-    // Especificaciones por tipo. gifMax limita el GIF ORIGINAL (viaja sin
-    // re-encode para conservar la animacion; el base64 lo infla ~33%).
     const SPECS = {
         avatar: { w: 256, h: 256, maxInput: 8 * 1024 * 1024, maxOut: 150 * 1024, gifMax: 1 * 1024 * 1024 },
         banner: { w: 1200, h: 480, maxInput: 8 * 1024 * 1024, maxOut: 400 * 1024, gifMax: 2 * 1024 * 1024 }
@@ -32,22 +30,15 @@
         return !!(file && file.type && String(file.type).toLowerCase() === 'image/gif');
     }
 
-    /**
-     * JPG/PNG/WEBP: dibuja la imagen recortada al centro (estilo "cover") en
-     * un canvas y la exporta como JPEG base64. Baja la calidad sola si queda
-     * grande.
-     */
     function renderToDataUrl(img, spec) {
         const canvas = document.createElement('canvas');
         canvas.width = spec.w;
         canvas.height = spec.h;
         const ctx = canvas.getContext('2d');
 
-        // Fondo morado oscuro: evita fondos negros con PNG transparentes.
         ctx.fillStyle = '#120e1c';
         ctx.fillRect(0, 0, spec.w, spec.h);
 
-        // Recorte centrado: la imagen cubre TODO el lienzo sin deformarse.
         const scale = Math.max(spec.w / img.width, spec.h / img.height);
         const w = Math.max(1, Math.round(img.width * scale));
         const h = Math.max(1, Math.round(img.height * scale));
@@ -55,7 +46,6 @@
         const y = Math.round((spec.h - h) / 2);
         ctx.drawImage(img, x, y, w, h);
 
-        // Calidad adaptativa: empieza alta y baja hasta caber en maxOut.
         let q = 0.85;
         let dataUrl = canvas.toDataURL('image/jpeg', q);
         while (dataUrl.length > spec.maxOut && q > 0.4) {
@@ -65,11 +55,6 @@
         return dataUrl;
     }
 
-    /**
-     * Convierte un File en dataURL base64 listo para guardar.
-     * Resolve(url) · Reject({code:'tipo'|'grande'|'img'}) — los MISMOS
-     * codigos de siempre, asi avatar.js y banner.js NO se tocan.
-     */
     function process(file, kind) {
         return new Promise(function (resolve, reject) {
             const spec = SPECS[kind] || SPECS.avatar;
@@ -78,7 +63,6 @@
                 return reject({ code: 'tipo' });
             }
 
-            // GIF: su propio limite (viaja intacto, no se re-encodea).
             const limit = isGif(file) ? spec.gifMax : spec.maxInput;
             if (file.size > limit) {
                 return reject({ code: 'grande' });
@@ -89,8 +73,6 @@
             reader.onload = function () {
                 const dataUrl = String(reader.result);
 
-                // GIF: NUNCA pasa por el canvas (perderia la animacion).
-                // Solo validamos que sea un GIF real y viaja tal cual.
                 if (isGif(file)) {
                     const probe = new Image();
                     probe.onerror = function () { reject({ code: 'img' }); };
@@ -111,12 +93,6 @@
         });
     }
 
-    /**
-     * Pintar avatar COMPARTIDO (Accounts + Profiles).
-     * Reemplaza el placeholder por un <img> si hay avatarUrl (GIF animado
-     * incluido), aplica el preset guardado si existe, o deja la letra de
-     * respaldo. Devuelve el <img> creado o null.
-     */
     function applyAvatar(placeholderEl, profile, userRow) {
         if (!placeholderEl || !placeholderEl.parentNode) return null;
 
@@ -154,7 +130,6 @@
         return process(file, kind === 'banner' ? 'banner' : 'avatar');
     }
 
-    // ---- PUENTE: el MISMO cerebro para las dos categorias ----
     const API = {
         version: 2,
         SPECS: SPECS,
@@ -164,11 +139,11 @@
         uploadImage: uploadImage
     };
 
-    window.StevsconMedia = API;     // neutro, para files futuros
-    SCp.media = API;                // Profiles: SCp.media.process / applyAvatar
-    SC.media = API;                 // Accounts: SC.media.process / applyAvatar
-    SCp.uploadImage = uploadImage;  // avatar.js y banner.js (Profiles) siguen igual
-    SC.uploadImage = uploadImage;   // alias nuevo para files de Accounts
+    window.StevsconMedia = API;
+    SCp.media = API;
+    SC.media = API;
+    SCp.uploadImage = uploadImage;
+    SC.uploadImage = uploadImage;
 
     console.log('[Stevscon] media_acc.js listo (v2 · GIFs + puente Accounts/Profiles).');
 })(window, document);

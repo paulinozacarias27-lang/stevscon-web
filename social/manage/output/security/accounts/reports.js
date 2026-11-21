@@ -89,9 +89,7 @@
         Object.keys(o).forEach(function (k) {
             const e = o[k];
             if (!e || typeof e !== 'object') return;
-            /* formato VIEJO (plano): security/reports/{id} = reporte */
             if (e.type || e.byUid) { out.push(mapRep(e, k, true)); return; }
-            /* formato NUEVO: security/reports/{byUid}/{slot} = reporte */
             Object.keys(e).forEach(function (slot) {
                 const r = e[slot];
                 if (r && typeof r === 'object' && (r.type || r.byUid)) out.push(mapRep(r, slot, false));
@@ -102,15 +100,12 @@
     }
 
     function repRef(rep) {
-        /* v2: ruta correcta según el formato del reporte */
         return rep._legacy
             ? db().ref(CFG.REPORTS).child(rep.id)
             : db().ref(CFG.REPORTS).child(rep.byUid).child(rep.id);
     }
 
     function doStatus(repOrId, st) {
-        /* v2.1: acepta el OBJETO reporte — los slots r0..r4 se repiten entre
-           usuarios y buscar solo por id podía tocar el reporte EQUIVOCADO */
         const rep = (typeof repOrId === 'object') ? repOrId : findRep(repOrId);
         if (!rep) return;
         repRef(rep).update({ status: st })

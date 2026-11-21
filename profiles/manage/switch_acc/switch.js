@@ -54,7 +54,6 @@
         };
     }
 
-    // @handler → correo (mejor esfuerzo; si no se puede, pide el correo).
     SCp.switchAcc.resolveEmail = function (identifier) {
         const val = String(identifier || '').trim();
         if (EMAIL_RE.test(val)) return Promise.resolve(val.toLowerCase());
@@ -83,7 +82,6 @@
         });
     };
 
-    // El corazón: entrar con una cuenta GUARDADA (1 clic).
     SCp.switchAcc.enter = function (entry) {
         const F = fb();
         if (!F || !F.auth) return Promise.reject({ code: 'no-fb', msg: 'Firebase no está listo.' });
@@ -91,18 +89,15 @@
         if (!pass) return Promise.reject({ code: 'roto', msg: 'Esta cuenta guardada se dañó. Añádela de nuevo.' });
 
         return F.auth.signInWithEmailAndPassword(entry.email, pass).then(function (cred) {
-            // Refrescamos la ficha de la cuenta por si cambió algo.
             return readUser(cred.user.uid).then(function (u) {
                 SCp.switchAcc.upsert(entryFrom(cred.user.uid, entry.email, pass, u));
             });
         }).then(function () {
-            // Recarga total: header, perfiles, social y demás quedan limpios.
             try { window.location.reload(); } catch (e) {}
             return { reloaded: true };
         }).catch(function (e) {
             const code = e && e.code ? e.code : 'error';
             if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
-                // La contraseña cambió en otro lado: la ficha guardada ya no sirve.
                 SCp.switchAcc.remove(entry.uid);
                 const SC = window.StevsconCreate;
                 if (SC && SC.access && typeof SC.access.open === 'function') {
@@ -114,7 +109,6 @@
         });
     };
 
-    // Añadir cuenta desde el panel (identificador + contraseña).
     SCp.switchAcc.addAccount = function (identifier, password) {
         const val = String(identifier || '').trim();
         const pass = String(password || '');
@@ -126,7 +120,6 @@
         const cur = F.auth.currentUser;
 
         return SCp.switchAcc.resolveEmail(val).then(function (email) {
-            // ¿Es la cuenta ACTUAL? Solo se guarda, sin re-login ni recarga.
             if (cur && cur.email && cur.email.toLowerCase() === email.toLowerCase()) {
                 return readUser(cur.uid).then(function (u) {
                     SCp.switchAcc.upsert(entryFrom(cur.uid, email, pass, u));
@@ -134,7 +127,6 @@
                 });
             }
 
-            // Límite por rango (las cuentas ya guardadas no cuentan de nuevo).
             const list = SCp.switchAcc.list();
             const dup = list.some(function (a) {
                 return a.email && a.email.toLowerCase() === email.toLowerCase();

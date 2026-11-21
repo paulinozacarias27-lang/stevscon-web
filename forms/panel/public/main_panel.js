@@ -28,7 +28,7 @@ if (!core) { console.warn('[Stevscon] main_panel.js: falta forms_core.js'); retu
 FM.public.main = FM.public.main || {};
 
 var GEN = 0;
-var LIVE = [];   /* listeners .on de los chips (se limpian al re-pintar) */
+var LIVE = [];
 function stopLive() {
     for (var i = 0; i < LIVE.length; i++) {
         try { LIVE[i].ref.off('value', LIVE[i].fn); } catch (e) {}
@@ -91,7 +91,6 @@ function isImg(s) {
     return /^data:image\//i.test(String(s || '')) || /^https?:\/\//i.test(String(s || ''));
 }
 
-/* ==== RENDER (lo llama connect_form.js) ==== */
 FM.public.main.render = function (view) {
     if (!view) return;
     style();
@@ -123,7 +122,7 @@ function paintDefs(view, s, gen) {
         var ids = Object.keys(all).filter(function (id) {
             var d = all[id];
             if (!d || !d.meta) return false;
-            return s.isStaff || d.meta.published !== false;   /* borradores: solo staff */
+            return s.isStaff || d.meta.published !== false;
         });
         ids.sort(function (a, b) {
             return (Number(all[b].meta.createdAt) || 0) - (Number(all[a].meta.createdAt) || 0);
@@ -213,12 +212,11 @@ function card(id, def, s) {
 
     a.appendChild(body);
 
-    /* TU ESTADO EN VIVO (solo con sesión; rules: lees tu propia meta) */
     if (s && s.uid) {
         try {
             var ref = core.db().ref('forms/responses/' + id + '/' + s.uid + '/meta');
             var fn = function (snap) { paintChip(stChip, snap.val()); };
-            ref.on('value', fn, function () {});   /* sin permiso: silencio, queda "Postularme" */
+            ref.on('value', fn, function () {});
             LIVE.push({ ref: ref, fn: fn });
         } catch (e) {}
     }

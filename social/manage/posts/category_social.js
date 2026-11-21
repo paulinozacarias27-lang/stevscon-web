@@ -19,14 +19,12 @@
 (function (window, document) {
     'use strict';
 
-    /* GUARDIA · dentro del Social la puerta no existe */
     var __p = location.pathname.replace(/\/+$/, '').toLowerCase();
     if (__p.indexOf('/social/social.html') !== -1) {
         console.log('[Stevscon] category_social.js v3: ya estás DENTRO del Social, puerta oculta.');
         return;
     }
 
-    /* ==== CONFIG ==== */
     var SOCIAL_URL = '/social/social.html';
     var HAPPYFACE_URL = '/HappyFace.png';
     var TAB_ID = 'scsoc-social-tab';
@@ -39,7 +37,6 @@
 
     var state = { opened: false, going: false, prewarm: false, msgTimer: 0 };
 
-    /* ==== MENSAJES DE LA PANTALLA DE CARGA ==== */
     var MSGS = [
         { chip: 'SUERTE', color: 'gold', text: 'Hoy el algoritmo está de tu lado. Todo te va a salir bien.' },
         { chip: 'SUERTE', color: 'gold', text: 'Dicen que quien entra a Social un viernes recibe un like inesperado.' },
@@ -65,7 +62,6 @@
     ];
     var RARE_MSG = 'EASTER EGG: Encontraste la carita dorada de la fortuna. Hoy nadie te niega un like.';
 
-    /* ==== ESTILOS (prefijo scsoc-) ==== */
     var CSS = [
         '/* ---- DOCK SUPERIOR · casa compartida de las puertas ---- */',
         '#' + DOCK_ID + ' {',
@@ -240,7 +236,6 @@
         }
     }
 
-    /* ==== DOCK SUPERIOR · se crea solo una vez (lo comparte la Wiki) ==== */
     function ensureDock() {
         var d = document.getElementById(DOCK_ID);
         if (!d) {
@@ -251,13 +246,12 @@
         return d;
     }
 
-    /* ==== PRECARGA de TODO el social (cache warm-up real) ==== */
     var load = { total: 0, done: 0, promise: null, resolve: null };
 
     function ensurePrefetch() {
         if (load.promise) return load.promise;
         load.promise = new Promise(function (res) { load.resolve = res; });
-        try { warmFirebase(); } catch (e) { /* silencio */ }
+        try { warmFirebase(); } catch (e) {  }
         warmAssets();
         return load.promise;
     }
@@ -307,7 +301,6 @@
         if (load.total && load.done >= load.total && load.resolve) load.resolve();
     }
 
-    /* ==== LA PESTAÑA (v3 · píldora superior) ==== */
     function buildTab() {
         if (document.getElementById(TAB_ID)) return;
         var b = document.createElement('button');
@@ -344,7 +337,7 @@
         b.addEventListener('touchstart', startPrewarm, { passive: true });
         b.addEventListener('click', function () {
             b.classList.remove('is-pressing');
-            void b.offsetWidth;              /* reinicia el squish */
+            void b.offsetWidth;
             b.classList.add('is-pressing');
             setTimeout(openSocial, 140);
         });
@@ -358,7 +351,6 @@
         ensurePrefetch();
     }
 
-    /* ==== PANTALLA DE CARGA (intacta) ==== */
     function pickMsg(not) {
         var i, m;
         do { i = Math.floor(Math.random() * MSGS.length); m = MSGS[i]; }
@@ -533,7 +525,6 @@
 
     var loader = {};
 
-    /* ==== INIT ==== */
     function init() {
         injectStyles();
         buildTab();

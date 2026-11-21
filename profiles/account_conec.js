@@ -16,8 +16,8 @@
         return (typeof window.StevsconFirebase !== 'undefined') ? window.StevsconFirebase : null;
     }
 
-    SCp.user = null;     // { uid, email, metadata }
-    SCp.profile = null;  // datos combinados de users/{uid}
+    SCp.user = null;
+    SCp.profile = null;
 
     const authCbs = [];
     const evtCbs = {};
@@ -27,7 +27,7 @@
     };
     function emit(evt, data) {
         (evtCbs[evt] || []).forEach(function (cb) {
-            try { cb(data); } catch (e) { /* un listener roto no tumba el resto */ }
+            try { cb(data); } catch (e) {  }
         });
     }
     SCp.onAuth = function (cb) {
@@ -76,12 +76,10 @@
             emit('prf:username', { username: name });
             try {
                 document.dispatchEvent(new CustomEvent('stevscon:username-changed', { detail: { username: name } }));
-            } catch (e) { /* opcional */ }
+            } catch (e) {  }
         });
     };
 
-    // Imagen desde tu PC → se reduce en el navegador → Firebase Storage.
-    // Devuelve la URL pública de descarga.
     SCp.uploadImage = function (file, kind) {
         const F = fb();
         if (!F || !F.storage) return Promise.reject({ code: 'no-storage' });
@@ -119,7 +117,6 @@
         });
     }
 
-    // Sesión: un solo onAuthStateChanged para toda la categoría PERFILES
     let watching = false;
     function watch() {
         if (watching) return true;
@@ -130,7 +127,7 @@
             if (user) {
                 SCp.user = { uid: user.uid, email: user.email, metadata: user.metadata };
                 authCbs.forEach(function (cb) { try { cb(SCp.user); } catch (e) {} });
-                SCp.load().catch(function () { /* cuenta vieja sin perfil: no rompe */ });
+                SCp.load().catch(function () {  });
             } else {
                 SCp.user = null;
                 SCp.profile = null;

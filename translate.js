@@ -35,12 +35,9 @@
 
     var VERSION = 5;
 
-    // ---- NOMBRES protegidos a mano (agrega los que quieras, separados por coma) ----
     var PROTECTED_NAMES = ['StevsLoL'];
 
-    // ---- Diccionario base ES -> EN (UI propia; se aplica sin API) ----
     var DICT = {
-        // Home + tarjetas + modal CREATE
         'Bienvenido a Stevscon': 'Welcome to Stevscon',
         'Tu plataforma social, mensajeria y comunidad en tiempo real.': 'Your social platform, messaging and real-time community.',
         'Iniciar sesion': 'Sign in',
@@ -57,7 +54,6 @@
         'Copiar tu ID': 'Copy your ID',
         'Sesion iniciada. ¡Hola de nuevo!': 'Signed in. Welcome back!',
         'Cerrar': 'Close',
-        // Menu del avatar
         'Ver perfil': 'View profile',
         'Editar perfil': 'Edit profile',
         'Cerrar sesión': 'Sign out',
@@ -65,7 +61,6 @@
         'Correo': 'Email',
         'Copiar': 'Copy',
         '¡Copiado!': 'Copied!',
-        // Perfiles · tarjeta
         'Mi perfil': 'My profile',
         'Tu tarjeta, estilo Stevscon.': 'Your card, Stevscon style.',
         '← Volver a mi perfil': '← Back to my profile',
@@ -77,7 +72,6 @@
         'Sin especificar': 'Not specified',
         'Tu avatar': 'Your avatar',
         'Tu banner': 'Your banner',
-        // Perfiles · modal Editar Perfil
         'Editar Perfil': 'Edit Profile',
         'Nombre de usuario': 'Username',
         'Biografia (max 300 caracteres)': 'Bio (max 300 characters)',
@@ -110,7 +104,6 @@
         'Guardando...': 'Saving...',
         'Perfil actualizado correctamente.': 'Profile updated successfully.',
         'No se pudo guardar el perfil.': 'Could not save the profile.',
-        // Perfiles · username, descripcion, genero
         'Nombre visible': 'Display name',
         'Así te verán los demás en Stevscon.': 'This is how others will see you on Stevscon.',
         'Escribe tu nombre visible.': 'Type your display name.',
@@ -123,7 +116,6 @@
         'Prefiero no decirlo': 'Prefer not to say',
         'Guardar género': 'Save gender',
         'Género actualizado.': 'Gender updated.',
-        // Perfiles · avatar y banner
         'Subir imagen': 'Upload image',
         'Subiendo imagen...': 'Uploading image...',
         'Guardar avatar': 'Save avatar',
@@ -133,7 +125,6 @@
         'No pudimos leer esa imagen.': "We couldn't read that image.",
         'Falta Firebase Storage: agrégalo a memory_acc.js y habilita Storage en la consola.': 'Firebase Storage is missing: add it to memory_acc.js and enable Storage in the console.',
         'Falta el cargador de imagenes (media_acc.js). Revisa el index.': 'The image uploader (media_acc.js) is missing. Check the index.',
-        // Perfiles · panel Cambiar de cuenta
         'Cambiar de cuenta': 'Switch account',
         'Tus cuentas guardadas en este dispositivo.': 'Your accounts saved on this device.',
         'Actual': 'Current',
@@ -154,7 +145,6 @@
         'Entrando…': 'Signing in…',
         'No se pudo guardar la cuenta.': 'Could not save the account.',
         'Cuenta': 'Account',
-        // Perfiles · switch de cuentas (errores)
         'Contraseña incorrecta para esa cuenta.': 'Incorrect password for that account.',
         'Esa cuenta ya no existe.': 'That account no longer exists.',
         'Demasiados intentos. Espera un momento y vuelve a intentar.': 'Too many attempts. Wait a moment and try again.',
@@ -169,7 +159,6 @@
         'Esta cuenta guardada se dañó. Añádela de nuevo.': 'This saved account got corrupted. Add it again.',
         'Escribe el correo o @handler de la cuenta.': "Type the account's email or @handler.",
         'Escribe la contraseña de esa cuenta.': "Type that account's password.",
-        // Badges
         'Fundador de Stevscon — el orgullo de la web 💜': 'Founder of Stevscon — the pride of la web 💜',
         'OTORGADO ✓': 'GRANTED ✓',
         'SIN BADGE': 'NO BADGE',
@@ -186,14 +175,12 @@
         'Usuario': 'User',
         'No hay sesión iniciada.': 'No signed-in session.',
         'Solo Owner/Admins pueden manejar este badge.': 'Only Owner/Admins can manage this badge.',
-        // Estado de presencia
         'ESTADO': 'STATUS',
         'Cambiar mi estado': 'Change my status',
         'Activo': 'Online',
         'Inactivo': 'Inactive',
         'Ocupado': 'Busy',
         'Desconectado': 'Offline',
-        // Social · la puerta
         'Abrir Social': 'Open Social',
         'Tócame': 'Touch me',
         'Entrando a Social': 'Entering Social',
@@ -229,9 +216,9 @@
     var ATTRS = ['placeholder', 'title', 'aria-label'];
     var STORE_KEYS = ['stevscon_lang', 'sc_lang'];
     var CACHE_PREFIX = 'sc_tr_';
-    var MAX_TEXT = 900;      // textos mas largos que esto NO se envian a Google
-    var CONCURRENCY = 4;     // llamadas simultaneas maximas
-    var FAIL_BACKOFF = 30000; // si Google falla con un texto, espera 30s para reintentar
+    var MAX_TEXT = 900;
+    var CONCURRENCY = 4;
+    var FAIL_BACKOFF = 30000;
 
     function hasKey(o, k) { return Object.prototype.hasOwnProperty.call(o, k); }
 
@@ -248,31 +235,19 @@
         try { for (var i = 0; i < STORE_KEYS.length; i++) localStorage.setItem(STORE_KEYS[i], v); } catch (e) {}
     }
 
-    var lang = readStore() || 'es'; // 'es' = idioma original de la web (no se toca nada)
+    var lang = readStore() || 'es';
 
-    var originals = new WeakMap();      // textNode -> texto original
-    var attrOriginals = new WeakMap();  // el -> {attr: original}
-    var mem = Object.create(null);      // cache en memoria
+    var originals = new WeakMap();
+    var attrOriginals = new WeakMap();
+    var mem = Object.create(null);
 
-    // ---- MENSAJES DIRECTOS (MD) · NUNCA se traducen ----
-    // Todo el drawer de MDs del Social (.scdm-win: lista de conversaciones,
-    // chat, burbujas .scdm-bub, composer, timer y sus botones) y la pagina
-    // de Mensajes (#conversations-list + #chat-area) conservan su TEXTO
-    // ORIGINAL. Nada de ahi se escanea, se cachea ni se envia a Google:
-    // las conversaciones no se confunden y la privacidad mejora.
     var DM_SELECTORS = '.scdm-win, #conversations-list, #chat-area';
     function inDM(el) {
         return !!(el && el.closest && el.closest(DM_SELECTORS));
     }
 
-    // ---- NOMBRES DE USUARIO · NUNCA se traducen ----
-    // "StevsLoL" NO puede volverse "StevesLoL" ni "Gatihto" volverse "Kitten".
-    // Los nombres se APRENDEN de dos fuentes:
-    //   1) Cada @handler visible en la web ensena su nombre (cero falsos positivos).
-    //   2) Zonas de identidad (data-scsoc-profile) y la tarjeta de perfil.
-    // Quedan guardados en localStorage y protegidos en TODA la web.
     var nameSet = Object.create(null);
-    var NAMES_KEY = 'stevscon_names_v1';   // OJO: NO empieza con CACHE_PREFIX (el purgador no lo borra)
+    var NAMES_KEY = 'stevscon_names_v1';
     function rememberName(t) {
         var s = String(t || '').trim();
         if (s.length < 2 || s.length > 40) return;
@@ -284,8 +259,6 @@
         try { localStorage.setItem(NAMES_KEY, JSON.stringify(Object.keys(nameSet).slice(0, 400))); } catch (e) {}
     }
     function isName(s) { return hasKey(nameSet, String(s || '').trim().toLowerCase()); }
-    // Token suelto con forma de username: "StevsLoL" (mayuscula interna, sin espacios).
-    // Google "corrige" estos tokens como si fueran typos -> no se envian.
     function isNameLikeToken(s) {
         if (/\s/.test(s)) return false;
         if (!/^[A-Za-z][A-Za-z0-9_.-]{1,24}$/.test(s)) return false;
@@ -298,7 +271,6 @@
             if (Array.isArray(arr)) for (var i = 0; i < arr.length && i < 400; i++) nameSet[String(arr[i]).toLowerCase()] = 1;
         } catch (e) {}
     }
-    // Aprende nombres desde cualquier texto con menciones "@usuario"
     function learnFromText(t) {
         var s = String(t || '');
         if (s.indexOf('@') < 0) return;
@@ -326,7 +298,6 @@
     function isIdentityEl(el) {
         return !!(el && el.nodeType === 1 && el.hasAttribute && el.hasAttribute('data-scsoc-profile'));
     }
-    /* Envuelve a los pintores de nombres (mismo truco que badges y status) */
     function hookIdentityPainters() {
         try {
             var S = window.SCSOC;
@@ -361,7 +332,7 @@
                             }
                         } catch (e) {}
                     };
-                    mark(); setTimeout(mark, 0); setTimeout(mark, 400);  // cubre pintado asincrono
+                    mark(); setTimeout(mark, 0); setTimeout(mark, 400);
                     return out;
                 };
                 SCp.ui.__sctrNameGuard = true;
@@ -369,10 +340,9 @@
         } catch (e) {}
     }
 
-    // ---- Cache (memoria -> diccionario -> localStorage) ----
 
     function cacheGet(key) {
-        if (isName(key)) return key;   // nombre conocido: su traduccion es el MISMO nombre (cura cache envenenada)
+        if (isName(key)) return key;
         if (hasKey(mem, key)) return mem[key];
         if (hasKey(DICT, key)) { mem[key] = DICT[key]; return DICT[key]; }
         try {
@@ -386,8 +356,6 @@
         try { localStorage.setItem(CACHE_PREFIX + key, val); }
         catch (e) { purgeDiskCache(); try { localStorage.setItem(CACHE_PREFIX + key, val); } catch (e2) {} }
     }
-    // Limpieza UNICA de la cache vieja (v3: borra tambien nombres ya envenenados,
-    // como "StevsLoL -> StevesLoL" guardado antes de este parche)
     function purgeCorruptCache() {
         try {
             if (localStorage.getItem('sc_tr_clean_v3')) return;
@@ -411,7 +379,6 @@
         } catch (e) {}
     }
 
-    // ---- Motor Google (endpoint publico, sin API key) ----
 
     function apiTranslate(text) {
         var url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=' + encodeURIComponent(text);
@@ -425,12 +392,12 @@
             for (var i = 0; i < segs.length; i++) {
                 if (segs[i] && segs[i][0]) out += segs[i][0];
             }
-            return fixEN(out);   // repara wiki->week antes de guardar en cache
+            return fixEN(out);
         });
     }
 
-    var waiting = Object.create(null); // key -> [callbacks]
-    var failed = Object.create(null);  // key -> timestamp del ultimo fallo
+    var waiting = Object.create(null);
+    var failed = Object.create(null);
     var q = [];
     var inFlight = 0;
 
@@ -461,11 +428,10 @@
         }
     }
 
-    // ---- Reglas: que NUNCA se traduce ----
 
     function skipEl(el) {
         if (!el || el.nodeType !== 1) return false;
-        if (inDM(el)) return true;   // MD: su texto original NO se toca JAMAS
+        if (inDM(el)) return true;
         if (el.closest && el.closest('[data-scsoc-profile]')) return true;
         if (el.closest && el.closest('[data-sctr-skip]')) return true;
         if (el.closest && el.closest('[translate="no"]')) return true;
@@ -474,11 +440,9 @@
     }
     function nodeSkipped(node) {
         var p = node.parentNode;
-        if (p && inDM(p)) return true;   // MD: burbujas/composer/lista quedan como son
+        if (p && inDM(p)) return true;
         while (p) {
             if (p.nodeType === 1) {
-                /* Zona de identidad (avatar/nombre del Social): el texto directo
-                   es un nombre -> se aprende y NUNCA se manda a Google */
                 if (isIdentityEl(p)) {
                     if (p === node.parentNode) rememberName(node.nodeValue);
                     return true;
@@ -490,14 +454,12 @@
         }
         return false;
     }
-    // ---- PROTECCION DE MARCA · textos que Google NUNCA debe tocar ----
     var PROTECT = ['stevscon.wiki', 'stevscon.com', 'stevscon', '.wiki', '.com', 'wiki'];
     function isProtected(t) {
         var s = t.trim().toLowerCase();
         for (var i = 0; i < PROTECT.length; i++) if (s === PROTECT[i]) return true;
         return false;
     }
-    // Repara la corrupcion conocida de Google (wiki -> week) en resultados
     function fixEN(t) {
         return String(t)
             .replace(/stevscon\s*\.\s*week/gi, 'Stevscon.wiki')
@@ -508,17 +470,16 @@
         if (!t) return false;
         var s = t.trim();
         if (s.length < 2 || s.length > MAX_TEXT) return false;
-        if (!/[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/.test(s)) return false;   // sin letras: numeros/emojis
-        if (/^https?:\/\//i.test(s)) return false;              // URLs
-        if (/^[^\s]+@[^\s]+\.[^\s]+$/.test(s)) return false;    // correos
-        if (/^@[\w.-]{2,}$/.test(s)) return false;              // @handlers
-        if (isProtected(s)) return false;   // marca de la casa: no se envia a Google
-        if (isName(s)) return false;        // nombre de usuario aprendido: JAMAS se toca
-        if (isNameLikeToken(s)) return false; // token suelto tipo username: Google lo "corrige" y rompe
+        if (!/[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/.test(s)) return false;
+        if (/^https?:\/\//i.test(s)) return false;
+        if (/^[^\s]+@[^\s]+\.[^\s]+$/.test(s)) return false;
+        if (/^@[\w.-]{2,}$/.test(s)) return false;
+        if (isProtected(s)) return false;
+        if (isName(s)) return false;
+        if (isNameLikeToken(s)) return false;
         return true;
     }
 
-    // ---- Aplicacion a nodos ----
 
     function ws(t) {
         var m = t.match(/^(\s*)([\s\S]*?)(\s*)$/);
@@ -530,18 +491,16 @@
         var cur = node.nodeValue;
         if (!cur || !cur.trim()) return;
         if (nodeSkipped(node)) return;
-        learnFromText(cur);   // cada @handler visible ensena su nombre ANTES de traducirse nada
+        learnFromText(cur);
         if (!translatable(cur)) return;
 
-        // Recordar el original SIEMPRE en la primera vista,
-        // y detectar si la web repinto el nodo con texto nuevo.
         if (originals.has(node)) {
             var prev = originals.get(node);
             if (cur !== prev) {
                 var pp = ws(prev);
                 var enPrev = cacheGet(pp.b);
                 if (enPrev === null || pp.a + enPrev + pp.c !== cur) {
-                    originals.set(node, cur);   // la web puso texto nuevo: nuevo original
+                    originals.set(node, cur);
                 }
             }
         } else {
@@ -627,7 +586,6 @@
         updateFloatBtn();
     }
 
-    // ---- Cambio de idioma ----
 
     function setLang(next) {
         lang = (next === 'en') ? 'en' : 'es';
@@ -664,7 +622,6 @@
         } catch (e) {}
     }
 
-    // ---- Menu del avatar: mismo detector de antes (EN y ES) ----
 
     function looksLikeMenu(el) {
         if (!el || el.nodeType !== 1 || !el.textContent) return false;
@@ -724,7 +681,6 @@
         }
     }
 
-    // ---- Boton flotante ES/EN (el mismo de siempre) ----
 
     var floatBtn = null;
     function ensureFloatBtn() {
@@ -754,7 +710,6 @@
         }
     }
 
-    // ---- Observador global ----
 
     var batch = [], pending = false;
     function schedule(records) {
@@ -765,7 +720,6 @@
             pending = false;
             var recs = batch; batch = [];
             var i, j, rec;
-            // PRE-PASO: aprender TODOS los nombres nuevos ANTES de traducir nada
             for (i = 0; i < recs.length; i++) {
                 rec = recs[i];
                 if (rec.type === 'childList') {
@@ -776,7 +730,6 @@
                     }
                 }
             }
-            // PASO NORMAL: traducir
             for (i = 0; i < recs.length; i++) {
                 rec = recs[i];
                 if (rec.type === 'childList') {
@@ -793,21 +746,20 @@
         });
     }
 
-    // ---- API publica ----
 
     window.StevsconTranslate = {
         version: VERSION,
         get: function () { return lang; },
         set: setLang,
         toggle: function () { setLang(lang === 'es' ? 'en' : 'es'); },
-        protect: function (name) { rememberName(name); return true; },   // StevsconTranslate.protect('Nombre')
+        protect: function (name) { rememberName(name); return true; },
         names: function () { return Object.keys(nameSet); },
         diagnose: function () {
             var disk = 0;
             try { for (var i = 0; i < localStorage.length; i++) if (localStorage.key(i).indexOf(CACHE_PREFIX) === 0) disk++; } catch (e) {}
             console.log('=== StevsconTranslate diagnose ===');
             console.log('- version:', VERSION, '| idioma:', lang);
-            console.log('- diccionario base:', Object.keys(DICT.length), 'entradas (sin API)');
+            console.log('- diccionario base:', Object.keys(DICT).length, 'entradas (sin API)');
             console.log('- cache memoria:', Object.keys(mem).length, '| cache localStorage:', disk);
             console.log('- cola Google pendiente:', q.length, '| en vuelo:', inFlight);
             console.log('- nombres protegidos:', Object.keys(nameSet).length, '->', Object.keys(nameSet).slice(0, 20));
@@ -820,14 +772,13 @@
     };
     try { window.StevsconLang = window.StevsconTranslate; } catch (e) {}
 
-    // ---- Init ----
 
     function init() {
         purgeCorruptCache();
-        loadNames();                    // nombres aprendidos ANTES de escanear
+        loadNames();
         for (var i = 0; i < PROTECTED_NAMES.length; i++) rememberName(PROTECTED_NAMES[i]);
         document.documentElement.setAttribute('lang', lang);
-        learnNamesUnder(document.body);                  // pre-paso: aprende TODOS los @handlers visibles
+        learnNamesUnder(document.body);
         applyAll();
         injectMenu();
         ensureFloatBtn();

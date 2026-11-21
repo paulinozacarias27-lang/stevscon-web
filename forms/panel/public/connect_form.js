@@ -66,7 +66,6 @@ function style() {
     (document.head || document.documentElement).appendChild(st);
 }
 
-/* ==== ROLLOUT: ¿está todo el stack? ==== */
 var REQ = [
     ['forms_core.js (FM.core)',            function () { return FM.core; }],
     ['data_save/public_forms.js (FM.data)', function () { return FM.data; }],
@@ -87,14 +86,12 @@ C.check = function () {
     return missing;
 };
 
-/* ==== arranque ==== */
 C.boot = function () {
     if (C.__booted) return;
     C.__booted = true;
 
     var missing = C.check();
     if (missing.length) {
-        /* ROLLOUT: la pantalla "Muy pronto" del forms.html se queda sola */
         console.warn('[Stevscon][Forms] En construcción — faltan módulos: ' + missing.join(' · '));
         return;
     }
@@ -111,7 +108,6 @@ C.boot = function () {
     buildShell(root);
     wireAuth();
     window.addEventListener('hashchange', function () { route(); });
-    /* red de seguridad: si auth no responde, arrancamos igual */
     setTimeout(firstRoute, 1500);
 };
 
@@ -200,7 +196,6 @@ function wireAuth() {
     }
 }
 
-/* chip de sesión + pestaña de staff */
 function refreshUser() {
     if (!userHost) return;
     userHost.textContent = '';
@@ -250,12 +245,10 @@ function refreshBadge() {
     });
 }
 
-/* ==== EL ROUTER ==== */
 function route() {
     if (!viewEl) return;
     var hash = (location.hash || '').replace(/^#/, '');
 
-    /* pestaña activa */
     setActive(hash === 'mis' ? 'mine' : (hash === 'staff' ? 'staff' : 'main'));
     document.title = 'Apostulaciones — Stevscon';
     viewEl.textContent = '';
@@ -266,13 +259,11 @@ function route() {
 
     if (hash === 'mis') {
         FM.mine.render(viewEl);
-        /* mine.render marca las vistas al pintar → recontar al toque */
         setTimeout(refreshBadge, 900);
         return;
     }
 
     if (hash === 'staff') {
-        /* el listado de fondo + el panel de revisión encima (se autoguarda de no-staff) */
         FM.public.main.render(viewEl);
         if (FM.review && FM.review.panel) FM.review.panel.open();
         else core.toast('Falta create_form/view_panel.js para la revisión.', 'error');
@@ -298,7 +289,6 @@ function rmTabCls(t, on) {
     t.className = 'fmct-tab' + (on ? ' fmct-on' : '');
 }
 
-/* arranque cuando el DOM está listo (este file carga de último) */
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () { C.boot(); });
 } else {

@@ -6,14 +6,13 @@
  *  - Respuestas:  hook 'responseMenu' (el ⋯ nuevo de responses.js v2)
  *  - Modal con contador, guarda text + editedAt ("· editado" en vivo)
  *  - Nadie edita comentarios ajenos (ni el owner): editar = solo autor.
- * ==== 
+ * ====
  */
 (function (window, document) {
     'use strict';
 
     const SCSOC = window.SCSOC = window.SCSOC || {};
 
-    /* ==== UI compartida del menú ⋯ (se define UNA vez; el resto la reutiliza) ==== */
     if (!SCSOC.menuAdd) {
         const POP_CSS = 'position:fixed;z-index:2400;min-width:170px;background:var(--bg-card,#1a1625);border:1px solid var(--border-color,#2e2440);border-radius:12px;padding:6px;box-shadow:0 14px 40px rgba(0,0,0,.5);font-family:Inter,sans-serif;box-sizing:border-box;';
         let pop = null;
@@ -130,11 +129,10 @@
         };
     }
 
-    /* ==== ofrecer "Editar" (solo si el de la sesión es el AUTOR) ==== */
     function offer(ctx, data) {
         if (!data || !data.id) return;
         const u = firebase.auth().currentUser;
-        if (!u || data.authorUid !== u.uid) return; /* no es tuyo -> ni se muestra */
+        if (!u || data.authorUid !== u.uid) return;
         const isComment = !!ctx.comment;
         SCSOC.menuAdd(ctx, {
             label: 'Editar',

@@ -31,8 +31,6 @@ FM.profile = FM.profile || {};
 
 if (!core) { console.warn('[Stevscon] gmail_profile.js: falta forms_core.js'); return; }
 
-/* primer valor no-vacío entre claves posibles (la web ha usado nombres
-   distintos para lo mismo a lo largo del tiempo — los leemos todos) */
 function pick(src, keys, fallback) {
     for (var i = 0; i < keys.length; i++) {
         var v = src ? src[keys[i]] : null;
@@ -45,7 +43,6 @@ function authUser() {
     try { return firebase.auth().currentUser || null; } catch (e) { return null; }
 }
 
-/* arma el perfil normalizado desde users/{uid} + auth */
 function build(uid, src, au) {
     src = src || {};
     au = au || {};
@@ -54,7 +51,7 @@ function build(uid, src, au) {
     if (!name && email) name = email.split('@')[0];
     return {
         uid: uid,
-        email: email,                                   /* el Gmail (respuesta #17) */
+        email: email,
         name: name || 'Usuario',
         handler: String(pick(src, ['handler', 'handle', 'user', 'at'], '')),
         avatar: String(pick(src, ['avatar', 'photo', 'photoURL', 'img', 'image'], au.photoURL || '')),
@@ -69,7 +66,6 @@ FM.profile.forUid = function (uid, cb) {
     core.db().ref('users/' + uid).once('value').then(function (s) {
         cb(build(uid, s.val() || {}, (au && au.uid === uid) ? au : {}), null);
     }).catch(function () {
-        /* sin permiso o sin users/{uid}: igual armamos el perfil con lo que haya */
         cb(build(uid, {}, (au && au.uid === uid) ? au : {}), null);
     });
 };

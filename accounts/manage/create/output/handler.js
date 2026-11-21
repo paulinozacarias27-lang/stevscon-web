@@ -1,5 +1,5 @@
 /**
- * ==== 
+ * ====
  * STEVSCON.COM - accounts/manage/create/output/handler.js
  * Bloque OUTPUT: campo de HANDLER (@usuario único).
  * Reglas normales: minúsculas, . y _, máximo 15, único en la web.
@@ -8,7 +8,7 @@
  * reservados. Único requisito universal: no repetido en handlers/.
  * BLINDAJE: detecta el Modo Owner por sí mismo (owner.js → campos → DOM),
  * así no depende de la versión ni carga correcta de los otros files.
- * ==== 
+ * ====
  */
 (function (window, document) {
     'use strict';
@@ -27,9 +27,6 @@
     let checkTimer = null;
     let lastChecked = null;
 
-    // Codifica el handler como llave de handlers/ (Firebase no
-    // admite . # $ [ ] en llaves). El Owner puede usarlos: aquí
-    // se codifican sin romper la base de datos.
     function handlerKey(handler) {
         return String(handler || '').toLowerCase().replace(/[.$#\[\]]/g, function (ch) {
             return ch === '.' ? ',' : { '#': '~a', '$': '~b', '[': '~c', ']': '~d' }[ch];
@@ -37,10 +34,8 @@
     }
     SC.handlerKey = handlerKey;
 
-    // ---- Detección BLINDADA del Modo Owner (3 capas) ----
     function norm(s) { return String(s || '').trim().toLowerCase(); }
 
-    // Capa 2: lee el valor en vivo desde el registro OUTPUT compartido
     function outputValue(id) {
         try {
             const sc = window.StevsconCreate || {};
@@ -49,7 +44,6 @@
         } catch (e) { return ''; }
     }
 
-    // Capa 3: lee el valor directo del DOM (funciona incluso con files viejos)
     function domValue(elId) {
         try {
             const el = document.getElementById(elId);
@@ -58,13 +52,10 @@
     }
 
     function isOwnerMode() {
-        // Capa 1: la autoridad es owner.js
         const R = window.StevsconRanks;
         if (R && typeof R.ownerMode === 'function') {
-            try { if (R.ownerMode()) return true; } catch (e) { /* sigue a los fallbacks */ }
+            try { if (R.ownerMode()) return true; } catch (e) {  }
         }
-        // Capas 2 y 3: identidad del Owner comprobada AQUÍ también.
-        // (si owner.js existe usamos SU identidad; si no, la de respaldo)
         const ownerEmail = norm((R && R.OWNER && R.OWNER.email) || 'steven23hd@gmail.com');
         const ownerUser = norm((R && R.OWNER && R.OWNER.username) || 'StevsLoL');
         if (outputValue('account') === ownerEmail || domValue('create-account-email') === ownerEmail) return true;
@@ -78,7 +69,6 @@
             : 'Minúsculas, puntos y _ · máximo ' + MAX + ' caracteres.';
     }
 
-    // Aplica las reglas del modo activo al input
     function applyMode() {
         if (!inputEl) return;
         if (isOwnerMode()) {
@@ -143,7 +133,6 @@
         const owner = isOwnerMode();
 
         if (!owner) {
-            // Normalización estricta de siempre
             const clean = inputEl.value.toLowerCase().replace(/[^a-z._]/g, '').slice(0, MAX);
             if (clean !== inputEl.value) {
                 inputEl.value = clean;
@@ -151,7 +140,6 @@
                 return;
             }
         } else {
-            // Owner: libre, solo quitamos caracteres que rompen llaves
             const clean = inputEl.value.replace(/[#$\[\]]/g, '');
             if (clean !== inputEl.value) inputEl.value = clean;
         }
@@ -169,8 +157,6 @@
         checkTimer = setTimeout(checkAvailability, 450);
     }
 
-    // Cerebro propio: consulta handlers/ en tiempo real
-    // (única regla que aplica TAMBIÉN al Owner: el handler es único)
     function checkAvailability() {
         const val = getValue();
         if (!val) return;
@@ -186,7 +172,6 @@
                 else setState('ok', '@' + val + ' está disponible.');
             })
             .catch(function () {
-                // Sin bloqueo: acc_create.js vuelve a verificar al registrar
             });
     }
 
@@ -223,7 +208,6 @@
         setState('', modeHint());
     }
 
-    // Re-evaluación cuando entra/sale el Modo Owner
     function refresh() {
         applyMode();
         if (!inputEl) return;

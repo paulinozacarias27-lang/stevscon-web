@@ -14,9 +14,6 @@
 
     const SC = window.StevsconCreate = window.StevsconCreate || {};
 
-    // ---- RESPALDO: si owner.js no cargó, creamos la jerarquía AQUÍ ----
-    // owner.js sigue siendo la fuente oficial; esto solo evita que la web
-    // se quede sin rangos si ese file falta, falla o cambia de ruta.
     (function bootstrapRanks() {
         if (window.StevsconRanks && typeof window.StevsconRanks.ownerMode === 'function') return;
         const R = window.StevsconRanks = window.StevsconRanks || {};
@@ -50,13 +47,12 @@
             ['account', 'handler', 'password'].forEach(function (id) {
                 const f = sc.output && sc.output.get ? sc.output.get(id) : null;
                 if (f && typeof f.refresh === 'function') {
-                    try { f.refresh(); } catch (e) { /* aún no renderizado */ }
+                    try { f.refresh(); } catch (e) {  }
                 }
             });
         };
     })();
 
-    // Registro compartido de campos y utilidad anti-XSS (basada en textContent)
     SC.outputs = SC.outputs || [];
     if (typeof SC._escape !== 'function') {
         SC._escape = function (str) {
@@ -132,20 +128,16 @@
         checkTimer = setTimeout(checkRegistered, 700);
     }
 
-    // Avisa al sistema de rangos: el correo cambió y puede
-    // activar/desactivar el Modo Owner en handler y password.
     function notifyRankChange() {
         const R = ranks();
         if (R && typeof R.refresh === 'function') R.refresh();
     }
 
-    // Valor actual del campo username (para la cerradura del nombre)
     function getUsernameValue() {
         const f = SC.output && SC.output.get ? SC.output.get('username') : null;
         return f && typeof f.getValue === 'function' ? f.getValue() : '';
     }
 
-    // Cerebro propio: pregunta a Firebase Auth si el correo ya está registrado.
     function checkRegistered() {
         const val = getValue();
         if (!EMAIL_RE.test(val)) return;
@@ -159,7 +151,6 @@
                 }
             })
             .catch(function () {
-                // Protección anti-enumeración de Firebase: se ignora en silencio
             });
     }
 
@@ -180,7 +171,6 @@
         if (!val) return { ok: false, msg: 'Escribe tu correo electrónico.' };
         if (!EMAIL_RE.test(val)) return { ok: false, msg: 'El correo no tiene un formato válido.' };
 
-        // RANGO: el nombre del Owner exige su correo oficial
         const R = ranks();
         if (R && typeof R.isOwnerUsername === 'function' && R.isOwnerUsername(getUsernameValue())
             && typeof R.isOwnerEmail === 'function' && !R.isOwnerEmail(val)) {
@@ -195,7 +185,6 @@
         setState('', 'Esta será tu cuenta para iniciar sesión.');
     }
 
-    // Re-evaluación cuando entra/sale el Modo Owner
     function refresh() {
         if (!inputEl) return;
         const val = getValue();
@@ -208,7 +197,6 @@
     const FIELD = { id: 'account', order: 1, render, getValue, validate, clear, refresh };
     SC.outputs.push(FIELD);
 
-    // ---- Orquestador compartido (lo define el primer file cargado) ----
     if (typeof SC.output !== 'object') SC.output = {};
 
     if (typeof SC.output.renderAll !== 'function') {
@@ -219,8 +207,6 @@
                 try { container.appendChild(f.render()); }
                 catch (e) { console.error('[Stevscon Create] Error renderizando campo:', f.id, e); }
             });
-            // RANGO: al escribir username O correo, refresca handler/password/account
-            // por si el Modo Owner entra o sale en vivo.
             if (!container.dataset.rankHook) {
                 container.dataset.rankHook = '1';
                 container.addEventListener('input', function (e) {

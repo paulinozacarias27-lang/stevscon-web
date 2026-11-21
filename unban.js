@@ -25,19 +25,17 @@
 (function (window, document) {
     'use strict';
 
-    /* ==== CONFIG ==== */
-    var UNBANS_PATH = 'security/accounts/unbans';  // {uid}: {by, byName, reason, at}
-    var BANS_PATH = 'security/accounts/bans';      // para el seguro anti re-ban
-    var FACE_IMG = '/HappyFace.png';               // tu imagen en la raíz
-    var FACE_IMG_FALLBACK = 'HappyFace.png';       // por si la página sirve de otra carpeta
-    var BAN_LS = 'sc_ban_device_v1';               // MISMA llave que banned.js
-    var SEEN_LS = 'sc_unban_seen_v1';              // avisos ya mostrados
-    var SPARK_COUNT = 12;                          // destellos verdos en el fondo
+    var UNBANS_PATH = 'security/accounts/unbans';
+    var BANS_PATH = 'security/accounts/bans';
+    var FACE_IMG = '/HappyFace.png';
+    var FACE_IMG_FALLBACK = 'HappyFace.png';
+    var BAN_LS = 'sc_ban_device_v1';
+    var SEEN_LS = 'sc_unban_seen_v1';
+    var SPARK_COUNT = 12;
 
     var panelOpen = false, panelEl = null;
     var watching = {};
 
-    /* ==== HELPERS BASE ==== */
     function db() { return firebase.database(); }
     function fmtDate(ts) {
         var n = Number(ts);
@@ -50,7 +48,6 @@
     function lsGet(k) { try { return JSON.parse(localStorage.getItem(k) || '{}') || {}; } catch (e) { return {}; } }
     function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
 
-    /* ==== BANDERA DE BAN (lectura/limpieza — misma llave que banned.js) ==== */
     function banHasUid(uid) {
         var d = lsGet(BAN_LS);
         return !!(d.u && d.u[uid]);
@@ -79,11 +76,9 @@
         if (ch) lsSet(BAN_LS, d);
     }
 
-    /* ==== AVISOS YA MOSTRADOS (por fecha del evento) ==== */
     function seenGet(uid) { var s = lsGet(SEEN_LS); return Number(s[uid]) || 0; }
     function seenSet(uid, at) { var s = lsGet(SEEN_LS); s[uid] = at; lsSet(SEEN_LS, s); }
 
-    /* ==== ESCONDER LA PANTALLA ROJA (banned.js v3 o fallback) ==== */
     function hideBanScreen() {
         try {
             if (window.StevsconBan && typeof window.StevsconBan.hide === 'function') {
@@ -91,7 +86,6 @@
                 return;
             }
         } catch (e) {}
-        /* Fallback si banned.js aún no expone hide() */
         try {
             var o = document.getElementById('sc-ban-overlay');
             if (o && o.parentNode) o.parentNode.removeChild(o);
@@ -106,7 +100,6 @@
         } catch (e) {}
     }
 
-    /* ==== CSS DEL AVISO (destellos y brillos verdes) ==== */
     function injectCSS() {
         if (document.getElementById('sc-unban-css')) return;
         var st = document.createElement('style');
@@ -122,7 +115,6 @@
         document.head.appendChild(st);
     }
 
-    /* ==== DESTELLO VERDE (SVG, cae lento y gira, como la lluvia del ban pero en modo feliz) ==== */
     function mkSpark() {
         var size = Math.round(10 + Math.random() * 14);
         var left = (-4 + Math.random() * 104).toFixed(1);
@@ -156,7 +148,6 @@
         return outer;
     }
 
-    /* ==== AVISO VERDE ==== */
     function metaRow(labelTxt, valueTxt) {
         var row = document.createElement('div');
         row.style.cssText = 'display:flex;justify-content:space-between;gap:14px;padding:8px 2px;border-bottom:1px solid var(--border-color,#2e2440);text-align:left;';
@@ -179,7 +170,6 @@
         o.setAttribute('aria-label', 'Cuenta desbaneada');
         o.style.cssText = 'position:fixed;left:0;top:0;right:0;bottom:0;z-index:2147483647;background:rgba(4,12,7,.9);display:flex;align-items:center;justify-content:center;padding:18px;box-sizing:border-box;font-family:Inter,system-ui,sans-serif;overflow:hidden;';
 
-        /* FONDO: destellos verdes cayendo lento */
         var sparks = document.createElement('div');
         sparks.style.cssText = 'position:absolute;left:0;top:0;right:0;bottom:0;overflow:hidden;pointer-events:none;';
         for (var i = 0; i < SPARK_COUNT; i++) sparks.appendChild(mkSpark());
@@ -188,7 +178,6 @@
         var card = document.createElement('div');
         card.style.cssText = 'position:relative;width:min(430px,94vw);background:var(--bg-card,#16121f);border:1px solid rgba(74,222,128,.4);border-radius:18px;padding:26px 24px 20px;text-align:center;box-sizing:border-box;box-shadow:0 0 70px rgba(34,197,94,.16),0 0 26px rgba(34,197,94,.12),0 30px 90px rgba(0,0,0,.7);animation:scUnbanPop .5s cubic-bezier(.2,.9,.3,1.15) both;';
 
-        /* X para cerrar */
         var x = document.createElement('button');
         x.type = 'button';
         x.setAttribute('aria-label', 'Cerrar aviso');
@@ -197,7 +186,6 @@
         x.addEventListener('click', closePanel);
         card.appendChild(x);
 
-        /* Imagen feliz: flotando con resplandor verde */
         var img = document.createElement('img');
         img.className = 'sc-unban-img';
         img.alt = 'Desbaneado';
@@ -216,26 +204,22 @@
         });
         card.appendChild(img);
 
-        /* Píldora */
         var pill = document.createElement('span');
         pill.textContent = 'BAN LEVANTADO';
         pill.style.cssText = 'display:inline-block;margin-top:8px;padding:4px 12px;border-radius:999px;background:rgba(34,197,94,.14);border:1px solid rgba(34,197,94,.5);color:#4ade80;font:800 10px Inter,sans-serif;letter-spacing:.16em;';
         card.appendChild(pill);
 
-        /* Título */
         var h = document.createElement('h1');
         h.className = 'sc-unban-title';
         h.textContent = 'Desbaneado!';
         h.style.cssText = 'margin:10px 0 0;font:800 36px/1.1 Inter,sans-serif;letter-spacing:-.02em;color:#4ade80;animation:scUnbanGlow 2.6s ease-in-out infinite;';
         card.appendChild(h);
 
-        /* Subtítulo */
         var sub = document.createElement('p');
         sub.textContent = 'Tu cuenta vuelve a tener acceso completo a Stevscon.com.';
         sub.style.cssText = 'margin:6px 0 14px;font:600 13px Inter,sans-serif;line-height:1.6;color:var(--text-muted,#94a3b8);';
         card.appendChild(sub);
 
-        /* Razón del desban */
         var rl = document.createElement('p');
         rl.textContent = 'RAZÓN DEL DESBAN';
         rl.style.cssText = 'margin:0 0 4px;text-align:left;font:800 10px Inter,sans-serif;letter-spacing:.14em;color:var(--text-muted,#94a3b8);';
@@ -276,17 +260,15 @@
         panelEl = null;
     }
 
-    /* ==== NÚCLEO: mirar unbans/{uid} ==== */
     function watchUid(uid) {
         if (!uid || watching[uid]) return;
         watching[uid] = true;
         db().ref(UNBANS_PATH + '/' + uid).on('value', function (s) {
             var rec = s.val();
             if (!rec || !rec.at) return;
-            if (Number(rec.at) <= seenGet(uid)) return;      // aviso ya mostrado antes
-            seenSet(uid, Number(rec.at));                    // se consume aunque no se muestre
-            if (!banHasUid(uid)) return;                     // este dispositivo nunca vio el ban (staff, etc.)
-            /* Seguro anti re-ban: si la cuenta está baneada OTRA VEZ, la pantalla roja manda */
+            if (Number(rec.at) <= seenGet(uid)) return;
+            seenSet(uid, Number(rec.at));
+            if (!banHasUid(uid)) return;
             db().ref(BANS_PATH + '/' + uid).once('value').then(function (bs) {
                 if (bs && bs.val()) return;
                 var email = devEmailOf(uid);
@@ -299,7 +281,6 @@
         });
     }
 
-    /* ==== API PÚBLICA ==== */
     window.StevsconUnban = {
         version: 1,
         close: closePanel,
@@ -307,7 +288,6 @@
     };
     try { window.SCSOC = window.SCSOC || {}; window.SCSOC.unban = window.StevsconUnban; } catch (e) {}
 
-    /* ==== ARRANQUE ==== */
     var tries = 0;
     (function boot() {
         tries++;
@@ -318,7 +298,6 @@
             console.warn('[Stevscon][UNBAN] Firebase nunca estuvo listo; el aviso de desban queda en espera.');
             return;
         }
-        /* Mirar a: el uid logueado + todos los uids en la bandera del dispositivo */
         try {
             var cu = firebase.auth().currentUser;
             if (cu && cu.uid) watchUid(cu.uid);
@@ -328,7 +307,6 @@
         } catch (e) {}
         var d = lsGet(BAN_LS);
         if (d.u) Object.keys(d.u).forEach(function (uid) { watchUid(uid); });
-        /* ESC cierra el aviso */
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape' && panelOpen) { e.preventDefault(); closePanel(); }
         });

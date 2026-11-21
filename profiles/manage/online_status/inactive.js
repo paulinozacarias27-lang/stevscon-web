@@ -17,7 +17,6 @@
     const ORANGE = '#f59e0b';
     const NS = 'http://www.w3.org/2000/svg';
 
-    // Luna creciente estilo Discord (SVG puro, sin innerHTML)
     function icon(px) {
         const svg = document.createElementNS(NS, 'svg');
         svg.setAttribute('viewBox', '0 0 24 24');
@@ -32,7 +31,6 @@
         return svg;
     }
 
-    // Evita registros duplicados si el file se cargara dos veces
     for (let i = 0; i < SCST.states.length; i++) {
         if (SCST.states[i].id === 'inactive') return;
     }

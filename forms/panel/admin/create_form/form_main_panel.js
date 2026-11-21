@@ -38,7 +38,6 @@ var FM = window.StevsconForms = window.StevsconForms || {};
 var C = FM.creator = FM.creator || {};
 var core = FM.core;
 
-/* ================= ESTILOS (inyectados UNA vez) ================= */
 var CSS = ''
 + '@keyframes fmcFade{from{opacity:0}to{opacity:1}}'
 + '@keyframes fmcPop{from{transform:translateY(12px) scale(.985);opacity:0}to{transform:none;opacity:1}}'
@@ -137,8 +136,7 @@ function style() {
     (document.head || document.documentElement).appendChild(st);
 }
 
-/* ================= UI KIT ================= */
-var openStack = [];   /* pila de overlays: ESC cierra el de arriba */
+var openStack = [];
 
 document.addEventListener('keydown', function (e) {
     if (e.key !== 'Escape' && e.keyCode !== 27) return;
@@ -293,7 +291,6 @@ C.ui = {
     }
 };
 
-/* ================= PERFIL · nombre del creador ================= */
 C.main = C.main || {};
 
 C.main.readCreatorName = function (uid, cb) {
@@ -304,7 +301,6 @@ C.main.readCreatorName = function (uid, cb) {
     }).catch(function () { cb('Staff'); });
 };
 
-/* ================= ABRIR EL EDITOR ================= */
 C.main.open = function (editId) {
     if (!core || !core.db) return;
     core.session(function (s) {
@@ -326,20 +322,19 @@ C.main.open = function (editId) {
 C.main._build = function () {
     var ui = C.ui;
     ui.style();
-    var draft = C.draft;          /* el que acabamos de cargar/crear */
-    C.main._teardown(true);       /* cierra overlays viejos SIN tocar el draft */
+    var draft = C.draft;
+    C.main._teardown(true);
     C.draft = draft;
 
     var ov = ui.overlay(false);
     var rawClose = ov.close;
-    ov.close = function () { C.main.close(false); };   /* ESC también pregunta por lo sin guardar */
+    ov.close = function () { C.main.close(false); };
     C.main._ov = ov;
     C.main._rawClose = rawClose;
 
     var win = document.createElement('div');
     win.className = 'fmc-win';
 
-    /* ---- header ---- */
     var head = document.createElement('div');
     head.className = 'fmc-head';
     var t = document.createElement('div');
@@ -362,13 +357,11 @@ C.main._build = function () {
     head.appendChild(bPub);
     head.appendChild(bX);
 
-    /* ---- cuerpo ---- */
     var body = document.createElement('div');
     body.className = 'fmc-body';
     var grid = document.createElement('div');
     grid.className = 'fmc-grid';
 
-    /* izquierda: ajustes */
     var left = document.createElement('div');
     var card = document.createElement('div');
     card.className = 'fmc-card';
@@ -394,7 +387,6 @@ C.main._build = function () {
     });
     card.appendChild(ui.field('Descripción', inDesc, 'Máximo 2000 caracteres.'));
 
-    /* banner opcional */
     var zone = document.createElement('div');
     zone.className = 'fmc-bzone';
     var zi = document.createElement('i');
@@ -448,7 +440,6 @@ C.main._build = function () {
     });
     drawBanner();
 
-    /* creado por (se muestra al final del formulario — respuesta #15) */
     var by = core.el('div', 'display:flex;align-items:center;gap:8px;margin-top:4px;padding-top:12px;border-top:1px solid var(--border-color,#2e2440);font:700 12px Inter,sans-serif;color:var(--text-muted,#94a3b8)');
     var byi = document.createElement('i');
     byi.className = 'fa-solid fa-user-pen';
@@ -459,7 +450,6 @@ C.main._build = function () {
     left.appendChild(card);
     grid.appendChild(left);
 
-    /* derecha: categorías + preguntas */
     var right = document.createElement('div');
     var rCard = document.createElement('div');
     rCard.className = 'fmc-card';
@@ -476,7 +466,6 @@ C.main._build = function () {
     grid.appendChild(right);
     body.appendChild(grid);
 
-    /* ---- footer ---- */
     var foot = document.createElement('div');
     foot.className = 'fmc-foot';
     foot.appendChild(core.el('div', 'font:600 11.5px Inter,sans-serif;color:var(--text-muted,#94a3b8)', 'Las categorías son los paneles principales · las preguntas van dentro de cada una · Guardar antes de cerrar.'));
@@ -533,7 +522,6 @@ C.main._teardown = function (keepDraft) {
 };
 C.main._destroy = function () { C.main._teardown(false); };
 
-/* ================= GUARDAR / PUBLICAR ================= */
 C.main.save = function (opts, cb) {
     opts = opts || {};
     var v = C.validateDraft();
@@ -582,7 +570,6 @@ C.main.save = function (opts, cb) {
     }
 
     if (!isNew) {
-        /* EDITADO → avisar a quien ya se postuló (respuesta #19) */
         db.ref('forms/responses/' + id).once('value').then(function (s) {
             var resp = s.val();
             if (resp && typeof resp === 'object') {
@@ -604,7 +591,6 @@ C.main.save = function (opts, cb) {
     }
 };
 
-/* ================= ACCIONES RÁPIDAS DEL MANAGER ================= */
 C.main.setPublished = function (formId, pub) {
     core.db().ref('forms/defs/' + formId + '/meta').update({ published: !!pub, updatedAt: Date.now() })
         .then(function () { core.toast(pub ? 'Publicado.' : 'Despublicado.', 'ok'); })
@@ -638,7 +624,6 @@ function legacyCopy(text, done) {
     } catch (e) { core.toast('No se pudo copiar: ' + text, 'info'); }
 }
 
-/* ================= MANAGER · la lista de formularios ================= */
 C.main.openManager = function () {
     core.session(function (s) {
         if (!s.isStaff) return core.toast('Solo el Owner y los Admins ven esto.', 'error');

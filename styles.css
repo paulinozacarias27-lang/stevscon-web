@@ -8,35 +8,33 @@
     --bg-card: #1a1625;
     --bg-hover: #261f36;
     --bg-elevated: #221b33;
-    
+
     --purple-accent: #8b5cf6;
     --purple-dark: #6d28d9;
     --purple-light: #a78bfa;
     --purple-glow: rgba(139, 92, 246, 0.25);
-    
+
     --text-main: #f8fafc;
     --text-muted: #94a3b8;
     --border-color: #2e2440;
 }
 
-/* Reset Básico */
-* { 
-    margin: 0; 
-    padding: 0; 
-    box-sizing: border-box; 
-    font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif; 
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
 
-body { 
-    background-color: var(--bg-main); 
-    color: var(--text-main); 
-    display: flex; 
-    flex-direction: column; 
-    min-height: 100vh; 
+body {
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
     overflow-x: hidden;
 }
 
-/* Scrollbar Personalizado */
 ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -52,29 +50,28 @@ body {
     background: var(--purple-accent);
 }
 
-/* Barra de Navegación Superior */
-.navbar { 
-    background-color: rgba(13, 11, 20, 0.95); 
-    backdrop-filter: blur(12px); 
+.navbar {
+    background-color: rgba(13, 11, 20, 0.95);
+    backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--border-color); 
-    position: sticky; 
-    top: 0; 
-    z-index: 1000; 
-    padding: 12px 24px; 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center; 
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    padding: 12px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
-.brand { 
-    font-size: 1.35rem; 
-    font-weight: 800; 
-    color: var(--text-main); 
-    text-decoration: none; 
-    display: flex; 
-    align-items: center; 
-    gap: 10px; 
+.brand {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: var(--text-main);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
     letter-spacing: -0.02em;
 }
 
@@ -91,16 +88,11 @@ body {
     align-items: center;
 }
 
-/* Área Principal Vacía */
 .main-viewport {
     flex-grow: 1;
     width: 100%;
 }
 
-/* ============================================
-   CREATE · FORMULARIO DE REGISTRO (output)
-   Bloques blancos de escritura + acentos morados
-   ============================================ */
 
 .form-group {
     display: flex;
@@ -128,7 +120,6 @@ body {
     font-variant-numeric: tabular-nums;
 }
 
-/* El bloque blanco donde se escribe */
 .field-input {
     width: 100%;
     background: #ffffff;
@@ -156,7 +147,6 @@ body {
 .field-input.is-invalid:focus { box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18); }
 .field-input.is-valid { border-color: #4ade80; }
 
-/* Pistas bajo cada campo */
 .field-hint {
     font-size: 0.75rem;
     color: var(--text-muted);
@@ -165,7 +155,6 @@ body {
 .field-hint.hint-error { color: #f87171; }
 .field-hint.hint-ok { color: #4ade80; }
 
-/* Handler: el @ fijo antes del bloque blanco */
 .handler-wrap {
     display: flex;
     align-items: center;
@@ -196,7 +185,6 @@ body {
     flex: 1;
 }
 
-/* Contraseña: input + botón de ojo */
 .password-wrap {
     position: relative;
     display: flex;
@@ -229,7 +217,6 @@ body {
     background: rgba(139, 92, 246, 0.12);
 }
 
-/* Medidor de fuerza de la contraseña */
 .strength-meter {
     display: flex;
     gap: 5px;
@@ -249,11 +236,7 @@ body {
 .strength-meter.level-3 .strength-bar:nth-child(-n+3) { background: #eab308; }
 .strength-meter.level-4 .strength-bar { background: #4ade80; }
 
-/* ============================================
-   CREATE · BOTONES (checkbox, crear, errores)
-   ============================================ */
 
-/* Checkbox "No soy un robot" */
 .checkbox-row {
     display: flex;
     align-items: center;
@@ -308,7 +291,6 @@ body {
     user-select: none;
 }
 
-/* Botón principal Crear cuenta */
 .btn-create {
     width: 100%;
     justify-content: center;
@@ -343,7 +325,6 @@ body {
 
 .btn-create.is-success:hover:not(:disabled) { background: #16a34a; }
 
-/* Spinner de carga */
 .spinner {
     width: 16px;
     height: 16px;
@@ -355,7 +336,6 @@ body {
 
 @keyframes sc-spin { to { transform: rotate(360deg); } }
 
-/* Cajas de error y éxito de los botones */
 .feedback-wrap { margin-bottom: 16px; }
 
 .errors-box,
@@ -385,7 +365,6 @@ body {
 
 .errors-box i, .success-box i { margin-top: 2px; }
 
-/* Rerender de .btn base si tu styles.css aún no lo tiene */
 .btn {
     display: inline-flex;
     align-items: center;
@@ -406,14 +385,8 @@ body {
 
 .btn-primary:hover { background: var(--purple-dark); }
 
-/* ============================================
-   UTILIDADES
-   ============================================ */
 .hidden { display: none !important; }
 
-/* ============================================
-   HOME · Categoría principal "Crear cuenta"
-   ============================================ */
 .home-hero {
     min-height: calc(100vh - 60px);
     display: flex;
@@ -511,7 +484,6 @@ body {
 .category-arrow { color: var(--text-muted); transition: color 0.2s ease; }
 .category-card:hover .category-arrow { color: var(--purple-light); }
 
-/* Tarjeta de sesión activa */
 .session-avatar {
     width: 44px;
     height: 44px;
@@ -546,9 +518,6 @@ body {
     border-color: var(--purple-accent);
 }
 
-/* ============================================
-   MODAL (usado por CREATE)
-   ============================================ */
 .modal-overlay {
     position: fixed;
     inset: 0;
@@ -610,9 +579,6 @@ body {
 
 .create-form { display: flex; flex-direction: column; }
 
-/* ============================================
-   TOASTS (alertas globales, esquina inferior)
-   ============================================ */
 .alerts-wrapper {
     position: fixed;
     bottom: 20px;
@@ -652,9 +618,6 @@ body {
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* ====
-   ACCESO · Caja de errores del login (acc_access.js)
-   ==== */
 .form-errors {
     background: rgba(239, 68, 68, 0.1);
     border: 1px solid rgba(239, 68, 68, 0.35);
@@ -669,20 +632,12 @@ body {
 
 .form-errors p:last-child { margin: 0; }
 
-/* ====
-   TOASTS · Variante de error (category_acc.js)
-   ==== */
 .toast-error {
     background: var(--bg-card);
     border: 1px solid rgba(239, 68, 68, 0.4);
     color: #f87171;
 }
 
-/* ====
-   TEMA CLARO · tus settings ya cambian body.theme-light,
-   pero styles.css solo tenía variables oscuras: con esto
-   el toggle de tema pinta TODO el panel de cuentas.
-   ==== */
 body.theme-light {
     --bg-main: #f4f2fb;
     --bg-card: #ffffff;

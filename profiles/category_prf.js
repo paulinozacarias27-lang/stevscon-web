@@ -18,7 +18,6 @@
     let lastFocus = null;
     let headerObserver = null;
 
-    // ---- Inyección en el menú del avatar (el que pinta session.js) ----
 
     function startMenuInjection() {
         if (headerObserver) return;
@@ -59,11 +58,10 @@
         const divs = slot.getElementsByTagName('div');
         for (let i = 0; i < divs.length; i++) {
             const m = divs[i];
-            if (m.style.position !== 'absolute') continue;   // el menú de session.js
+            if (m.style.position !== 'absolute') continue;
             if (m.dataset.prfInjected === '1') continue;
             m.dataset.prfInjected = '1';
 
-            // Insertar antes del botón "Cerrar sesión" para quedar arriba
             const kids = m.children;
             let ref = null;
             for (let j = 0; j < kids.length; j++) {
@@ -76,7 +74,6 @@
         }
     }
 
-    // ---- MODAL: modo VER y modo EDITAR ----
 
     function buildModal() {
         if (overlay) return;
@@ -161,7 +158,6 @@
         if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus();
     }
 
-    // ---- MODO VER: la tarjeta ----
 
     function renderView() {
         if (!contentBox) return;
@@ -188,14 +184,11 @@
         }, { actions: actions });
         contentBox.appendChild(cardBox);
 
-        // SWITCH · Botón "Cambiar de cuenta" (lo monta panel.js) al final del panel.
-        // Va DESPUÉS de pintar la tarjeta para que ningún re-render lo borre.
         if (SCp.switchAcc && typeof SCp.switchAcc.mountButton === 'function') {
             SCp.switchAcc.mountButton(contentBox);
         }
     }
 
-    // ---- MODO EDITAR: los campos ----
 
     function renderEdit() {
         if (!SCp.user) return;
@@ -214,7 +207,6 @@
         back.addEventListener('click', renderView);
         contentBox.appendChild(back);
 
-        // Banner primero, avatar, nombre, descripción y género al final
         SCp.edit.fields.slice().sort(function (a, b) { return a.order - b.order; }).forEach(function (f) {
             const wrap = document.createElement('div');
             wrap.style.marginBottom = '12px';
@@ -223,7 +215,6 @@
         });
     }
 
-    // ---- Init ----
 
     function init() {
         SCp.onAuth(function (user) {

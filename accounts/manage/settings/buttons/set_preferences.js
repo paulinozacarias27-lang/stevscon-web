@@ -17,7 +17,6 @@
 
     const SCSET = window.StevsconSettings = window.StevsconSettings || {};
 
-    /* Antidoble-montaje (por si el HTML llegara a cargar dos bloques) */
     if (SCSET._prefV3) return;
     SCSET._prefV3 = true;
 
@@ -59,14 +58,12 @@
             SCSET.toast('Estado por defecto guardado');
             return patch({ defaultStatus: v });
         },
-        /* ==== MENSAJES DIRECTOS · un switch = un write a settings ==== */
         setMD: function (obj, msg) {
             if (msg) SCSET.toast(msg);
             return patch(obj);
         }
     };
 
-    /* ==== PUENTE DE TEMA v3 (lazy + a prueba de orden de carga) ==== */
     const _origTheme = (typeof SCSET.applyTheme === 'function') ? SCSET.applyTheme : null;
     SCSET.applyTheme = function (v) {
         const val = (v === 'light') ? 'light' : 'dark';
@@ -74,7 +71,6 @@
         if (core) {
             try { core(val); } catch (e) {}
         } else {
-            /* Fallback si el core no existe aún: clase al menos */
             try {
                 document.body.classList.remove('theme-dark', 'theme-light');
                 document.body.classList.add('theme-' + val);
@@ -85,7 +81,6 @@
         document.dispatchEvent(new CustomEvent('sc:theme-applied', { detail: { theme: val } }));
     };
 
-    /* ==== SINCRONIZACIÓN · el tema guardado en tu CUENTA manda ==== */
     (function syncThemeFromFirebase() {
         if (typeof firebase === 'undefined' || !firebase.auth || !firebase.database) return;
         firebase.auth().onAuthStateChanged(function (u) {

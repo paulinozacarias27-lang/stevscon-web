@@ -101,7 +101,6 @@ function bigCard(icon, title, sub, backLabel) {
     return big;
 }
 
-/* ==== OPEN (lo llama connect_form.js con #form/{id}) ==== */
 FM.public.see.open = function (view, formId) {
     if (!view || !formId) return;
     style();
@@ -187,12 +186,10 @@ function build(host, view, def, formId, s, myGen) {
         host.appendChild(sb);
     }
 
-    /* el form de verdad */
     var formHost = el('div', '');
     host.appendChild(formHost);
     FM.formView.render(def, formHost);
 
-    /* zonas de acción + estado */
     var statusHost = el('div', '');
     var actionHost = el('div', '');
     host.appendChild(statusHost);
@@ -205,21 +202,18 @@ function build(host, view, def, formId, s, myGen) {
 
     if (S) { S.reset(); S.wireUploads(def, formHost); }
 
-    /* invitado: bloqueado + login */
     if (!s || !s.user) {
         if (S) S.lock(formHost, true);
         actionHost.appendChild(loginCard());
         return;
     }
 
-    /* tu respuesta (al segundo) */
     core.db().ref('forms/responses/' + formId + '/' + s.uid).once('value').then(function (snap) {
         if (myGen !== GEN) return;
         var resp = snap.val() || null;
         var st = (resp && resp.meta && resp.meta.status) || null;
 
         if (!st) {
-            /* primera vez: desbloqueado + enviar */
             actionHost.appendChild(firstNote());
             if (S) S.attach(actionHost, def, formId, 'fresh', reopen);
             return;
@@ -227,7 +221,6 @@ function build(host, view, def, formId, s, myGen) {
 
         if (S) S.lock(formHost, true);
         statusHost.appendChild(statusBox(resp.meta, function (mode) {
-            /* desbloquear, rellenar con lo anterior y abrir la barra */
             if (!S) return;
             S.lock(formHost, false);
             prefill(def, formHost, (resp && resp.answers) || {});
@@ -317,7 +310,6 @@ function statusBox(meta, onAction) {
     return box;
 }
 
-/* rellena el form con tus respuestas anteriores (las 9 tipos) */
 function prefill(def, formHost, answers) {
     var qs = (def && def.questions) || {};
     var S = FM.public.submit;
@@ -348,7 +340,6 @@ function prefill(def, formHost, answers) {
             }
             return;
         }
-        /* text, paragraph, number, date, url, dropdown */
         var ctl = formHost.querySelector('[data-fmq="' + qid + '"]');
         if (ctl) {
             try { ctl.value = String(v); } catch (e) {}

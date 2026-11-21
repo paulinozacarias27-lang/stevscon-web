@@ -32,22 +32,18 @@
 
     F.version = 1;
 
-    /* El texto de `código` va aparte (placeholders) para que NUNCA
-       se formatee por dentro y el índice coincida siempre al editar. */
     const PH = /\u0000(\d+)\u0000/g;
     const TOK = /`([^`\n]+)`(?:[ \t]?(#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{3})))?(?![0-9a-fA-F])/g;
 
     const PRESETS = ['#fbbf24', '#f8fafc', '#000000', '#8b5cf6', '#22c55e',
                      '#60a5fa', '#f87171', '#f472b6', '#2dd4bf', '#94a3b8'];
 
-    /* ==== HELPERS ==== */
     function esc(s) {
         return String(s == null ? '' : s)
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
-    /* Solo https o imágenes base64 (mismo candado para portadas y cuerpo) */
     F.safeUrl = function (u) {
         u = String(u || '').trim();
         if (/^https:\/\//i.test(u)) return u;
@@ -62,9 +58,6 @@
         return e;
     }
 
-    /* ==== TOKENS `código` (con o sin #color) ====
-       Recorre el texto línea por línea SALTANDO bloques ```, igual que
-       el render: así la caja N del render es la caja N del source. */
     function tokenize(src) {
         const s = String(src == null ? '' : src);
         const out = [];
@@ -107,7 +100,6 @@
     }
     function hexOk(v) { return /^#[0-9a-fA-F]{6}$/.test(v); }
 
-    /* ==== FORMATO RICO (segmento YA con placeholders, se escapa aquí) ==== */
     function rich(s) {
         let t = esc(s);
         t = t.replace(/\*\*([^*\n]+)\*\*/g, '<strong>\$1</strong>');
@@ -116,12 +108,11 @@
         t = t.replace(/~~([^~\n]+)~~/g, '<del>\$1</del>');
         t = t.replace(/==([^=\n]+)==/g, '<mark class="wk-mark">\$1</mark>');
         t = t.replace(/\|\|([^|\n]+)\|\|/g, '<span class="wk-spoiler" tabindex="0">\$1</span>');
-        /* imágenes ANTES que enlaces */
-        t = t.replace(/!$$([^$$]*)\]$$([^)\s]+)$$/g, function (m, alt, url) {
+        t = t.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, function (m, alt, url) {
             const ok = F.safeUrl(url);
             return ok ? '<img src="' + ok + '" alt="' + alt + '" loading="lazy">' : m;
         });
-        t = t.replace(/$$([^$$]+)\]$$([^)\s]+)$$/g, function (m, txt, url) {
+        t = t.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, function (m, txt, url) {
             const ok = F.safeUrl(url);
             return ok ? '<a href="' + ok + '" target="_blank" rel="noopener noreferrer">' + txt + '</a>' : m;
         });
@@ -135,12 +126,10 @@
             '>' + esc(tok ? tok.text : '') + '</code>';
     }
 
-    /* ==== MD: bloque a bloque (títulos, listas, citas, fences…) ==== */
     F.md = function (src) {
         src = String(src == null ? '' : src);
         const tokens = tokenize(src);
 
-        /* tokens -> placeholders (de atrás hacia adelante) */
         let s = src;
         for (let i = tokens.length - 1; i >= 0; i--) {
             s = s.slice(0, tokens[i].start) + '\u0000' + i + '\u0000' + s.slice(tokens[i].end);
@@ -181,15 +170,13 @@
             closeList();
             out += '<p>' + rich(t) + '</p>';
         }
-        if (fence !== null) flushFence(); /* fence sin cerrar */
+        if (fence !== null) flushFence();
         closeList();
 
-        /* placeholders -> cajas de código reales */
         out = out.replace(PH, function (m, i) { return codeHTML(tokens[Number(i)], Number(i)); });
         return out;
     };
 
-    /* ==== CSS (cajas de código, spoilers, marcador, bloques y panel) ==== */
     const CSS = `
     code.wk-code.is-editable{cursor:pointer;transition:box-shadow .15s}
     code.wk-code.is-editable:hover{box-shadow:0 0 0 2px var(--purple-accent,#8b5cf6)}
@@ -228,7 +215,6 @@
         document.head.appendChild(st);
     }
 
-    /* ==== PANEL DE COLOR (staff) ==== */
     function toast(m, k) {
         if (window.StevsconWiki && window.StevsconWiki.toast) window.StevsconWiki.toast(m, k);
     }
@@ -359,10 +345,8 @@
         try { txt.focus(); txt.select(); } catch (e2) {}
     };
 
-    /* ==== ENHANCE: interacción post-render (spoilers + color de código) ==== */
     F.enhance = function (root, art) {
         if (!root) return;
-        /* Spoilers: clic o Enter para revelar — para TODOS */
         root.addEventListener('click', function (e) {
             const t = e.target;
             const sp = t && t.closest ? t.closest('.wk-spoiler') : null;
@@ -375,7 +359,6 @@
             if (sp) { e.preventDefault(); sp.classList.toggle('is-open'); }
         });
 
-        /* Color de las cajas `código`: solo STAFF (quien puede guardar) */
         try {
             const staff = !!(WK.system && WK.system.session && WK.system.session.isStaff);
             if (!staff || !art) return;
@@ -396,6 +379,6 @@
 
     injectStyles();
 
-    window.StevsconFormats = F; /* alias futuro (posts, sub-posts…) */
+    window.StevsconFormats = F;
     console.log('[Stevscon] formats.js listo (v1) — motor de formato de la wiki.');
 })(window, document);

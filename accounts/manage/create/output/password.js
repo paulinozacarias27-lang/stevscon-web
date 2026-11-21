@@ -15,7 +15,7 @@
     SC.outputs = SC.outputs || [];
 
     const MIN = 8;
-    const MIN_OWNER = 6; // piso absoluto de Firebase Auth
+    const MIN_OWNER = 6;
     const MAX = 128;
 
     let inputEl = null;
@@ -71,7 +71,6 @@
         wrap.appendChild(inputEl);
         wrap.appendChild(eyeBtn);
 
-        // Medidor de fuerza (4 barras)
         meterEl = document.createElement('div');
         meterEl.className = 'strength-meter';
         for (let i = 0; i < 4; i++) {
@@ -161,7 +160,6 @@
         setState('', hintFor());
     }
 
-    // Re-evaluación cuando entra/sale el Modo Owner
     function refresh() {
         if (!inputEl) return;
         if (inputEl.value) onInput();

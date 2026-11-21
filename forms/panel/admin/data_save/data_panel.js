@@ -31,7 +31,6 @@ FM.mine = FM.mine || {};
 
 if (!core) { console.warn('[Stevscon] data_panel.js: falta forms_core.js'); return; }
 
-/* FM.data se resuelve al vuelo (este file carga después que public_forms) */
 var D = function () { return FM.data; };
 
 function el(tag, cls, text) {
@@ -41,7 +40,6 @@ function el(tag, cls, text) {
     return e;
 }
 
-/* vistas: la última vez que viste tus notificaciones (local) */
 function seenKey(uid) { return 'fm_notif_seen_' + uid; }
 function getSeen(uid) { try { return Number(localStorage.getItem(seenKey(uid))) || 0; } catch (e) { return 0; } }
 function setSeen(uid) { try { localStorage.setItem(seenKey(uid), String(Date.now())); } catch (e) {} }
@@ -109,7 +107,6 @@ function style() {
     (document.head || document.documentElement).appendChild(st);
 }
 
-/* ==== RENDER PRINCIPAL (lo llama el conector en #mis) ==== */
 FM.mine.render = function (container) {
     if (!container) return;
     style();
@@ -124,7 +121,6 @@ FM.mine.render = function (container) {
     });
 };
 
-/* cuántas notificaciones tienes sin ver (para el badge de la Parte 4) */
 FM.mine.unseenCount = function (cb) {
     cb = cb || function () {};
     core.session(function (s) {
@@ -203,7 +199,6 @@ function load(container, s) {
 
     container.appendChild(wrap);
 
-    /* datos en paralelo: índice propio + defs (nombres) + notificaciones */
     var ids = null, defsMap = null, notifs = null;
     function tick() {
         if (ids === null || defsMap === null || notifs === null) return;
@@ -217,7 +212,6 @@ function load(container, s) {
     });
     D().myNotifications(function (arr) { notifs = arr || []; tick(); });
 
-    /* estado AL SEGUNDO: se lee vivo de cada respuesta (nunca de una copia) */
     function readLive() {
         var live = {};
         var left = ids.length;
@@ -234,7 +228,6 @@ function load(container, s) {
     }
 
     function paint(live) {
-        /* KPIs */
         var counts = { all: ids.length, pending: 0, accepted: 0, declined: 0 };
         ids.forEach(function (fid) {
             var st = (((live[fid] || {}).meta) || {}).status || 'pending';
@@ -248,7 +241,6 @@ function load(container, s) {
             kpis.appendChild(box);
         });
 
-        /* notificaciones */
         var seen = getSeen(uid);
         var fresh = notifs.filter(function (n) { return (n.at || 0) > seen; });
         nbadge.textContent = String(fresh.length);
@@ -260,9 +252,8 @@ function load(container, s) {
             notifs.slice(0, 12).forEach(function (n) { nhost.appendChild(notifRow(n, (n.at || 0) > seen)); });
             if (notifs.length > 12) nhost.appendChild(el('div', 'fmm-muted', '…y ' + (notifs.length - 12) + ' más'));
         }
-        setSeen(uid);   /* ya las viste */
+        setSeen(uid);
 
-        /* tarjetas */
         chost.textContent = '';
         if (!ids.length) { chost.appendChild(emptyCard()); return; }
         var rows = ids.map(function (fid) {
@@ -349,7 +340,6 @@ function btn(label, kind, fid) {
     var b = el('button', 'fmm-btn' + (kind ? ' ' + kind : ''), label);
     b.type = 'button';
     b.addEventListener('click', function () {
-        /* el CONECTADOR (Parte 4) rutea #form/{id}; si aún no está, nada rompe */
         try { location.hash = '#form/' + fid; } catch (e) {}
     });
     return b;

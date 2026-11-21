@@ -32,7 +32,6 @@
     let _bar = null;
     let _counts = {};
 
-    /* ---- slugs para la URL (#c/anuncios): sin acentos, minúsculas ---- */
     function slugOf(s) {
         return String(s || '').trim().toLowerCase()
             .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -51,7 +50,6 @@
     }
     const ICONS = { general: 'fa-comments', anuncios: 'fa-bullhorn', actualizaciones: 'fa-arrows-rotate' };
 
-    /* ---- LA BARRA ---- */
     function buildBar(host) {
         if (_bar && _bar.parentNode) _bar.parentNode.removeChild(_bar);
         _bar = SCSOC.el('nav', 'position:sticky;top:10px;z-index:5;display:flex;align-items:stretch;gap:4px;background:var(--bg-card,#1a1625);border:1px solid ' + BORDER + ';border-radius:14px;padding:6px;margin-bottom:14px;font-family:Inter,sans-serif;overflow-x:auto;box-sizing:border-box;');
@@ -92,7 +90,6 @@
         });
     }
 
-    /* ---- CAMBIO DE PESTAÑA ---- */
     function setTab(cat, opts) {
         opts = opts || {};
         if (_active === cat) { if (!opts.noHash) syncHash(); return; }
@@ -122,14 +119,11 @@
         return null;
     }
 
-    /* Primera vez: pestaña del hash (#c/...) o la primera categoría.
-     * Con noHash para NO pisar deep links (#post/... / #u/...). */
     function restore() {
         const fromHash = readHash();
         setTab(fromHash || (SCSOC.categories()[0] || 'General'), { noHash: !fromHash });
     }
 
-    /* ==== CONEXIONES ==== */
     SCSOC.onHook('feedMount', function (ctx) {
         if (!ctx || !ctx.host) return;
         buildBar(ctx.host);
@@ -141,7 +135,6 @@
         if (c && c !== _active) setTab(c, { noHash: true });
     });
 
-    /* Contadores en vivo (admin_post.js v10 dispara en cada add/chg/rm) */
     document.addEventListener('sc:social-feed-cats', function (e) {
         const d = (e && e.detail) || {};
         _counts = d.counts || {};

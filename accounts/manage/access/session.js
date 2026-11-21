@@ -23,7 +23,6 @@
         return (typeof window.StevsconFirebase !== 'undefined') ? window.StevsconFirebase : null;
     }
 
-    // Clic en cualquier parte del documento → cierra el menú abierto
     document.addEventListener('click', function () {
         if (menuRef) { menuRef.hidden = true; menuRef = null; }
     });
@@ -74,8 +73,6 @@
         slot.appendChild(btn);
     }
 
-    // Pinta el avatar real (imagen/GIF) con background-image inline.
-    // Sin URL, el elemento queda como está (inicial). Nunca crea <img>.
     function paintHeaderAvatar(el, profile) {
         const pr = (profile && profile.profile) || {};
         const url = pr.avatarUrl || pr.avatarURL || '';
@@ -114,7 +111,6 @@
         const menu = document.createElement('div');
         menu.hidden = true;
         menu.style.cssText = 'position:absolute;right:0;top:46px;width:264px;background:#1a1526;border:1px solid rgba(167,139,250,.35);border-radius:12px;padding:16px;z-index:60;color:#ede9fe;font-family:Inter,sans-serif;box-shadow:0 18px 50px rgba(0,0,0,.45);';
-        // Los clics DENTRO del menú no lo cierran
         menu.addEventListener('click', function (e) { e.stopPropagation(); });
 
         const head = document.createElement('div');
@@ -188,18 +184,15 @@
         });
     }
 
-    // Si Perfiles actualiza tu perfil, el header se repinta al instante
-    // con los datos nuevos (mismo evento que usa la tarjeta de la home).
     document.addEventListener('stevscon:profile-updated', function () {
         const slot = document.getElementById('user-header-actions');
         const F = fb();
         if (!lastUser || !slot || !F || !F.database) return;
         F.database.ref('users/' + lastUser.uid).once('value').then(function (snap) {
             renderLoggedIn(slot, lastUser, snap.val());
-        }).catch(function () { /* el header actual se queda: no rompe */ });
+        }).catch(function () {  });
     });
 
-    // Espera a que existan el header y Firebase (orden de scripts)
     function boot(tries) {
         const slot = document.getElementById('user-header-actions');
         const F = fb();

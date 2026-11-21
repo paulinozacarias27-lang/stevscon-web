@@ -16,7 +16,6 @@
     const KEY = 'stevscon.swacc.v1';
     const XK = 0x5A;
 
-    // ---- Ofuscación local (NO es criptografía: nunca sale del dispositivo) ----
     function xor(str) {
         let out = '';
         for (let i = 0; i < str.length; i++) {
@@ -24,7 +23,7 @@
         }
         return out;
     }
-  
+
     function obfuscate(pass) {
         try { return btoa(unescape(encodeURIComponent(xor(String(pass))))); } catch (e) { return ''; }
     }
@@ -39,10 +38,9 @@
         } catch (e) { return []; }
     }
     function write(list) {
-        try { window.localStorage.setItem(KEY, JSON.stringify(list)); } catch (e) { /* modo privado */ }
+        try { window.localStorage.setItem(KEY, JSON.stringify(list)); } catch (e) {  }
     }
 
-    // ---- API para switch.js y panel.js ----
     SCp.switchAcc.list = read;
 
     SCp.switchAcc.find = function (uid) {
@@ -51,7 +49,6 @@
         return null;
     };
 
-    // Guarda o actualiza (por uid); la más reciente queda arriba.
     SCp.switchAcc.upsert = function (entry) {
         const rest = read().filter(function (a) { return a.uid !== entry.uid; });
         const e = Object.assign({}, entry, { pass: obfuscate(entry.pass) });
@@ -64,12 +61,10 @@
         write(read().filter(function (a) { return a.uid !== uid; }));
     };
 
-    // Devuelve la contraseña en claro SOLO para el login (nunca se muestra).
     SCp.switchAcc.decode = function (entry) {
         return entry ? reveal(entry.pass) : '';
     };
 
-    // ---- Límite de cuentas según el rango de la cuenta ACTUAL ----
     SCp.switchAcc.limitFor = function () {
         const R = window.StevsconRanks;
         const F = window.StevsconFirebase;

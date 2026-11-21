@@ -13,7 +13,7 @@
 
     const SCSOC = window.SCSOC || (window.SCSOC = {});
     const OWNER_EMAIL = 'steven23hd@gmail.com';
-    const DAY = 86400000; /* v2: antes 8640000 (10 días corto) */
+    const DAY = 86400000;
 
     const PATHS = {
         users: 'users',
@@ -35,7 +35,6 @@
 
     const S = { win: false, loading: false, data: null, updatedAt: 0 };
 
-    /* ==== helpers ==== */
     function db() { return firebase.database(); }
     function me() { try { return firebase.auth().currentUser; } catch (e) { return null; } }
     function isOwner() { const u = me(); return !!(u && u.email === OWNER_EMAIL); }
@@ -79,14 +78,13 @@
         } catch (e) { return ''; }
     }
 
-    /* ==== CÁLCULO de métricas (desde snapshots de solo lectura) ==== */
     function compute(sn) {
         const g = function (k) { return sn[k] || null; };
 
         const usersS = g('users'), staffS = g('staff'), bansS = g('bans');
         const accounts = usersS ? usersS.numChildren() : null;
         const staffN = staffS ? staffS.numChildren() : 0;
-        const banned = bansS ? bansS.numChildren() : null;   /* null = sin permiso (mods) */
+        const banned = bansS ? bansS.numChildren() : null;
 
         const days = [];
         for (let i = 0; i < 7; i++) {
@@ -166,7 +164,6 @@
         };
     }
 
-    /* ==== LECTURA en vivo (solo .once; todo se recalcula local) ==== */
     function refresh() {
         if (S.loading || !window.firebase || !firebase.database) return;
         S.loading = true;
@@ -184,7 +181,6 @@
         }).catch(function () { S.loading = false; });
     }
 
-    /* ==== CSS ==== */
     function injectCss() {
         if (document.querySelector('style[data-scan]')) return;
         const css = document.createElement('style');
@@ -251,7 +247,6 @@
         document.head.appendChild(css);
     }
 
-    /* ==== BOX en el panel (estilo ACCOUNTS / REPORTS) ==== */
     function mkCell(host, label) {
         const c = E('div', 'scan-cell');
         const b = E('b', ''); b.textContent = '—';
@@ -298,7 +293,6 @@
 
         bodyEl.appendChild(box);
 
-        /* ESC cierra SOLO esta ventana */
         document.addEventListener('keydown', function (e) {
             if (e.key !== 'Escape' || !S.win) return;
             e.preventDefault(); e.stopPropagation();
@@ -316,7 +310,6 @@
         if (statInter) statInter.textContent = d ? nfmt(d.comments + d.responses + d.likes) : '—';
     }
 
-    /* ==== VENTANA ==== */
     function openWin() {
         if (S.win) return;
         const bd = el('div', '', 'scan-backdrop');
@@ -361,7 +354,6 @@
         }, 330);
     }
 
-    /* ==== PANEL ==== */
     function sectt(txt) { const t = E('div', 'scan-sectt'); t.textContent = txt; return t; }
     function cellIn(host, val, label, color) {
         const c = E('div', 'scan-cell');
@@ -479,7 +471,6 @@
         winBody.appendChild(foot);
     }
 
-    /* ==== ARRANQUE (tras login, igual que anti-bad) ==== */
     (function wait() {
         const ok = window.firebase;
         if (!ok) return setTimeout(wait, 150);

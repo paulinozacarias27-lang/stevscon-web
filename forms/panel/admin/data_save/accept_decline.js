@@ -28,7 +28,7 @@
 'use strict';
 
 var FM = window.StevsconForms = window.StevsconForms || {};
-FM.review = FM.review || {};       /* view_panel.js (Parte 2) ya puso .panel aquí */
+FM.review = FM.review || {};
 var core = FM.core;
 
 if (!core) { console.warn('[Stevscon] accept_decline.js: falta forms_core.js'); return; }
@@ -38,7 +38,6 @@ function nameFromEmail(em) {
     return em ? em.split('@')[0] : 'Staff';
 }
 
-/* nombre del revisor: users/{uid} → displayName → prefijo del email */
 function reviewerNameP(s) {
     return core.db().ref('users/' + s.uid).once('value').then(function (snap) {
         var v = snap.val() || {};
@@ -49,7 +48,6 @@ function reviewerNameP(s) {
     });
 }
 
-/* ==== DECIDIR: aceptar o rechazar ==== */
 FM.review.decide = function (opts, cb) {
     cb = cb || function () {};
     opts = opts || {};
@@ -77,7 +75,7 @@ FM.review.decide = function (opts, cb) {
             if (!snap.exists()) {
                 core.toast('Esa apostulación no existe (quizá ya la borraron).', 'error');
                 cb(false);
-                return null;   /* corta la cadena */
+                return null;
             }
             return reviewerNameP(s).then(function (rName) {
                 return nameRef.once('value').then(function (ns) {
@@ -95,8 +93,8 @@ FM.review.decide = function (opts, cb) {
             var M = 'forms/responses/' + opts.formId + '/' + opts.uid + '/meta/';
             var patch = {};
             patch[M + 'status'] = action;
-            patch[M + 'score'] = score;             /* null = sin calificación (borra la anterior) */
-            patch[M + 'staffNote'] = note || null;  /* vacío = sin nota (borra la anterior) */
+            patch[M + 'score'] = score;
+            patch[M + 'staffNote'] = note || null;
             patch[M + 'reviewedBy'] = s.uid;
             patch[M + 'reviewedByName'] = ctx.rName;
             patch[M + 'reviewedAt'] = now;
@@ -126,7 +124,6 @@ FM.review.decide = function (opts, cb) {
     });
 };
 
-/* ==== RESET: devolver a Pendiente (por si algo se decidió mal) ==== */
 FM.review.reset = function (formId, uid, cb) {
     cb = cb || function () {};
     core.session(function (s) {

@@ -64,7 +64,6 @@
         return null;
     }
 
-    /* ==== ERRORES (SC.access.errors) ==== */
 
     const AUTH_ERRORS = {
         'auth/invalid-credential': 'Correo o contraseña incorrectos.',
@@ -126,7 +125,6 @@
     };
     SC.access.errors = errors;
 
-    /* ==== REGISTRO DE CAMPOS (API) ==== */
 
     function sorted() {
         return SC.access.fields.slice().sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
@@ -156,7 +154,6 @@
         return { ok: true };
     };
 
-    /* ==== CEREBRO: ENTRAR ==== */
 
     function safeOnce(ref) {
         return ref.once('value').catch(function (err) {
@@ -221,7 +218,7 @@
             })
             .then(function () {
                 setBusy(false, 'Entrar');
-                close(); // session.js toma el header con onAuthStateChanged
+                close();
             })
             .catch(function (err) {
                 setBusy(false, 'Entrar');
@@ -235,7 +232,6 @@
             });
     }
 
-    /* ==== NAVEGACIÓN ENTRE MODALS (abrir primero, cerrar después) ==== */
 
     function snapshotDialogs() {
         const root = document.getElementById('modals-root') || document.body;
@@ -250,9 +246,7 @@
     function tryOpenCreate() {
         const before = snapshotDialogs();
 
-        // 1) Puerta oficial de category_acc.js: evento en DOCUMENT
         try { document.dispatchEvent(new CustomEvent('sc:open-create')); } catch (e) {}
-        // 2) Extras inofensivos por si una versión futura expone más puertas
         try { if (SC.create && typeof SC.create.open === 'function') SC.create.open(); } catch (e) {}
         try { window.dispatchEvent(new CustomEvent('stevscon:open-create')); } catch (e) {}
         try { if (typeof SC.emit === 'function') SC.emit('open-create'); } catch (e) {}
@@ -272,7 +266,6 @@
     function tryOpenReset() {
         const before = snapshotDialogs();
 
-        // 1) Puerta oficial: acc_reset.js
         if (SC.reset && typeof SC.reset.open === 'function') {
             try {
                 SC.reset.open();
@@ -289,7 +282,6 @@
             console.error('[Stevscon Access] SC.reset.open no existe: acc_reset.js no cargó con la ruta que pone el index. Uso el MODAL DE RESERVA.');
         }
 
-        // 2) Plan B: modal de reserva propio de este file
         try {
             return openFallbackReset('');
         } catch (e) {
@@ -298,7 +290,6 @@
         }
     }
 
-    /* ==== MODAL DE RESERVA DE RESET (plan B autocontenido) ==== */
 
     function fbShowErr(msg) {
         if (!fbErr) return;
@@ -414,7 +405,6 @@
         card.setAttribute('aria-label', 'Recuperar contraseña');
         card.style.cssText = 'width:100%;max-width:400px;background:#161221;border:1px solid rgba(167,139,250,.35);border-radius:14px;padding:26px 24px;font-family:Inter,sans-serif;color:#ede9fe;';
 
-        // ---- VISTA 1: formulario ----
         fbViewForm = document.createElement('div');
 
         const head = document.createElement('div');
@@ -484,7 +474,6 @@
         fbViewForm.appendChild(formEl);
         fbViewForm.appendChild(backLink);
 
-        // ---- VISTA 2: enviado ----
         fbViewSent = document.createElement('div');
         fbViewSent.classList.add('hidden');
 
@@ -538,7 +527,6 @@
         return true;
     }
 
-    // Deep-link de EMERGENCIA: solo si acc_reset.js no cargó.
     function checkResetDeepLink() {
         try {
             if (SC.reset && typeof SC.reset.open === 'function') return;
@@ -552,7 +540,6 @@
         } catch (e) {}
     }
 
-    /* ==== MODAL ACCESS ==== */
 
     function makeLink(text, onClick) {
         const b = document.createElement('button');
@@ -628,7 +615,6 @@
         btnEl.appendChild(labelEl);
         formEl.appendChild(btnEl);
 
-        // v15: abrir destino PRIMERO, verificar, y SOLO ENTONCES cerrar ACCESS.
         const forgot = makeLink('¿Olvidaste tu contraseña?', function () {
             errors.clear();
             if (tryOpenReset()) { close(); return; }

@@ -14,7 +14,6 @@
             const s = SCSET.settings || {};
             const api = SCSET.api && SCSET.api.preferences;
 
-            /* ==== GENERAL · idioma, tema, estado ==== */
             const c = ui.card();
 
             c.appendChild(ui.row('Idioma de la web', 'Toda la web en Español o Inglés',
@@ -38,7 +37,6 @@
             c.appendChild(ui.note('El estado por defecto se aplica cada vez que inicias sesión.'));
             body.appendChild(c);
 
-            /* ==== MENSAJES DIRECTOS · control total de tu bandeja ==== */
             const m = ui.card();
 
             m.appendChild(ui.row('Recibir Mensajes Directos', 'Quién puede abrirte un MD en el Social',

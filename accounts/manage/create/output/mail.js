@@ -15,7 +15,7 @@
     const SC = window.StevsconCreate = window.StevsconCreate || {};
 
     const CONFIG = {
-        serviceId: 'stevscon_servicebot',   
+        serviceId: 'stevscon_servicebot',
         templateId: 'template_md8rdiq',
         publicKey: 'RYyF8BfVKEL2CwV4y'
     };
@@ -36,11 +36,6 @@
         return Boolean(CONFIG.serviceId && CONFIG.templateId && CONFIG.publicKey && window.emailjs);
     }
 
-    /**
-     * Envía la bienvenida. Recibe: { email, username, handler, userId }
-     * Devuelve una promesa: { sent: true } o { sent: false, reason }
-     * NUNCA lanza error: el registro de la cuenta no depende del correo.
-     */
     function sendWelcome(user) {
         return new Promise(function (resolve) {
             if (!isConfigured()) {

@@ -35,14 +35,12 @@
         document.head.appendChild(css);
     }
 
-    /* pinta el badge con el último total conocido (aunque el botón sea nuevo) */
     function paintBadge() {
         if (!badge) return;
         badge.textContent = lastTotal > 99 ? '99+' : String(lastTotal);
         badge.classList.toggle('scdm-show', lastTotal > 0);
     }
 
-    /* ==== inyección del botón en el header de la página Social ==== */
     function ensureBtn() {
         if (btn && btn.parentNode) return true;
         const page = document.getElementById('scsoc-social-page');
@@ -60,7 +58,7 @@
         badge = document.createElement('span');
         badge.className = 'scdm-fabdot';
         btn.appendChild(badge);
-        paintBadge(); /* FIX: nace con lo que ya se sabía */
+        paintBadge();
         btn.addEventListener('click', function (e) {
             e.stopPropagation();
             SCSOC.dmUI.open();
@@ -81,8 +79,6 @@
         })();
     });
 
-    /* FIX: si la página Social ya estaba abierta al cargar (orden raro de
-       scripts o recarga), no esperamos ningún evento: nos inyectamos ya. */
     injectCss();
     (function bootWait() {
         if (ensureBtn()) return;
@@ -90,12 +86,10 @@
         if (++tries < 200) setTimeout(bootWait, 150);
     })();
 
-    /* si la página Social se cierra, el drawer también */
     document.addEventListener('sc:social-closed', function () {
         if (SCSOC.dmUI) { try { SCSOC.dmUI.close(); } catch (e) {} }
     });
 
-    /* ==== badge EN VIVO (requiere sesión) ==== */
     function startBadge() {
         if (offInbox || !SCSOC.dm || !SCSOC.dm.watchInbox) return;
         offInbox = SCSOC.dm.watchInbox(function (list) {
@@ -103,7 +97,6 @@
             if (!badgeOff) paintBadge();
             else if (badge) badge.classList.remove('scdm-show');
         });
-        /* Preferencias: el badge se puede apagar desde Ajustes > Preferencias */
         if (SCSOC.dm.watchMyPrefs) {
             SCSOC.dm.watchMyPrefs(function (p) {
                 badgeOff = !!(p && p.mdBadge === 'no');
@@ -127,8 +120,6 @@
         } else setTimeout(waitDm, 150);
     })();
 
-    /* «Mensaje» en perfiles ahora vive en md_friends.js (barra de acciones
-       con Solicitud de Amistad + Mensaje). Sección retirada en v4. */
 
     console.log('[Stevscon] md_button.js listo (v2) — badge a prueba de todo: late-inject + auto-boot + reset.');
 })(window, document);

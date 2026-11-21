@@ -15,7 +15,6 @@
   <meta name="robots" content="index, follow">
   <meta name="theme-color" content="#0f172a">
 
-  <!-- Open Graph (cómo se ve Stevscon al compartir el link) -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Stevscon.com">
   <meta property="og:title" content="Stevscon.com — Comunidad, chat en tiempo real y wiki oficial">
@@ -44,21 +43,17 @@
   <link rel="stylesheet" href="styles.css?v=2">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-<!-- 0) JERARQUÍA DE RANGOS · owner.js SIEMPRE ALTO DE TODO -->
-  <script defer src="accounts/owner.js?v=5"></script>
-  <script defer src="accounts/admin.js?v=5"></script>
+  <script defer src="accounts/manage/owner.js?v=5"></script>
+  <script defer src="accounts/manage/admin.js?v=5"></script>
 
-  <!-- 1) SDK de Firebase -->
   <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 
-  <!-- 2) Configuración de Firebase -->
   <script defer src="firebase_data.js?v=13"></script>
   <script defer src="translate.js?v=5"></script>
 
-  <!-- 3) CREATE · Output -->
   <script defer src="accounts/manage/create/output/account.js?v=5"></script>
   <script defer src="accounts/manage/create/output/username.js?v=5"></script>
   <script defer src="accounts/manage/create/output/handler.js?v=5"></script>
@@ -66,17 +61,14 @@
   <script defer src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
   <script defer src="accounts/manage/create/output/mail.js?v=5"></script>
 
-  <!-- 4) CREATE · Botones -->
   <script defer src="accounts/manage/create/buttons/acc_allow.js?v=5"></script>
   <script defer src="accounts/manage/create/buttons/acc_create.js?v=6"></script>
   <script defer src="accounts/manage/create/buttons/acc_errors.js?v=5"></script>
 
- <!-- 6) ACCESS · Inicio de sesión + sesión en el header -->
   <script defer src="accounts/manage/access/output/access_account.js?v=12"></script>
   <script defer src="accounts/manage/access/output/access_password.js?v=12"></script>
   <script defer src="accounts/manage/access/session.js?v=12"></script>
 
-  <!-- RESET · output registra el campo PRIMERO, el coordinador va DESPUÉS -->
   <script defer src="accounts/manage/reset/output.js?v=12"></script>
   <script defer src="accounts/manage/reset/reset_errors.js?v=12"></script>
   <script defer src="accounts/manage/reset/mail_reset.js?v=13"></script>
@@ -84,10 +76,8 @@
 
   <script defer src="accounts/manage/access/buttons/acc_access.js?v=15"></script>
 
-  <!-- 5) Coordinador (SIEMPRE al final) -->
   <script defer src="accounts/category_acc.js?v=18"></script>
 
-  <!-- 7) PROFILES · Perfiles estilo Discord (ver + editar) -->
   <script defer src="profiles/manage/profile_manage/utils/age.js?v=8"></script>
   <script defer src="profiles/manage/profile_manage/utils/ui_profile.js?v=10"></script>
   <script defer src="profiles/manage/profile_manage/edit/banner.js?v=8"></script>
@@ -102,8 +92,6 @@
 <script defer src="profiles/manage/badges/badges_system.js?v=6"></script>
 <script defer src="profiles/manage/badges/badges_manage.js?v=6"></script>
 
-  <!-- 8) ONLINE STATUS · estados de conexión estilo Discord -->
-  <!-- REGLA: SIEMPRE DESPUÉS del grupo 7 (necesita a ui_profile.js y category_prf.js cargados antes) -->
   <script defer src="profiles/manage/online_status/online.js?v=1"></script>
   <script defer src="profiles/manage/online_status/inactive.js?v=2"></script>
   <script defer src="profiles/manage/online_status/busy.js?v=1"></script>
@@ -112,13 +100,10 @@
 
   <script defer src="profiles/media_acc.js?v=14"></script>
 
-  <!-- 8.5) SWITCH · Cambio de cuentas estilo Discord (store → motor → panel) -->
   <script defer src="profiles/manage/switch_acc/store.js?v=2"></script>
   <script defer src="profiles/manage/switch_acc/switch.js?v=1"></script>
   <script defer src="profiles/manage/switch_acc/panel.js?v=1"></script>
-  
-  <!-- 9) SETTINGS · Ajustes de cuenta (engranaje junto al avatar) -->
-  <!-- output primero (UI), buttons después (Firebase), coordinador AL FINAL -->
+
   <script defer src="accounts/manage/settings/output/ui_settings.js?v=8"></script>
   <script defer src="accounts/manage/settings/output/ui_preferences.js?v=2"></script>
   <script defer src="accounts/manage/settings/output/ui_privacy.js?v=1"></script>
@@ -127,17 +112,15 @@
   <script defer src="accounts/manage/settings/buttons/set_privacy.js?v=1"></script>
   <script defer src="accounts/manage/settings/buttons/set_data.js?v=1"></script>
 
-  <!-- SECURITY · Zona de Seguridad (output primero, buttons después) -->
   <script defer src="accounts/manage/settings/security/output/ui_security.js?v=1"></script>
   <script defer src="accounts/manage/settings/security/output/ui_sec_password.js?v=1"></script>
   <script defer src="accounts/manage/settings/security/output/ui_sec_mail.js?v=1"></script>
   <script defer src="accounts/manage/settings/security/output/ui_sec_delete.js?v=1"></script>
   <script defer src="accounts/manage/settings/security/buttons/sec_reauth.js?v=1"></script>
   <script defer src="accounts/manage/settings/security/buttons/sec_password.js?v=1"></script>
-  <script defer src="accounts/manage/settings/security/buttons/sec_mail.js?v=1"></script>
+  <script defer src="accounts/manage/settings/security/buttons/sec_email.js?v=1"></script>
   <script defer src="accounts/manage/settings/security/buttons/sec_delete.js?v=1"></script>
 
-<!-- PUERTAS v3 · Social y Wiki ahora viven ARRIBA, centradas -->
   <script defer src="/social/manage/posts/category_social.js?v=3"></script>
   <script defer src="wiki/manage/category_wiki.js?v=3"></script>
 
@@ -148,7 +131,6 @@
   <script defer src="banned.js?v=4"></script>
   <script defer src="unban.js?v=1"></script>
 
-  <!-- ==== SEO · estilos del bloque estático (autónomos, no dependen de styles.css) ==== -->
   <style>
     #seo-static{max-width:900px;margin:0 auto;padding:46px 20px 10px;font-family:'Inter',sans-serif;color:#e2e8f0;line-height:1.7}
     #seo-static .seo-card{background:rgba(148,163,184,.08);border:1px solid rgba(148,163,184,.18);border-radius:16px;padding:26px 28px;margin:0 0 16px}
@@ -165,7 +147,7 @@
     #site-footer{max-width:900px;margin:0 auto;padding:16px 20px 30px;font:12.5px 'Inter',sans-serif;color:#64748b;display:flex;gap:20px;flex-wrap:wrap;justify-content:center}
     #site-footer a{color:#64748b;text-decoration:none}
     #site-footer a:hover{color:#a78bfa;text-decoration:underline}
-  </style>
+</style>
 <script src="/social/move.js?v=2"></script>
 <script src="/console_guard.js?v=1"></script>
 </head>
@@ -181,7 +163,6 @@
 
   <main id="app-main-viewport" class="main-viewport">
 
-    <!-- ==== BLOQUE ESTÁTICO SEO · visible hasta que la app monta su primera vista ==== -->
     <section id="seo-static">
       <div class="seo-card">
         <h1>Stevscon.com</h1>
@@ -216,11 +197,9 @@
         </ul>
       </div>
     </section>
-    <!-- ==== /BLOQUE ESTÁTICO SEO ==== -->
 
   </main>
 
-  <!-- Footer global: visible siempre, también con la app montada -->
   <footer id="site-footer">
     <a href="/services/about.html">Acerca de</a>
     <a href="/services/about.html#contacto">Contacto</a>
@@ -232,15 +211,13 @@
   <div id="alerts-container" class="alerts-wrapper"></div>
   <div id="modals-root" class="modals-wrapper"></div>
 
-  <!-- Autodiagnóstico: si la web no arranca, dice en pantalla qué file falta -->
   <script>
   window.addEventListener('load', function () {
     setTimeout(function () {
       var main = document.getElementById('app-main-viewport');
       if (!main) return;
-      /* ignora el bloque SEO: solo cuenta vistas reales montadas por la app */
       var mounted = Array.prototype.some.call(main.children, function (c) { return c.id !== 'seo-static'; });
-      if (mounted) return; // todo bien, la web arrancó
+      if (mounted) return;
       var missing = [];
       if (!window.StevsconRanks) missing.push('owner.js / admin.js');
       if (!window.StevsconFirebase) missing.push('firebase_data.js');
@@ -256,9 +233,8 @@
       main.appendChild(box);
     }, 1500);
   });
-  </script>
+</script>
 
-  <!-- El bloque SEO se autodestruye en cuanto la app monta su primera vista real -->
   <script>
   (function () {
     var main = document.getElementById('app-main-viewport');
@@ -276,6 +252,6 @@
     });
     obs.observe(main, { childList: true });
   })();
-  </script>
+</script>
 </body>
 </html>

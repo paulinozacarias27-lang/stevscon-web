@@ -29,7 +29,6 @@
         return F && F.auth && F.auth.currentUser && F.auth.currentUser.email ? F.auth.currentUser.email : '';
     }
 
-    // ---- Ventana (reusa .modal-overlay/.modal de tu styles.css) ----
     function build() {
         if (overlay) return;
         const root = document.getElementById('modals-root');
@@ -91,7 +90,6 @@
         if (!overlay || !isOpen) return;
         overlay.classList.add('hidden');
         isOpen = false;
-        // Si el modal de perfil sigue abierto detrás, no devolvemos el scroll.
         const prf = document.getElementById('prf-modal-overlay');
         const prfOpen = prf && !prf.classList.contains('hidden');
         document.body.style.overflow = prfOpen ? 'hidden' : '';
@@ -102,7 +100,6 @@
         if (e.key === 'Escape' && isOpen) close();
     });
 
-    // ---- Piezas visuales ----
     function errorBox(msg) {
         const b = document.createElement('div');
         b.className = 'errors-box';
@@ -181,7 +178,7 @@
                 SCp.switchAcc.enter(entry).catch(function (err) {
                     switching = false;
                     if (err && (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential')) {
-                        close(); // el motor ya abrió el acceso normal para re-ingresar
+                        close();
                         return;
                     }
                     renderList(err && err.msg ? err.msg : 'No se pudo cambiar de cuenta.');
@@ -191,7 +188,6 @@
         return row;
     }
 
-    // ---- Vista: lista de cuentas ----
     function renderList(errMsg) {
         if (!body) return;
         while (body.firstChild) body.removeChild(body.firstChild);
@@ -201,7 +197,6 @@
         const uid = currentUid();
         const list = SCp.switchAcc.list();
 
-        // Cuenta actual SIN guardar → atajo para guardarla (como Discord).
         if (uid && !SCp.switchAcc.find(uid)) {
             const warn = document.createElement('div');
             warn.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px dashed rgba(167,139,250,.45);border-radius:12px;background:rgba(139,92,246,.07);margin-bottom:10px;';
@@ -233,7 +228,6 @@
             body.appendChild(accountRow(entry, entry.uid === uid));
         });
 
-        // Añadir cuenta
         const add = document.createElement('button');
         add.type = 'button';
         add.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:9px;width:100%;padding:11px 0;border-radius:10px;border:1px dashed rgba(167,139,250,.45);background:none;color:#c4b5fd;font-family:Inter,sans-serif;font-size:13px;font-weight:800;cursor:pointer;transition:background .2s ease,border-color .2s ease;';
@@ -248,7 +242,6 @@
         add.addEventListener('click', function () { renderAddForm({}); });
         body.appendChild(add);
 
-        // Contador por rango + nota honesta
         const meta = document.createElement('p');
         meta.textContent = list.length + ' de ' + SCp.switchAcc.limitFor() + ' cuentas guardadas (según tu rango).';
         meta.style.cssText = 'margin-top:10px;text-align:center;font-size:11.5px;color:#8f7fc0;font-weight:600;';
@@ -259,7 +252,6 @@
         body.appendChild(note);
     }
 
-    // ---- Vista: formulario añadir / guardar actual ----
     function renderAddForm(opts) {
         if (!body) return;
         const o = opts || {};
@@ -329,9 +321,9 @@
             slot.textContent = '';
 
             SCp.switchAcc.addAccount(ident, pass).then(function (res) {
-                if (res && res.switched) return;   // la web se recarga sola
+                if (res && res.switched) return;
                 switching = false;
-                renderList();                      // guardada la actual → refresca
+                renderList();
             }).catch(function (err) {
                 switching = false;
                 submitBtn.disabled = false;
@@ -353,7 +345,6 @@
         setTimeout(function () { (o.lockedEmail ? inPass : inId).focus(); }, 50);
     }
 
-    // ---- El botón que vive al final del panel "Mi perfil" ----
     SCp.switchAcc.mountButton = function (container) {
         if (!container) return;
         const b = document.createElement('button');

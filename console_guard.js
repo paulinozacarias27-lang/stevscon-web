@@ -17,7 +17,6 @@
 
     var WARN = '%c⚠️ Stevscon.com — Zona protegida';
 
-    /* atajos: F12 · Ctrl+Shift+I/J/C/K · Ctrl+U (ver código) */
     document.addEventListener('keydown', function (e) {
         var k = (e.key || '').toLowerCase();
         if (e.key === 'F12') { e.preventDefault(); e.stopPropagation(); return false; }
@@ -27,7 +26,6 @@
         if (e.ctrlKey && k === 'u') { e.preventDefault(); e.stopPropagation(); return false; }
     }, true);
 
-    /* clic derecho: bloqueado, salvo en campos de texto (pegar con menú) */
     document.addEventListener('contextmenu', function (e) {
         var t = e.target;
         var tag = (t && t.tagName || '').toLowerCase();
@@ -35,8 +33,6 @@
         e.preventDefault();
     });
 
-    /* detección por diferencia de tamaño (DevTools abierto acostumbra a
-     * separar window.outer de window.inner) */
     var openCount = 0;
     function isOpen() {
         var w = 170;
@@ -45,7 +41,7 @@
     }
     setInterval(function () {
         if (!isOpen()) { openCount = 0; return; }
-        if (++openCount === 2) { /* confirma en el 2º chequeo: evita falsos por zoom */
+        if (++openCount === 2) {
             try { console.clear(); console.log(WARN, 'color:#f87171;font:800 16px Inter,sans-serif;'); } catch (e) {}
         }
     }, 1200);

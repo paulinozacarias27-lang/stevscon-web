@@ -51,7 +51,6 @@
         document.head.appendChild(css);
     }
 
-    /* filas estilo md_ui (misma pinta: userHead + preview + badge) */
     function rowFor(peerUid, opts) {
         const row = E('div', 'scdm-row');
         const idb = E('div');
@@ -94,7 +93,6 @@
     function paintList(host) {
         const list = curList || [];
         if (T.active === 'fr') {
-            /* v2 · SOLICITUDES DE AMISTAD pendientes (aceptar / rechazar) */
             const F = SCSOC.dmFriends;
             const pend = (F && F.pendingList) ? F.pendingList() : [];
             pend.forEach(function (p) {
@@ -173,7 +171,6 @@
             });
             return;
         }
-        /* MD TEMPORALES · conversaciones vivas que NO son amigos ni ignorados */
         const rows = list.filter(function (e) {
             return !(C && C.isIgnored && C.isIgnored(e.convId)) && !friends[e.peerUid];
         });
@@ -236,14 +233,12 @@
         paintList(host);
     }
 
-    /* md_ui.js llama a render() cada vez que la bandeja cambia */
     T.render = function (win, body, list, meUid) {
         curWin = win; curBody = body; curList = list || []; curMe = meUid || '';
         injectCss();
         paint();
     };
 
-    /* refresco en vivo por amigos (la bandeja ya repinta sola vía md_ui) */
     if (C) {
         C.watchFriends(function (f) { friends = f || {}; paint(); });
         C.watchIgnored(function () { paint(); });

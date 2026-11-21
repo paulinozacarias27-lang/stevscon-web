@@ -67,7 +67,6 @@ function style() {
     (document.head || document.documentElement).appendChild(st);
 }
 
-/* ==== ROLLOUT: ¿está todo el stack? ==== */
 var REQ = [
     ['forms_core.js (FM.core)',            function () { return FM.core; }],
     ['data_save/public_forms.js (FM.data)', function () { return FM.data; }],
@@ -88,7 +87,6 @@ C.check = function () {
     return missing;
 };
 
-/* ==== estado de la página montada ==== */
 var viewEl = null, tabs = {}, badgeEl = null, staffTab = null, userHost = null;
 var lastHash = '§none§', lastUid = '§none§';
 
@@ -160,7 +158,7 @@ function wireAuth() {
             var uid = u ? u.uid : null;
             refreshUser();
             refreshBadge();
-            if (uid !== lastUid) { lastUid = uid; doRoute(true); }   /* login/logout: re-pintar */
+            if (uid !== lastUid) { lastUid = uid; doRoute(true); }
         });
     } catch (e) {}
 }
@@ -214,7 +212,6 @@ function refreshBadge() {
     });
 }
 
-/* ==== EL ROUTER (con dedupe: forms.html + listener interno no pintan doble) ==== */
 function doRoute(force) {
     if (!viewEl) return;
     var hash = (location.hash || '').replace(/^#/, '');
@@ -257,15 +254,13 @@ function setActive(key) {
     });
 }
 
-/* ==== EL CONTRATO QUE forms.html ESPERA ==== */
 var missingNow = C.check();
 if (missingNow.length) {
-    /* ROLLOUT: no exponer FM.connect → forms.html muestra "Muy pronto" */
     console.warn('[Stevscon][Forms] En construcción — faltan módulos: ' + missingNow.join(' · '));
 } else {
     FM.connect = {
         mount: function (user) {
-            if (viewEl) { refreshUser(); refreshBadge(); return; }   /* idempotente */
+            if (viewEl) { refreshUser(); refreshBadge(); return; }
             var missing = C.check();
             if (missing.length) {
                 console.warn('[Stevscon][Forms] Faltan módulos: ' + missing.join(' · '));
@@ -280,14 +275,13 @@ if (missingNow.length) {
             buildShell(root);
             lastUid = (user && user.uid) ? user.uid : null;
             wireAuth();
-            doRoute(true);   /* primer pintado: forms.html apaga su spinner */
+            doRoute(true);
         },
         route: function () { doRoute(false); },
         check: C.check
     };
 }
 
-/* red de seguridad por si algún día este page no usa el boot de forms.html */
 window.addEventListener('hashchange', function () { doRoute(false); });
 
 console.log('[Stevscon] public/connect_form.js listo (v2) — contrato FM.connect.mount/route con forms.html.');

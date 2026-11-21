@@ -60,8 +60,6 @@
                     }
                 });
                 setTimeout(function () {}, 0);
-                // Si cierra el modal sin confirmar, no hay callback: usamos el cierre por ESC/click.
-                // Para no dejar la promesa colgada, sondeamos si el modal fue removido:
                 (function watchClosed() {
                     setTimeout(function () {
                         const still = document.querySelector('div[style*="z-index:3500"]');

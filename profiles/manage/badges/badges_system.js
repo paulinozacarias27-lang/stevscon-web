@@ -33,10 +33,9 @@
     SB._systemLoaded = true;
 
     const OWNER_EMAIL = 'steven23hd@gmail.com';
-    const NODE = 'social/badges';        /* social/badges/{uid}/{badgeId} = { by, at } */
-    const NODE_LOG = 'social/badges_log'; /* social/badges_log/{uid}/{entryId} */
+    const NODE = 'social/badges';
+    const NODE_LOG = 'social/badges_log';
 
-    /* ==== MATRIZ DE PERMISOS: roles que pueden manejar cada badge ==== */
     const WHO = {
         owner: ['owner'],
         admin: ['owner', 'admin'],
@@ -48,14 +47,12 @@
         campeon:  ['owner', 'admin'],
         tryhard:  ['owner', 'admin'],
         premium:  ['owner', 'admin']
-        /* badges futuros sin entrada aquí -> ['owner','admin'] */
     };
 
     let _who = null, _whoP = null;
 
     function db() { return firebase.database(); }
 
-    /* ==== QUIÉN SOY (rol del actor): owner por email, staff por social/staff ==== */
     function who() {
         if (_who) return Promise.resolve(_who);
         const a = firebase.auth && firebase.auth().currentUser;
@@ -102,14 +99,12 @@
         });
     }
 
-    /* ==== LOG DE AUDITORÍA (best-effort: nunca rompe el grant/revoke) ==== */
     function log(uid, action, badgeId, w) {
         const entry = { action: action, badge: badgeId, by: (w && w.uid) || '', at: Date.now() };
         if (w && w.email) entry.byEmail = w.email;
-        return db().ref(NODE_LOG + '/' + uid).push(entry).catch(function () { /* sin reglas de log aún */ });
+        return db().ref(NODE_LOG + '/' + uid).push(entry).catch(function () {  });
     }
 
-    /* ==== ÚNICA puerta de escritura ==== */
     function write(uid, badgeId, action) {
         if (!SB.CATALOG || !SB.CATALOG[badgeId]) {
             return Promise.reject(new Error('Badge desconocido: "' + badgeId + '" (¿está en SB.CATALOG de badges_core.js?)'));
@@ -137,7 +132,6 @@
     function grant(uid, badgeId) { return write(uid, badgeId, 'grant'); }
     function revoke(uid, badgeId) { return write(uid, badgeId, 'revoke'); }
 
-    /* ==== LECTURAS ==== */
     function has(uid, badgeId) {
         return db().ref(NODE + '/' + uid + '/' + badgeId).once('value').then(function (s) { return !!s.val(); });
     }
@@ -152,7 +146,6 @@
         }).catch(function () { return []; });
     }
 
-    /* ==== REGLAS AUTOMÁTICAS (gancho a futuro, hoy sin uso) ==== */
     const _rules = [];
     function addRule(name, fn) {
         _rules.push({ name: name, fn: fn });
@@ -166,14 +159,13 @@
         return _rules.length;
     }
 
-    /* ==== API pública ==== */
     SB.system = {
         who: who, canManage: canManage, roleCan: roleCan,
         grant: grant, revoke: revoke,
         has: has, list: list, logFor: logFor,
         addRule: addRule, emit: emit
     };
-    SB.addRule = addRule; /* alias corto */
+    SB.addRule = addRule;
 
     console.log('[Stevscon] badges_system.js listo (v6) — EL CEREBRO: permisos + escrituras + auditoría 🧠');
 })(window, document);

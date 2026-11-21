@@ -8,7 +8,6 @@
 (function (window) {
     'use strict';
 
-    // 1. Configuración del proyecto Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyAJN6uAVY65MAXJW1_0aHHP0L5okE9Tytw",
         authDomain: "stevscon-protocole-base.firebaseapp.com",
@@ -20,13 +19,11 @@
         measurementId: "G-X93QHQYQPM"
     };
 
-    // 2. Comprobación defensiva del SDK de Firebase
     if (typeof firebase === 'undefined') {
         console.error("[Stevscon Firebase] Error: El SDK de Firebase no ha sido cargado en el HTML.");
         return;
     }
 
-    // 3. Inicializar app evitando duplicados
     let app;
     if (!firebase.apps.length) {
         app = firebase.initializeApp(firebaseConfig);
@@ -34,12 +31,10 @@
         app = firebase.app();
     }
 
-    // 4. Instancias principales de servicios
     const auth = firebase.auth();
     const database = firebase.database();
     const storage = firebase.storage();
 
-    // 5. Exposición global para los módulos de la aplicación
     window.StevsconFirebase = {
         app: app,
         auth: auth,
@@ -47,7 +42,6 @@
         storage: storage,
         config: firebaseConfig,
 
-        // Atajos rápidos para referencias comunes
         usersRef: () => database.ref('users'),
         userRef: (uid) => database.ref(`users/${uid}`),
         profilesRef: () => database.ref('profiles'),
@@ -60,5 +54,4 @@
 
 })(window);
 
-// Correos de Firebase (reset, verificación) en español:
 firebase.auth().languageCode = 'es';

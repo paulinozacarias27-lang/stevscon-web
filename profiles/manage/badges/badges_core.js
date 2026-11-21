@@ -41,10 +41,8 @@
     if (SB._coreLoaded) return;
     SB._coreLoaded = true;
 
-    const NODE = 'social/badges'; /* social/badges/{uid}/{badgeId} = { by, at } */
+    const NODE = 'social/badges';
 
-    /* ==== CORONA OWNER (SVG estático — SIEMPRE corona, fondo transparente) ==== */
-    /* {S} = tamaño px · {G} = ID de gradiente ÚNICO por instancia (fix v3) */
     const CROWN_SVG =
         '<svg xmlns="http://www.w3.org/2000/svg" width="{S}" height="{S}" viewBox="0 0 24 24" aria-hidden="true">' +
         '<defs><linearGradient id="{G}" x1="0" y1="0" x2="1" y2="1">' +
@@ -57,7 +55,6 @@
         '<rect x="5.7" y="19.4" width="12.6" height="1.9" rx=".95" fill="url(#{G})" stroke="#92400e" stroke-width=".7"/>' +
         '<circle cx="12" cy="14.3" r="1.7" fill="#a78bfa" stroke="#6d28d9" stroke-width=".8"/></svg>';
 
-    /* ==== ADMIN (v6) — llave roja estilo empleados de Discord: autoridad pura ==== */
     const ADMIN_SVG =
         '<svg xmlns="http://www.w3.org/2000/svg" width="{S}" height="{S}" viewBox="0 0 24 24" aria-hidden="true">' +
         '<defs><linearGradient id="{G}" x1="0" y1="0" x2="1" y2="1">' +
@@ -66,7 +63,6 @@
         '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" fill="none" stroke="url(#{G})" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>' +
         '<circle cx="19.6" cy="17.6" r="1.1" fill="#fee2e2" stroke="#b91c1c" stroke-width=".5"/></svg>';
 
-    /* ==== DEV (v5) — brackets </> morados, estilo Active Developer de Discord ==== */
     const DEV_SVG =
         '<svg xmlns="http://www.w3.org/2000/svg" width="{S}" height="{S}" viewBox="0 0 24 24" aria-hidden="true">' +
         '<defs><linearGradient id="{G}" x1="0" y1="0" x2="1" y2="1">' +
@@ -77,7 +73,6 @@
         '<path d="M13.4 4.6 10.6 19.4" fill="none" stroke="url(#{G})" stroke-width="2.3" stroke-linecap="round"/>' +
         '<circle cx="20.9" cy="4.9" r="1.25" fill="#c4b5fd" stroke="#5b21b6" stroke-width=".6"/></svg>';
 
-    /* ==== OG (v5) — estrella bronce vintage con cintas, "estuvo desde el principio" ==== */
     const OG_SVG =
         '<svg xmlns="http://www.w3.org/2000/svg" width="{S}" height="{S}" viewBox="0 0 24 24" aria-hidden="true">' +
         '<defs><linearGradient id="{G}" x1="0" y1="0" x2="1" y2="1">' +
@@ -88,7 +83,6 @@
         '<path d="M12 2.2l2.7 5.4 6 .9-4.3 4.2 1 6L12 15.9l-5.4 2.8 1-6L3.3 8.5l6-.9Z" fill="url(#{G})" stroke="#7c4a04" stroke-width=".9" stroke-linejoin="round"/>' +
         '<circle cx="10.1" cy="8.2" r="1" fill="#fff3d6" opacity=".9"/></svg>';
 
-    /* ==== CAZABUGS (v5) — lupa esmeralda sobre un bichito, para los del Discord oficial ==== */
     const BUG_SVG =
         '<svg xmlns="http://www.w3.org/2000/svg" width="{S}" height="{S}" viewBox="0 0 24 24" aria-hidden="true">' +
         '<defs><linearGradient id="{G}" x1="0" y1="0" x2="1" y2="1">' +
@@ -103,7 +97,6 @@
         '<path d="M10.4 9.4v3.2M9.2 10.2h2.4M9.1 11.1h2.6" stroke="#14532d" stroke-width=".6" fill="none"/>' +
         '<circle cx="17.6" cy="3.9" r="1.1" fill="#bbf7d0" stroke="#15803d" stroke-width=".5"/></svg>';
 
-    /* ==== CREADOR (v5) — cámara de video violeta, para creadores de contenido ==== */
     const CAM_SVG =
         '<svg xmlns="http://www.w3.org/2000/svg" width="{S}" height="{S}" viewBox="0 0 24 24" aria-hidden="true">' +
         '<defs><linearGradient id="{G}" x1="0" y1="0" x2="1" y2="1">' +
@@ -114,7 +107,6 @@
         '<circle cx="7.4" cy="12" r="2" fill="#f5d0fe" stroke="#6d28d9" stroke-width=".8"/>' +
         '<circle cx="12.6" cy="9.2" r="1" fill="#f5d0fe" opacity=".85"/></svg>';
 
-    /* ==== CAMPEÓN (v6) — trofeo dorado con asas, ganador de eventos oficiales ==== */
     const TROPHY_SVG =
         '<svg xmlns="http://www.w3.org/2000/svg" width="{S}" height="{S}" viewBox="0 0 24 24" aria-hidden="true">' +
         '<defs><linearGradient id="{G}" x1="0" y1="0" x2="1" y2="1">' +
@@ -129,7 +121,6 @@
         '<circle cx="10.1" cy="6.3" r="1" fill="#fffbeb" opacity=".9"/>' +
         '<circle cx="20.6" cy="3.9" r="1.05" fill="#fef08a" stroke="#a16207" stroke-width=".5"/></svg>';
 
-    /* ==== TRYHARD (v6) — gamepad naranja con rayo, jugadores super avanzados ==== */
     const PAD_SVG =
         '<svg xmlns="http://www.w3.org/2000/svg" width="{S}" height="{S}" viewBox="0 0 24 24" aria-hidden="true">' +
         '<defs><linearGradient id="{G}" x1="0" y1="0" x2="1" y2="1">' +
@@ -141,7 +132,6 @@
         '<circle cx="17.9" cy="12.5" r="1.15" fill="#ffedd5" stroke="#7c2d12" stroke-width=".7"/>' +
         '<path d="M20.8 1.7l-2.1 3.1h1.6l-1 2.7 2.8-3.4h-1.7Z" fill="#fde047" stroke="#a16207" stroke-width=".55" stroke-linejoin="round"/></svg>';
 
-    /* ==== PREMIUM (v6) — diamante hielo con facetas, apoyo con dinero real ==== */
     const DIAMOND_SVG =
         '<svg xmlns="http://www.w3.org/2000/svg" width="{S}" height="{S}" viewBox="0 0 24 24" aria-hidden="true">' +
         '<defs><linearGradient id="{G}" x1="0" y1="0" x2="1" y2="1">' +
@@ -152,21 +142,19 @@
         '<path d="M7.3 4l2.6 5.1L12 20.7M16.7 4l-2.6 5.1L12 20.7M9.9 9.1h4.2" stroke="#155e75" stroke-width=".8" fill="none" stroke-linecap="round"/>' +
         '<circle cx="21" cy="3" r="1" fill="#e0f2fe" stroke="#0e7490" stroke-width=".5"/></svg>';
 
-    /* ==== CATÁLOGO (el único lugar donde se declaran badges) ==== */
     SB.CATALOG = {
         owner: {
             id: 'owner',
-            order: 0, /* SIEMPRE el primero de todos */
+            order: 0,
             label: 'OWNER',
             desc: 'Fundador de Stevscon — el orgullo de la web 💜',
             color: '#fbbf24',
             glow: 'drop-shadow(0 0 5px rgba(251,191,36,.5)) drop-shadow(0 0 13px rgba(139,92,246,.4))',
             svg: CROWN_SVG
-            /* manageBy: sin declarar -> lo manejan Owner/Admin (ver badges_system.js) */
         },
         admin: {
             id: 'admin',
-            order: 1, /* staff primero: justo después de la corona */
+            order: 1,
             label: 'ADMIN',
             desc: 'Administrador de Stevscon — mantiene la web en orden 🛠️',
             color: '#ef4444',
@@ -238,7 +226,7 @@
         }
     };
 
-    let _svgN = 0; /* contador para IDs de gradiente únicos */
+    let _svgN = 0;
 
     function db() { return firebase.database(); }
     function el(tag, css, cls) {
@@ -248,7 +236,6 @@
         return e;
     }
 
-    /* ==== ESTILOS (una sola vez) — icono puro + tooltip PORTAL (v7) ==== */
     (function injectStyles() {
         if (document.getElementById('sc-badges-style')) return;
         const st = document.createElement('style');
@@ -258,17 +245,13 @@
             '.sc-badge{position:relative;display:inline-flex;cursor:default;user-select:none;padding:1px}' +
             '.sc-badge-ic{display:inline-flex;transition:transform .16s ease}' +
             '.sc-badge:hover .sc-badge-ic{transform:scale(1.18)}' +
-            /* Tooltip PORTAL (v7): vive en <body>, position:fixed, z-index máximo.
-               Nada de overflow de tarjetas ni capas ajenas lo cortan o tapan. */
             '.sc-badge-tip{position:fixed;left:0;top:0;z-index:2147483000;display:flex;flex-direction:column;gap:2px;text-align:left;' +
             'opacity:0;pointer-events:none;transition:opacity .14s ease,transform .14s ease;transform:translateY(4px);' +
             'background:linear-gradient(135deg,rgba(22,15,36,.98),rgba(12,9,20,.98));border:1px solid rgba(139,92,246,.45);' +
             'border-radius:10px;padding:8px 13px;box-shadow:0 18px 44px rgba(0,0,0,.6),0 0 20px rgba(124,58,237,.28);white-space:nowrap}' +
             '.sc-badge-tip.show{opacity:1;transform:translateY(0)}' +
-            /* Flecha: apunta al centro del badge (offset vía --ax). Abajo por defecto. */
             '.sc-badge-tip::after{content:"";position:absolute;bottom:-4.5px;left:var(--ax,10px);width:8px;height:8px;transform:rotate(45deg);' +
             'background:#150e24;border-right:1px solid rgba(139,92,246,.45);border-bottom:1px solid rgba(139,92,246,.45)}' +
-            /* Flip: si el tooltip se dibuja DEBAJO del badge, la flecha va arriba. */
             '.sc-badge-tip.below::after{bottom:auto;top:-4.5px;border-right:none;border-bottom:none;' +
             'border-left:1px solid rgba(139,92,246,.45);border-top:1px solid rgba(139,92,246,.45)}' +
             '.sc-badge-tip b{font:800 11px Inter,sans-serif;letter-spacing:.14em}' +
@@ -277,7 +260,6 @@
         document.head.appendChild(st);
     })();
 
-    /* ==== TOOLTIP PORTAL (v7): UN solo elemento en <body>, reutilizado ==== */
     let _tip = null;
     function tipEl() {
         if (_tip) return _tip;
@@ -287,7 +269,6 @@
         return _tip;
     }
     function hideTip() { if (_tip) _tip.classList.remove('show'); }
-    /* Si la página hace scroll o se redimensiona, el ancla se mueve: ocultar. */
     document.addEventListener('scroll', hideTip, true);
     window.addEventListener('resize', hideTip);
 
@@ -305,20 +286,16 @@
                 tip.appendChild(l3);
             }
         }
-        /* Medir con el tooltip ya en DOM (opacity:0 no afecta a offsetWidth) */
         tip.classList.remove('show', 'below');
         const r = wrap.getBoundingClientRect();
         const tw = tip.offsetWidth || 0, th = tip.offsetHeight || 0;
         const vw = window.innerWidth || document.documentElement.clientWidth;
         const vh = window.innerHeight || document.documentElement.clientHeight;
-        /* Horizontal: centrado sobre el icono, recortado a los bordes */
         let left = r.left + r.width / 2 - tw / 2;
         left = Math.max(8, Math.min(left, vw - tw - 8));
-        /* Vertical: arriba por defecto; si no cabe, flip hacia abajo */
         let top = r.top - th - 10, below = false;
         if (top < 8) { top = r.bottom + 10; below = true; }
         if (top + th > vh - 8) top = Math.max(8, vh - th - 8);
-        /* La flecha sigue al centro real del badge aunque el tooltip se recorte */
         const ax = Math.max(6, Math.min(r.left + r.width / 2 - left - 4, tw - 14));
         tip.style.setProperty('--ax', ax + 'px');
         tip.style.left = Math.round(left) + 'px';
@@ -327,17 +304,14 @@
         tip.classList.add('show');
     }
 
-    /* ==== ICONO del badge: SVG estático del catálogo, fondo transparente ==== */
     function iconEl(b, size) {
         const s = el('span', null, 'sc-badge-ic');
         s.style.filter = b.glow || 'none';
-        /* ID de gradiente ÚNICO por instancia — la corona NUNCA pierde su color */
         const gid = 'scbg' + (++_svgN);
         s.innerHTML = String(b.svg || '').split('{G}').join(gid).split('{S}').join(String(size || 22));
         return s;
     }
 
-    /* ==== LISTENER ÚNICO por uid + repintado de todas las filas vivas ==== */
     const _cache = {}, _on = {}, _rows = [];
     function repaint(uid) {
         for (let i = _rows.length - 1; i >= 0; i--) {
@@ -358,7 +332,7 @@
     }
 
     function paintRow(row, uid) {
-        hideTip(); /* el hover target puede desaparecer al repintar: ocultar portal */
+        hideTip();
         while (row.firstChild) row.removeChild(row.firstChild);
         const val = _cache[uid];
         const ids = val ? Object.keys(val).filter(function (id) { return SB.CATALOG[id]; }) : [];
@@ -370,7 +344,6 @@
         for (let i = 0; i < ids.length; i++) row.appendChild(badgeFor(ids[i], val[ids[i]], 22));
     }
 
-    /* Icono + tooltip portal (nombre, descripción y fecha al acercar el mouse) */
     function badgeFor(id, meta, size) {
         const b = SB.CATALOG[id];
         const wrap = el('span', null, 'sc-badge');
@@ -378,13 +351,11 @@
         wrap.setAttribute('role', 'img');
         wrap.setAttribute('aria-label', b.label);
         wrap.appendChild(iconEl(b, size));
-        /* v7: el tooltip NO se mete dentro de la tarjeta; se pinta en <body> */
         wrap.addEventListener('mouseenter', function () { showTip(wrap, b, meta); });
         wrap.addEventListener('mouseleave', hideTip);
         return wrap;
     }
 
-    /* ==== API pública ==== */
     SB.rowFor = function (uid) {
         if (!uid) return null;
         const row = el('div', null, 'sc-badges-row');
@@ -395,7 +366,7 @@
         return row;
     };
 
-    SB.repaint = repaint; /* el system llama esto tras escribir (v4) */
+    SB.repaint = repaint;
 
     SB.uidFromHandler = function (h, cb) {
         h = String(h || '').toLowerCase().replace(/^@/, '');
@@ -405,7 +376,6 @@
         }).catch(function () { if (cb) cb(null); });
     };
 
-    /* ==== MONTAJE: justo DEBAJO del @handler ==== */
     function findHandlerP(container) {
         const ps = container.querySelectorAll('p');
         for (let i = 0; i < ps.length; i++) {
@@ -422,8 +392,7 @@
         h.parentNode.insertBefore(SB.rowFor(uid), h.nextSibling);
     };
 
-    /* ==== ENGANCHE AUTOMÁTICO (Perfiles + modal del Social, sin tocar files) ==== */
-    const _panelUid = new WeakMap(); /* cardHost del modal -> uid (vía hook) */
+    const _panelUid = new WeakMap();
     if (window.SCSOC && typeof SCSOC.onHook === 'function') {
         SCSOC.onHook('profilePanel', function (uid, modal, cardHost) {
             if (uid && cardHost) _panelUid.set(cardHost, uid);
@@ -442,7 +411,6 @@
             });
             return;
         }
-        /* Página de Perfiles sin handler a la vista: es TU tarjeta */
         const a = firebase.auth().currentUser;
         if (a) SB.mount(container, a.uid);
     }
@@ -466,9 +434,8 @@
         if (hookProfiles() || ++tries > 50) clearInterval(waitWrap);
     }, 200);
 
-    /* Icono estático (para el panel de manage, sin Firebase) — size opcional */
     SB.staticIcon = function (id, size) { return badgeFor(id, null, size || 22); };
-    SB.staticPill = SB.staticIcon; /* alias de compatibilidad v1 */
+    SB.staticPill = SB.staticIcon;
 
     console.log('[Stevscon] badges_core.js listo (v7) — LA CARA: 9 badges + tooltip portal anti-cortes 👑');
 })(window, document);

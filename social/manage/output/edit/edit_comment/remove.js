@@ -8,14 +8,13 @@
  *  - v2 FIX: los contadores del POST bajan al eliminar (respuestas
  *    descontaban solo a nivel comentario) y el hilo de un comentario
  *    borrado se limpia en vez de quedar huérfano.
- * ==== 
+ * ====
  */
 (function (window, document) {
     'use strict';
 
     const SCSOC = window.SCSOC = window.SCSOC || {};
 
-    /* ==== UI compartida del menú ⋯ (idéntica a edit.js — el guard evita duplicarla) ==== */
     if (!SCSOC.menuAdd) {
         const POP_CSS = 'position:fixed;z-index:2400;min-width:170px;background:var(--bg-card,#1a1625);border:1px solid var(--border-color,#2e2440);border-radius:12px;padding:6px;box-shadow:0 14px 40px rgba(0,0,0,.5);font-family:Inter,sans-serif;box-sizing:border-box;';
         let pop = null;
@@ -132,10 +131,9 @@
         };
     }
 
-    /* ==== ofrecer "Eliminar" (autor y/o staff) ==== */
     function offer(ctx, data) {
         if (!data || !data.id) return;
-        if (!firebase.auth().currentUser) return; /* visitantes: nada (el menú hace deny) */
+        if (!firebase.auth().currentUser) return;
         const isComment = !!ctx.comment;
         SCSOC.menuAdd(ctx, {
             label: 'Eliminar',
@@ -151,14 +149,12 @@
                     ref.remove().then(function () {
                     if (isComment) {
                     SCSOC.counters.bump('post', ctx.postId, 'comments', -1);
-                    /* v2: las respuestas del comentario borrado dejan de
-                     * contar en el post y su hilo no queda huérfano */
                     SCSOC.counters.ref('comment', data.id, 'responses').once('value', function (s) {
                     const n = Number(s.val()) || 0;
                     if (n > 0) SCSOC.counters.bump('post', ctx.postId, 'responses', -n);
                     });
                     SCSOC.db().ref(SCSOC.CONFIG.RESPONSES).child(data.id).remove()
-                    .catch(function () { /* visitantes sin permiso de hilo: no pasa nada */ });
+                    .catch(function () {  });
                     } else {
                     SCSOC.counters.bump('comment', ctx.commentId, 'responses', -1);
                     SCSOC.counters.bump('post', ctx.postId, 'responses', -1);
@@ -167,9 +163,7 @@
                     }).catch(function () { SCSOC.toast('No se pudo eliminar.'); });
                     });
                     };
-                    /* ¿tu propio comentario/respuesta? -> libre */
                     if (data.authorUid === me.uid) { go(); return; }
-                    /* ¿owner o staff? -> puede eliminar LO QUE SEA (regla #15) */
                     SCSOC.staff.role(function (r) {
                     if (r) go();
                     else SCSOC.toast('Solo el autor o el staff puede eliminar esto.');
@@ -182,7 +176,6 @@
     SCSOC.onHook('commentMenu', function (ctx) { offer(ctx, ctx.comment); });
     SCSOC.onHook('responseMenu', function (ctx) { offer(ctx, ctx.response); });
 
-    /* calienta el cache de staff al iniciar sesión (para los menús ⋯) */
     window.addEventListener('load', function () {
         try { firebase.auth().onAuthStateChanged(function (u) { if (u) SCSOC.staff.role(function () {}); }); } catch (e) {}
     });

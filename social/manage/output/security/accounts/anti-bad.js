@@ -101,11 +101,9 @@
         return d;
     }
 
-    /* ==== RESPALDO LOCAL (v4): la config nunca se pierde ==== */
     function lsLoad() { try { const r = localStorage.getItem(LS_KEY); return r ? JSON.parse(r) : null; } catch (e) { return null; } }
     function lsSave(cfg) { try { localStorage.setItem(LS_KEY, JSON.stringify(cfg)); } catch (e) {} }
 
-    /* ==== DETECCIÓN ==== */
     function norm(s) {
         return String(s || '').toLowerCase()
             .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -224,7 +222,6 @@
         } catch (e) {}
     })();
 
-    /* ==== ESCUCHAS EN VIVO (con respaldo local si Firebase falla) ==== */
     function startEngine() {
         db().ref(CFG.CONFIG).on('value', function (s) {
             S.cfg = mergeCfg(s.val());
@@ -233,7 +230,6 @@
             paintStats();
             liveRefresh();
         }, function (err) {
-            /* v4: lectura rechazada -> respaldo local; el filtro NO se apaga */
             const c = lsLoad();
             S.cfg = c ? mergeCfg(c) : DEFAULTS();
             S.cfgOk = true;
@@ -247,7 +243,7 @@
             S.logs = out.reverse();
             paintStats();
             liveRefresh();
-        }, function () { /* sin permiso de lectura de logs: nada */ });
+        }, function () {  });
     }
 
     function injectCss() {
@@ -611,7 +607,6 @@
             host.appendChild(box);
         }
 
-        /* v4: los interruptores AUTO-GUARDAN al instante */
         setRow(winBody, 'Filtro de palabras', 'Bloquea las palabras de la lista PALABRAS', S.cfg.filters.words !== false,
             function (v) { S.cfg.filters.words = v; saveSoon(); });
         setRow(winBody, 'Bloquear enlaces', 'Prohíbe links en comentarios y respuestas (respeta la lista permitida)', S.cfg.filters.links !== false,
@@ -670,7 +665,7 @@
                     x.innerHTML = '<i class="fa-solid fa-xmark"></i>';
                     x.addEventListener('click', function () {
                         S.cfg.links.allow = S.cfg.links.allow.filter(function (q) { return q !== d; });
-                        saveSoon();   /* v4: esto era el bug — antes NUNCA guardaba */
+                        saveSoon();
                     });
                     c.appendChild(x);
                 }
@@ -703,11 +698,10 @@
         S.cfg.links.allow = S.cfg.links.allow || [];
         if (S.cfg.links.allow.indexOf(s) !== -1) return;
         S.cfg.links.allow.push(s);
-        saveSoon();   /* v4: faltaba ESTO — por eso los dominios se esfumaban */
+        saveSoon();
         renderAjustes();
     }
 
-    /* ==== GUARDAR (v4: rebasado + respaldo local + reintento) ==== */
     let saving = false, saveT = null, retryT = null;
     function saveSoon() {
         if (saveT) clearTimeout(saveT);
@@ -722,7 +716,7 @@
             links: { allow: S.cfg.links.allow || [] },
             flood: S.cfg.flood
         };
-        lsSave(payload);   /* el respaldo local vive SIEMPRE */
+        lsSave(payload);
         db().ref(CFG.CONFIG).set(payload).then(function () {
             saving = false;
             if (retryT) { clearTimeout(retryT); retryT = null; }

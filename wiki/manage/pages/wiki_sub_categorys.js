@@ -26,7 +26,7 @@
     function icon(name) { const i = document.createElement('i'); i.className = 'fa-solid ' + name; return i; }
     function fmtNum(n) { return Number(n || 0).toLocaleString('es'); }
     function closeOvl(ovl) { if (ovl && ovl.parentNode) ovl.parentNode.removeChild(ovl); }
-    function armed(btn, fn) { /* botón de peligro en 2 pasos */
+    function armed(btn, fn) {
         let st = false;
         btn.addEventListener('click', function () {
             if (!st) {
@@ -58,7 +58,6 @@
             }, function (err) { console.warn('[Wiki] lectura de sub-categorías:', err && err.code); });
         },
 
-        /* ---- Lectura ---- */
         all: function () {
             const out = [];
             const map = this.map;
@@ -82,7 +81,6 @@
             return !!(WK.system && WK.system.session && WK.system.session.isStaff);
         },
 
-        /* ---- Escritura (solo Owner/Admins) ---- */
         guard: function () {
             if (!this.isStaff()) { toast('Solo el Owner y los Administradores pueden editar la Wiki.', 'error'); return false; }
             return true;
@@ -124,7 +122,6 @@
             if (!sub) return Promise.reject(new Error('No existe esa sub-categoría'));
             const upd = {};
             upd['wiki/subcats/' + id] = null;
-            /* Las páginas que estaban dentro vuelven a "Todas" */
             WK.core.published().forEach(function (x) {
                 if (x.a.subcat === id) upd['wiki/articles/' + x.id + '/subcat'] = null;
             });
@@ -135,7 +132,6 @@
             return db().ref('wiki/articles/' + articleId + '/subcat').set(subId || null);
         },
 
-        /* ---- UI STAFF ---- */
         openEditor: function (catId, sub) {
             if (!this.guard()) return;
             const self = this;
@@ -242,7 +238,6 @@
             paintList();
         },
 
-        /* ---- VISTA: #c/{categoria}/{sub} ---- */
         render: function (main, arg) {
             const parts = String(arg || '').split('/');
             const cat = WK.core.catBySlug(parts[0] || '');
@@ -252,7 +247,6 @@
                     'Puede que se haya borrado o renombrado. Prueba entrando desde la categoría.');
             }
 
-            /* Encabezado con miga de pan hacia la categoría */
             const head = el('section', 'wk-cathead wk-subhead');
             if (cat.color) head.style.setProperty('--cat-color', cat.color);
             const crumb = el('button', 'wk-subcrumb');
@@ -273,7 +267,6 @@
             });
             main.appendChild(el('p', 'wk-subcount', fmtNum(list.length) + (list.length === 1 ? ' página' : ' páginas')));
 
-            /* Herramientas solo para Owner/Admins */
             if (this.isStaff()) {
                 const tools = el('div', 'wk-subtools');
                 const bEdit = el('button', 'wk-btn');
@@ -314,7 +307,6 @@
             main.appendChild(grid);
         },
 
-        /* ---- Chips dentro de la página de la categoría ---- */
         paintChips: function (main, catSlug) {
             const cat = WK.core.catBySlug(catSlug);
             if (!cat) return;
@@ -359,7 +351,6 @@
             head.parentNode.insertBefore(bar, head.nextSibling);
         },
 
-        /* ---- Conexión segura con el Core (una sola vez) ---- */
         wrap: function () {
             if (this.wrapped || !WK.core) return;
             this.wrapped = true;
@@ -367,7 +358,7 @@
             const origCat = WK.core.renderCategory;
             WK.core.renderCategory = function (main, slug) {
                 const s = String(slug || '');
-                if (s.indexOf('/') !== -1) return self.render(main, s);   /* #c/cat/sub -> aquí */
+                if (s.indexOf('/') !== -1) return self.render(main, s);
                 const out = origCat.call(WK.core, main, s);
                 try { self.paintChips(main, s); } catch (e) { console.warn('[Wiki] subchips:', e); }
                 return out;
@@ -375,7 +366,6 @@
         }
     };
 
-    /* ---- Init ---- */
     function init() {
         if (!WK.core) return;
         WK.subcats.start();

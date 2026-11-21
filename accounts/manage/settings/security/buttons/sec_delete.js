@@ -16,7 +16,7 @@
                 return item.delete().catch(function () {});
             });
             return Promise.all(jobs);
-        }).catch(function () { /* si tus imágenes viven en otra ruta, no rompe el borrado */ });
+        }).catch(function () {  });
     }
 
     function farewell() {

@@ -1,0 +1,285 @@
+Este es el codigo de Firebase Rules, cada que hagas un cambio y se debe usar esto, siempre dime, y copio todo esto para poner este nuevo codigo de Firebase rules
+eso si, porfavor dime siempre que cosas cambiaste o si cambiaste algo minimo en el Firebase Rules, siempre dime porfavor, y lo remplazo el original con este nuevo.
+
+{
+  "rules": {
+    "handlers": {
+      ".read": true,
+      "$handler": { ".write": "auth != null", ".validate": "newData.isString() && newData.val() == auth.uid" }
+    },
+    "ids": {
+      ".read": "auth != null",
+      "$id": { ".write": "auth != null" }
+    },
+    "users_private": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin' || root.child('social/staff').child(auth.uid).child('role').val() == 'mod' || root.child('social/staff').child(auth.uid).val() == 'mod')",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "forms": {
+      "defs": {
+        ".read": true,
+        "$formId": { ".write": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin')" }
+      },
+      "responses": {
+        "$formId": {
+          ".read": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin')",
+          "$uid": {
+            ".read": "auth != null && (auth.uid === $uid || auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin')",
+            ".write": "auth != null && auth.uid === $uid && !root.child('security/accounts/bans/' + auth.uid).exists() && (!data.exists() || data.child('meta').child('status').val() != 'accepted')",
+            "meta": {
+              ".write": "auth != null && !root.child('security/accounts/bans/' + auth.uid).exists() && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin' || (auth.uid === $uid && (!data.exists() || data.child('status').val() != 'accepted')))",
+              ".validate": "auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin' || (auth.uid === $uid && newData.child('status').val() == 'pending' && !newData.child('score').exists() && !newData.child('staffNote').exists() && !newData.child('reviewedBy').exists() && !newData.child('reviewedByName').exists() && !newData.child('reviewedAt').exists())"
+            }
+          }
+        }
+      },
+      "myResponses": {
+        "$uid": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && auth.uid === $uid && !root.child('security/accounts/bans/' + auth.uid).exists()"
+        }
+      },
+      "notifications": {
+        "$uid": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin')"
+        }
+      }
+    },
+    "users": {
+      ".read": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin' || root.child('social/staff').child(auth.uid).child('role').val() == 'mod' || root.child('social/staff').child(auth.uid).val() == 'mod')",
+      "$uid": { ".read": true, ".write": "auth != null && auth.uid === $uid" }
+    },
+    "social": {
+      ".read": true,
+      "posts": {
+        ".indexOn": ["createdAt"],
+        "$postId": {
+          ".write": "auth != null && !root.child('security/accounts/bans/' + auth.uid).exists() && ((!data.exists() && (root.child('social/staff').child(auth.uid).exists() || auth.token.email == 'steven23hd@gmail.com')) || (data.exists() && (data.child('authorUid').val() == auth.uid || root.child('social/staff').child(auth.uid).exists() || auth.token.email == 'steven23hd@gmail.com')))",
+          ".validate": "!newData.exists() || (newData.child('authorUid').isString() && (newData.child('authorUid').val() == auth.uid || root.child('social/staff').child(auth.uid).exists() || auth.token.email == 'steven23hd@gmail.com') && newData.child('text').isString() && newData.child('text').val().length <= 15000)",
+          "media": { "$i": { ".validate": "newData.isString() && newData.val().length <= 2800000" } }
+        }
+      },
+      "comments": {
+        "$postId": {
+          ".indexOn": ["createdAt"],
+          "$commentId": {
+            ".write": "auth != null && !root.child('security/accounts/bans/' + auth.uid).exists() && (!data.exists() || data.child('authorUid').val() == auth.uid || root.child('social/staff').child(auth.uid).exists() || auth.token.email == 'steven23hd@gmail.com')",
+            ".validate": "!newData.exists() || (newData.child('authorUid').val() == auth.uid && newData.child('text').isString() && newData.child('text').val().length <= 2000)"
+          }
+        }
+      },
+      "responses": {
+        "$commentId": {
+          ".indexOn": ["createdAt"],
+          "$responseId": {
+            ".write": "auth != null && !root.child('security/accounts/bans/' + auth.uid).exists() && (!data.exists() || data.child('authorUid').val() == auth.uid || root.child('social/staff').child(auth.uid).exists() || auth.token.email == 'steven23hd@gmail.com')",
+            ".validate": "!newData.exists() || (newData.child('authorUid').val() == auth.uid && newData.child('text').isString() && newData.child('text').val().length <= 1000)"
+          }
+        }
+      },
+      "likes": {
+        "$tipo": { "$id": { "$uid": { ".write": "auth != null && $uid === auth.uid && !root.child('security/accounts/bans/' + auth.uid).exists()", ".validate": "newData.isBoolean() || newData.isNumber()" } } }
+      },
+      "counters": {
+        "$tipo": { "$id": { "$campo": { ".write": "auth != null && !root.child('security/accounts/bans/' + auth.uid).exists()", ".validate": "$campo != 'likes' && newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000" } } }
+      },
+      "saved": {
+        "$id": { "$uid": { ".write": "auth != null && $uid === auth.uid && !root.child('security/accounts/bans/' + auth.uid).exists()" } }
+      },
+      "verified": {
+        "$uid": {
+          ".write": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin')",
+          ".validate": "!newData.exists() || (newData.child('type').isString() && (newData.child('type').val() == 'classic' || newData.child('type').val() == 'cc' || newData.child('type').val() == 'mods' || newData.child('type').val() == 'dev' || newData.child('type').val() == 'gold') && newData.child('by').isString() && newData.child('by').val() == auth.uid && newData.child('at').isNumber())"
+        }
+      },
+      "staff": { ".write": "auth != null && auth.token.email == 'steven23hd@gmail.com'" }
+    },
+    "dms": {
+      "$convId": {
+        ".read": "auth != null && ($convId.beginsWith(auth.uid + '__') || $convId.endsWith('__' + auth.uid))",
+        ".indexOn": ["createdAt"],
+        "meta": {
+          ".write": "auth != null && !root.child('security/accounts/bans/' + auth.uid).exists() && ($convId.beginsWith(auth.uid + '__') || $convId.endsWith('__' + auth.uid))",
+          "users": { "$uidIn": { ".validate": "newData.val() === true" } },
+          "createdAt": { ".validate": "!data.exists() && newData.isNumber()" },
+          "expiresAt": { ".validate": "!data.exists() && newData.isNumber()" },
+          "lastAt": { ".validate": "newData.isNumber()" },
+          "lastFrom": { ".validate": "newData.isString() && newData.val() == auth.uid" },
+          "lastText": { ".validate": "newData.isString() && newData.val().length <= 120" },
+          "friends": { ".validate": "newData.isBoolean()" }
+        },
+        "msgs": {
+          ".indexOn": ["createdAt"],
+          "$msgId": {
+            ".write": "auth != null && !data.exists() && newData.exists() && !root.child('security/accounts/bans/' + auth.uid).exists() && root.child('dms/' + $convId + '/meta/users/' + auth.uid).val() === true && (root.child('dms/' + $convId + '/meta/friends').val() === true || root.child('dms/' + $convId + '/meta/expiresAt').val() > now)",
+            ".validate": "newData.child('id').isString() && newData.child('authorUid').isString() && newData.child('authorUid').val() == auth.uid && newData.child('authorName').isString() && newData.child('authorName').val().length <= 60 && newData.child('createdAt').isNumber() && ((newData.child('text').isString() && newData.child('text').val().length <= 2000) || (newData.child('img').isString() && newData.child('img').val().length <= 60000))",
+            "text": { ".validate": "newData.isString() && newData.val().length <= 2000" },
+            "img": { ".validate": "newData.isString() && newData.val().length <= 60000" }
+          }
+        },
+        "read": { "$uid": { ".write": "auth != null && $uid === auth.uid", ".validate": "newData.isNumber()" } }
+      },
+      "inbox": {
+        "$uid": {
+          ".read": "auth != null && auth.uid === $uid",
+          "$convId": {
+            ".write": "auth != null && !root.child('security/accounts/bans/' + auth.uid).exists() && (auth.uid === $uid || (root.child('dms/' + $convId + '/meta/users/' + auth.uid).val() === true && root.child('dms/' + $convId + '/meta/users/' + $uid).val() === true))"
+          }
+        }
+      }
+    },
+    "security": {
+      "reports": {
+        ".read": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin' || root.child('social/staff').child(auth.uid).child('role').val() == 'mod' || root.child('social/staff').child(auth.uid).val() == 'mod')",
+        "$byUid": {
+          ".write": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).exists())",
+          "$slot": {
+            ".write": "auth != null && !root.child('security/accounts/bans/' + auth.uid).exists() && ((auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).exists()) || ($byUid === auth.uid && (!data.exists() || data.child('status').val() == 'pendiente' || data.child('at').val() < now - 86400000)))",
+            ".validate": "$slot.matches(/^r[0-4]$/) && (!newData.exists() || (newData.child('type').isString() && (newData.child('type').val() == 'comment' || newData.child('type').val() == 'response' || newData.child('type').val() == 'post') && newData.child('reason').isString() && newData.child('reason').val().length <= 40 && newData.child('byUid').isString() && newData.child('byUid').val() == $byUid && newData.child('byName').isString() && newData.child('byName').val().length <= 60 && newData.child('contentUid').isString() && newData.child('contentUid').val().length <= 128 && newData.child('contentName').isString() && newData.child('contentName').val().length <= 60 && newData.child('at').isNumber() && newData.child('status').isString() && (newData.child('status').val() == 'pendiente' || auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).exists())))"
+          }
+        }
+      },
+      "accounts": {
+        "bans": {
+          ".read": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin' || root.child('social/staff').child(auth.uid).child('role').val() == 'mod' || root.child('social/staff').child(auth.uid).val() == 'mod')",
+          "$uid": {
+            ".read": "auth != null && (auth.uid === $uid || auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin')",
+            ".write": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin')",
+            ".validate": "!newData.exists() || (newData.child('reason').isString() && newData.child('reason').val().length <= 300 && newData.child('by').isString() && newData.child('by').val() == auth.uid && newData.child('byName').isString() && newData.child('byName').val().length <= 60 && newData.child('at').isNumber())"
+          }
+        },
+        "ban_emails": {
+          "$emailKey": {
+            ".read": true,
+            ".write": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin')"
+          }
+        },
+        "unbans": {
+          "$uid": {
+            ".read": "auth != null && (auth.uid === $uid || auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin')",
+            ".write": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin')"
+          }
+        },
+        "logs": {
+          ".read": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin' || root.child('social/staff').child(auth.uid).child('role').val() == 'mod' || root.child('social/staff').child(auth.uid).val() == 'mod')",
+          "$logId": {
+            ".write": "auth != null && !data.exists() && newData.exists() && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin' || root.child('social/staff').child(auth.uid).child('role').val() == 'mod' || root.child('social/staff').child(auth.uid).val() == 'mod') && newData.child('byUid').val() == auth.uid",
+            ".validate": "newData.child('action').isString() && (newData.child('action').val() == 'ban' || newData.child('action').val() == 'unban' || newData.child('action').val() == 'verify' || newData.child('action').val() == 'unverify' || newData.child('action').val() == 'staff_add' || newData.child('action').val() == 'staff_remove') && newData.child('uid').isString() && newData.child('uid').val().length <= 128 && newData.child('name').isString() && newData.child('name').val().length <= 60 && newData.child('detail').isString() && newData.child('detail').val().length <= 300 && newData.child('byUid').isString() && newData.child('byName').isString() && newData.child('byName').val().length <= 60 && newData.child('at').isNumber()"
+          }
+        }
+      },
+      "moderation": {
+        "config": {
+          ".read": "auth != null",
+          ".write": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin')"
+        },
+        "logs": {
+          ".read": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin' || root.child('social/staff').child(auth.uid).child('role').val() == 'mod' || root.child('social/staff').child(auth.uid).val() == 'mod')",
+          "$logId": {
+            ".write": "auth != null && !data.exists() && newData.exists() && newData.child('by').val() == auth.uid",
+            ".validate": "newData.child('by').isString() && newData.child('kind').isString() && newData.child('kind').val().length <= 20 && newData.child('where').isString() && newData.child('where').val().length <= 20 && newData.child('match').isString() && newData.child('match').val().length <= 40 && newData.child('text').isString() && newData.child('text').val().length <= 240 && newData.child('at').isNumber()"
+          }
+        }
+      }
+    },
+   "wiki": {
+      ".read": true,
+      "articles": {
+        "$artId": {
+          ".write": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin')",
+          ".validate": "!newData.exists() || (newData.child('title').isString() && newData.child('title').val().length >= 1 && newData.child('title').val().length <= 120 && newData.child('body').isString() && newData.child('body').val().length <= 20000 && newData.child('slug').isString() && newData.child('category').isString() && newData.child('status').isString())",
+          "cover": {
+            ".validate": "newData.isString() && newData.val().length <= 9000000 && (newData.val() == '' || newData.val().beginsWith('data:image/') || newData.val().beginsWith('https://'))"
+          },
+          "subcat": {
+            ".validate": "!newData.exists() || newData.isString()"
+          },
+          "views": {
+            ".write": "auth != null",
+            ".validate": "newData.isNumber() && newData.val() >= 0"
+          }
+        }
+      },
+      "subs": {
+        "$artId": {
+          "$subId": {
+            ".write": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin')",
+            ".validate": "!newData.exists() || (newData.child('type').isString() && (newData.child('type').val() == 'normal' || newData.child('type').val() == 'lista' || newData.child('type').val() == 'galeria') && newData.child('title').isString() && newData.child('title').val().length <= 120)",
+            "rows": {
+              "$rowIdx": {
+                ".validate": "!newData.exists() || newData.hasChildren()"
+              }
+            }
+          }
+        }
+      },
+      "likes": {
+        ".read": true,
+        "$artId": {
+          "users": {
+            "$uid": {
+              ".write": "auth != null && auth.uid === $uid",
+              ".validate": "!newData.exists() || newData.isNumber()"
+            }
+          },
+          "subs": {
+            "$subId": {
+              "users": {
+                "$uid": {
+                  ".write": "auth != null && auth.uid === $uid",
+                  ".validate": "!newData.exists() || newData.isNumber()"
+                }
+              }
+            }
+          }
+        }
+      },
+      "subcats": {
+        ".read": true,
+        "$subId": {
+          ".write": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin')",
+          ".validate": "!newData.exists() || (newData.child('catId').isString() && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length <= 40 && newData.child('slug').isString() && newData.child('slug').val().length <= 40 && newData.child('icon').isString() && newData.child('icon').val().length <= 4)"
+        }
+      },
+      "home": {
+        ".read": true,
+        "$blockId": {
+          ".write": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin')",
+          ".validate": "!newData.exists() || (newData.child('type').isString() && (newData.child('type').val() == 'texto' || newData.child('type').val() == 'aviso' || newData.child('type').val() == 'imagen' || newData.child('type').val() == 'enlaces') && newData.child('title').isString() && newData.child('title').val().length <= 120 && newData.child('body').isString() && newData.child('body').val().length <= 20000)",
+          "img": {
+            ".validate": "newData.isString() && newData.val().length <= 9000000 && (newData.val() == '' || newData.val().beginsWith('data:image/') || newData.val().beginsWith('https://'))"
+          },
+          "cap": {
+            ".validate": "newData.isString() && newData.val().length <= 240"
+          },
+          "order": {
+            ".validate": "newData.isNumber()"
+          },
+          "by": {
+            ".validate": "newData.isString() && newData.val().length <= 120"
+          }
+        }
+      },
+      "categories": {
+        ".write": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin')",
+        "$catId": {
+          ".validate": "!newData.exists() || (newData.child('name').isString() && newData.child('name').val().length >= 1 && newData.child('slug').isString())"
+        }
+      },
+      "history": {
+        "$artId": {
+          ".write": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin')",
+          "$logId": {
+            ".validate": "!newData.exists() || (newData.child('action').isString() && newData.child('at').isNumber())"
+          }
+        }
+      },
+      "counters": {
+        ".write": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin')"
+      }
+    }
+  }
+}

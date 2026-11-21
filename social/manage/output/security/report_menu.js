@@ -44,7 +44,6 @@
     function el(tag, css, cls) { const n = document.createElement(tag); if (css) n.style.cssText = css; if (cls) n.className = cls; return n; }
     function E(tag, cls) { return el(tag, '', cls); }
 
-    /* ==== CSS ==== */
     (function injectCss() {
         if (document.querySelector('style[data-scrm]')) return;
         const css = document.createElement('style');
@@ -69,7 +68,6 @@
         document.head.appendChild(css);
     })();
 
-    /* ==== ¿hay ranura libre? -> {ok, slot, waitMs} ==== */
     function slotState(myUid, cb) {
         db().ref(REPORTS).child(myUid).once('value').then(function (s) {
             const v = s.val() || {};
@@ -80,13 +78,13 @@
                 if (!r || typeof r !== 'object') { if (!free) free = SLOTS[i]; continue; }
                 const at = Number(r.at) || 0;
                 const pend = r.status === 'pendiente';
-                if (!pend && at < now - DAY) { if (!free) free = SLOTS[i]; continue; } /* expirado: se libera */
-                if (pend && !free) free = SLOTS[i];                                    /* pendiente propio: se reemplaza */
+                if (!pend && at < now - DAY) { if (!free) free = SLOTS[i]; continue; }
+                if (pend && !free) free = SLOTS[i];
                 if (!pend && at < soonest) soonest = at;
             }
             if (free) return cb({ ok: true, slot: free });
             cb({ ok: false, waitMs: Math.max(0, (soonest === Infinity ? now : soonest) + DAY - now) });
-        }).catch(function () { cb({ ok: true, slot: 'r0' }); }); /* si la lectura falla, las reglas decidirán */
+        }).catch(function () { cb({ ok: true, slot: 'r0' }); });
     }
 
     function human(ms) {
@@ -96,7 +94,6 @@
         return h + ' h ' + (m % 60) + ' min';
     }
 
-    /* ==== EL FORMULARIO ==== */
     M.open = function (content) {
         SCSOC.requireLogin(function (auth) {
             slotState(auth.uid, function (st) {
@@ -232,7 +229,6 @@
         setTimeout(function () { ta.focus(); }, 0);
     }
 
-    /* ==== ENGANCHE a los menús ⋯ (sin tocar ningún file) ==== */
     function contentOf(type, ctx) {
         if (type === 'comment' && ctx.comment) {
             return { type: 'comment', typeLabel: 'comentario', uid: ctx.comment.authorUid,

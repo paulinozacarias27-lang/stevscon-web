@@ -34,7 +34,6 @@ FM.review = FM.review || {};
 var C = FM.creator = FM.creator || {};
 var core = FM.core;
 
-/* estilos propios de la revisión */
 var styled = false;
 function style() {
     if (styled) return;
@@ -231,7 +230,6 @@ FM.review.panel = {
 
             ui.modal('Apostulación', { icon: 'fa-user', wide: true, maxW: 680 }, function (bd, ft, mo) {
 
-                /* perfil + gmail (solo staff) */
                 var pf = document.createElement('div');
                 pf.className = 'fmr-profile';
                 if (prof.avatar) {
@@ -278,7 +276,6 @@ FM.review.panel = {
                     bd.appendChild(mail);
                 }
 
-                /* respuestas agrupadas por categorías */
                 var answers = (resp && resp.answers) || {};
                 var pArr = Object.keys(ps).map(function (k) { return { id: k, v: ps[k], order: ps[k].order || 0 }; })
                     .sort(function (a, b) { return a.order - b.order; });
@@ -294,7 +291,6 @@ FM.review.panel = {
                     });
                 });
 
-                /* veredicto anterior, si ya lo revisaron */
                 if (meta.status && meta.status !== 'pending') {
                     var info = document.createElement('div');
                     info.className = 'fmr-profile';
@@ -320,7 +316,6 @@ FM.review.panel = {
                     bd.appendChild(info);
                 }
 
-                /* veredicto */
                 var inNote = ui.textarea(meta.staffNote || '', 'Nota para el postulado (opcional)…');
                 bd.appendChild(ui.field('Nota para el postulado (opcional)', inNote));
 
@@ -335,7 +330,7 @@ FM.review.panel = {
                         b.className = 'fmr-sc' + (score === n ? ' fmr-sc-on' : '');
                         b.textContent = String(n);
                         b.addEventListener('click', function () {
-                            score = (score === n) ? 0 : n;   /* clic de nuevo = quitar */
+                            score = (score === n) ? 0 : n;
                             for (var i = 0; i < scBtns.length; i++) {
                                 scBtns[i].className = 'fmr-sc' + (score === i + 1 ? ' fmr-sc-on' : '');
                             }
@@ -412,7 +407,6 @@ FM.review.panel = {
             return wrap;
         }
 
-        /* selector de formularios + arranque */
         core.db().ref('forms/defs').once('value').then(function (snap) {
             state.defs = snap.val() || {};
             var keys = Object.keys(state.defs);

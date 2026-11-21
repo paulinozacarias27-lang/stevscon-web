@@ -32,7 +32,7 @@ FM.public = FM.public || {};
 if (!core) { console.warn('[Stevscon] submit_form.js: falta forms_core.js'); return; }
 FM.public.submit = FM.public.submit || {};
 
-var IMGS = {};   /* qid -> base64 de esta sesión */
+var IMGS = {};
 
 function el(tag, cls, text) {
     var e = document.createElement(tag);
@@ -58,7 +58,6 @@ function style() {
     + '.fmu-btn.ghost:hover{color:var(--text-main,#f8fafc);border-color:var(--purple-accent,#8b5cf6);background:var(--purple-glow,rgba(139,92,246,.35));box-shadow:none}'
     + '.fmu-hint{flex:1;min-width:220px;font:600 12px/1.55 Inter,sans-serif;color:var(--text-muted,#94a3b8)}'
     + '.fmu-hint b{color:var(--text-main,#f8fafc)}'
-    /* zonas de imagen prendidas */
     + '.fmv-drop.fmu-has{display:flex;align-items:center;gap:12px;padding:10px;flex-wrap:wrap}'
     + '.fmu-thumb{width:74px;height:54px;object-fit:cover;border-radius:9px;border:1px solid var(--border-color,#2e2440)}'
     + '.fmu-zinfo{flex:1;min-width:140px}'
@@ -66,12 +65,10 @@ function style() {
     + '.fmu-zinfo span{display:block;font:600 11px Inter,sans-serif;color:var(--text-muted,#94a3b8);margin-top:2px}'
     + '.fmu-zrm{width:30px;height:30px;border-radius:9px;border:1px solid rgba(248,113,113,.4);background:rgba(248,113,113,.1);color:#f87171;font-size:12px;cursor:pointer;transition:all .15s ease;flex:none}'
     + '.fmu-zrm:hover{background:rgba(248,113,113,.22)}'
-    /* bloqueo y error */
     + '.fmu-locked .fmv-inp,.fmu-locked .fmv-ta,.fmu-locked .fmv-select{opacity:.55;cursor:not-allowed}'
     + '.fmu-locked .fmv-drop{pointer-events:none;opacity:.5}'
     + '.fmu-locked .fmv-opt{opacity:.6}'
     + '.fmu-miss{outline:1px solid rgba(248,113,113,.6);outline-offset:3px;border-radius:10px}'
-    /* éxito */
     + '.fmu-ok{border-color:rgba(52,211,153,.45);display:block}'
     + '.fmu-okwrap{text-align:center;padding:6px 4px 2px}'
     + '.fmu-okwrap i{font-size:34px;color:#34d399}'
@@ -86,17 +83,14 @@ function fmtSize(bytes) {
     return Math.max(1, Math.round(bytes / 1024)) + 'KB';
 }
 
-/* ==== estado por sesión ==== */
 FM.public.submit.reset = function () { IMGS = {}; };
 
-/* imagen ya enviada (al editar): se siembra para que no se pierda */
 FM.public.submit.setImg = function (host, qid, dataUrl) {
     IMGS[qid] = dataUrl;
     var zone = host && host.querySelector('.fmv-drop[data-fmq="' + qid + '"]');
     if (zone) paintZone(zone, qid, dataUrl, 'Imagen ya enviada', 'se conserva al guardar — o quítala y sube otra');
 };
 
-/* ==== zonas de imagen ==== */
 FM.public.submit.wireUploads = function (def, host) {
     if (!host) return;
     var zones = host.querySelectorAll('.fmv-drop[data-fmq]');
@@ -181,7 +175,6 @@ function restoreZone(zone) {
     zone.appendChild(document.createTextNode(' Subir imagen (hasta ' + core.LIMITS.imgMB + 'MB)'));
 }
 
-/* ==== bloquear / liberar ==== */
 FM.public.submit.lock = function (host, on) {
     if (!host) return;
     var all = host.querySelectorAll('[data-fmq]');
@@ -191,7 +184,6 @@ FM.public.submit.lock = function (host, on) {
     if (on) addCls(host, 'fmu-locked'); else rmCls(host, 'fmu-locked');
 };
 
-/* ==== juntar respuestas ==== */
 FM.public.submit.collect = function (def, host) {
     var answers = {};
     var qs = (def && def.questions) || {};
@@ -221,14 +213,12 @@ FM.public.submit.collect = function (def, host) {
             var sel = null;
             els.forEach(function (e) { if (e.type === 'radio' && e.checked) sel = String(e.value); });
             if (sel !== null) {
-                /* el radio guarda el ÍNDICE — lo volvemos texto de opción */
                 var idx = parseInt(sel, 10);
                 var opts = q.options || [];
                 answers[qid] = (idx >= 0 && idx < opts.length) ? String(opts[idx]) : sel;
             }
             return;
         }
-        /* text, paragraph, number, date, url, dropdown */
         var c = els[0];
         if (!c) return;
         var v = String(c.value == null ? '' : c.value).trim();
@@ -237,7 +227,6 @@ FM.public.submit.collect = function (def, host) {
     return answers;
 };
 
-/* ==== obligatorias ==== */
 FM.public.submit.validate = function (def, answers, host) {
     var qs = (def && def.questions) || {};
     var missing = [];
@@ -273,7 +262,6 @@ FM.public.submit.validate = function (def, answers, host) {
     return missing;
 };
 
-/* ==== LA BARRA DE ENVÍO ==== */
 var LABELS = {
     fresh:    { btn: 'Enviar apostulación', hint: 'Se envía <b>una sola vez</b>. Después puedes editarla mientras esté Pendiente.' },
     edit:     { btn: 'Guardar cambios',     hint: 'Estás editando tu apostulación ya enviada — el veredicto del staff no se toca.' },
@@ -295,12 +283,11 @@ FM.public.submit.attach = function (zone, def, formId, mode, onDone) {
         var cancel = el('button', 'fmu-btn ghost', 'Cancelar');
         cancel.type = 'button';
         cancel.addEventListener('click', function () {
-            if (onDone) onDone();   /* re-bloquea y repinta el estado */
+            if (onDone) onDone();
         });
         bar.appendChild(cancel);
     }
 
-    /* hint con <b> sin innerHTML: texto plano equivalente */
     var hint = el('div', 'fmu-hint');
     var b = el('b', '', mode === 'fresh' ? 'una sola vez' : (mode === 'edit' ? 'editar' : 'reenvío'));
     hint.appendChild(document.createTextNode(mode === 'fresh'
@@ -315,7 +302,6 @@ FM.public.submit.attach = function (zone, def, formId, mode, onDone) {
 
     btn.addEventListener('click', function () {
         var answers = FM.public.submit.collect(def, zone.ownerDocument ? findHost(zone) : zone);
-        /* el form vive en see_form: lo buscamos subiendo desde la barra */
         var host = findHost(zone);
         var missing = FM.public.submit.validate(def, answers, host);
         if (missing.length) {
@@ -331,7 +317,6 @@ FM.public.submit.attach = function (zone, def, formId, mode, onDone) {
     });
 
     function findHost(from) {
-        /* la barra cuelga de actionHost (hermano del form) — subimos hasta el contenedor de see_form */
         var node = from.parentNode;
         while (node && node !== document.body) {
             if (node.querySelector && node.querySelector('.fmv-q')) return node;
@@ -342,7 +327,7 @@ FM.public.submit.attach = function (zone, def, formId, mode, onDone) {
 
     function confirmSend(ok) {
         var ui = (FM.creator && FM.creator.ui) ? FM.creator.ui : null;
-        if (!ui || !ui.modal) { ok(); return; }   /* sin modal disponible: directo */
+        if (!ui || !ui.modal) { ok(); return; }
         ui.modal('¿Enviar tu apostulación?', { icon: 'fa-paper-plane', dismiss: true, maxW: 440 }, function (body, foot, ov) {
             body.appendChild(el('div', 'font:600 13px/1.6 Inter,sans-serif;color:var(--text-muted,#94a3b8)',
                 'Se puede enviar UNA sola vez por formulario. Después podrás editarla mientras esté Pendiente, y si te rechazan, reintentarlo.'));

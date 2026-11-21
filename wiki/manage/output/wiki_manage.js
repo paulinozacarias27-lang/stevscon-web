@@ -44,7 +44,6 @@
         ['easter', 'Easter egg'], ['guia', 'Guía']
     ];
 
-    /* ================= CSS DEL PANEL ================= */
     const CSS = `
     #wk-manage-fab{position:fixed;right:22px;bottom:22px;z-index:1500;width:56px;height:56px;border:0;border-radius:50%;
       background:linear-gradient(135deg,var(--purple-accent,#8b5cf6),var(--purple-dark,#6d28d9));color:#fff;cursor:pointer;
@@ -99,7 +98,6 @@
         document.head.appendChild(st);
     }
 
-    /* ================= HELPERS UI ================= */
     function el(tag, cls, txt) {
         const e = document.createElement(tag);
         if (cls) e.className = cls;
@@ -124,7 +122,7 @@
         return s;
     }
     function closeOvl(ovl) { if (ovl && ovl.parentNode) ovl.parentNode.removeChild(ovl); }
-    function armed(btn, fn) { /* botón de peligro en 2 pasos */
+    function armed(btn, fn) {
         let armedSt = false;
         btn.addEventListener('click', function () {
             if (!armedSt) {
@@ -142,7 +140,6 @@
         });
     }
 
-    /* ================= WIKI MANAGE ================= */
     WK.manage = {
         tab: 'arts',
 
@@ -165,11 +162,9 @@
             });
         },
 
-        /* ---------- PANEL PRINCIPAL ---------- */
-         /* ---- PANEL PRINCIPAL ---- */
         openPanel: function () {
             const self = this;
-            if (!(WK.system && WK.system.session && WK.system.session.isStaff)) return; /* v3: solo Owner/Admins */
+            if (!(WK.system && WK.system.session && WK.system.session.isStaff)) return;
             if (document.getElementById('wk-panel-ovl')) return;
             const ovl = el('div', 'wk-ovl');
             ovl.id = 'wk-panel-ovl';
@@ -219,7 +214,6 @@
             else this.renderArts(body);
         },
 
-        /* ---------- TAB: ARTÍCULOS ---------- */
         renderArts: function (box) {
             const self = this;
             box.textContent = '';
@@ -295,7 +289,6 @@
             });
         },
 
-        /* ---------- TAB: CATEGORÍAS ---------- */
         renderCats: function (box) {
             const self = this;
             box.textContent = '';
@@ -363,11 +356,9 @@
             });
         },
 
-        /* ---------- EDITOR (nueva o existente) ---------- */
-        /* ---- EDITOR (nueva o existente) ---- */
         openEditor: function (id, mount) {
             const self = this;
-            if (!(WK.system && WK.system.session && WK.system.session.isStaff)) { toast('Solo el Owner y los Administradores pueden editar la Wiki.', 'error'); return; } /* v3 */
+            if (!(WK.system && WK.system.session && WK.system.session.isStaff)) { toast('Solo el Owner y los Administradores pueden editar la Wiki.', 'error'); return; }
             let ovl = null;
             if (!mount) {
                 ovl = el('div', 'wk-ovl');
@@ -392,7 +383,6 @@
 
             const a = id ? (WK.core.arts[id] || {}) : null;
 
-            /* Plantilla (solo para páginas nuevas) */
             const tpl = sel([['—', 'Elegir plantilla…']].concat(Object.keys(TEMPLATES).map(function (k) {
                 return [k, TEMPLATES[k].icon + ' ' + TEMPLATES[k].label];
             })));
@@ -462,7 +452,6 @@
             r2.appendChild(featW);
             form.appendChild(r2);
 
-            /* Rellenar si es edición */
             if (a) {
                 title.value = a.title || '';
                 catSel.value = a.category || '';
@@ -477,7 +466,6 @@
             }
             if (!catSel.value && WK.core.sortedCats().length) catSel.value = WK.core.sortedCats()[0].id;
 
-            /* Plantilla -> rellena cuerpo/título nuevos */
             tpl.addEventListener('change', function () {
                 const t = TEMPLATES[tpl.value];
                 if (!t) return;
@@ -486,13 +474,11 @@
                 typeSel.value = tpl.value;
             });
 
-            /* Portada: previsualizar URL pegada */
             cover.addEventListener('change', function () {
                 if (safeImg(cover.value)) { coverPrev.src = cover.value; coverPrev.style.display = 'block'; }
                 else { coverPrev.style.display = 'none'; }
             });
 
-            /* Subida local -> optimizador (hasta 20MB, canvas 1920px) */
             coverFile.addEventListener('change', function () {
                 const f = coverFile.files && coverFile.files[0];
                 if (!f) return;
@@ -548,8 +534,6 @@
         return /^https:\/\//i.test(u) || /^data:image\/[a-zA-Z0-9.+-]+;base64,/.test(u) ? u : '';
     }
 
-    /* Reescala una imagen a dataURI liviano (máx 900px de ancho) */
-    /* Fallback: optimiza una imagen a dataURI liviano (si falta wiki_system v2) */
     function shrink(file, cb) {
         try {
             const fr = new FileReader();
@@ -579,7 +563,6 @@
         } catch (e) { cb(null, 'No se pudo procesar la imagen.'); }
     }
 
-    /* ---- Init ---- */
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function () { WK.manage.init(); });
     } else {

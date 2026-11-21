@@ -44,7 +44,6 @@
     function cleanTxt(s, max) {
         return String(s == null ? '' : s).trim().slice(0, max);
     }
-    /* Solo guarda campos con contenido (limpio y liviano en RTDB) */
     function cleanRow(r) {
         r = r || {};
         const out = {};
@@ -82,7 +81,6 @@
         LIMITS: LIMITS,
         validImg: validImg,
 
-        /* Devuelve null si todo OK, o el texto del error */
         validate: function (d) {
             const L = LIMITS;
             if (!d) return 'No hay nada que guardar.';
@@ -125,9 +123,6 @@
             return null;
         },
 
-        /* Crea (subId vacío) o edita (subId dado). Promise con el subId.
-         * Las filas se guardan UNA POR UNA (writes pequeños) para no
-         * chocar con el límite de 16MB por escritura de Firebase. */
         save: function (artId, data, subId) {
             if (!isStaff()) return Promise.reject(new Error('Solo el Owner y los Administradores pueden editar las sub-páginas.'));
             if (!artId) return Promise.reject(new Error('Falta el artículo padre.'));
@@ -163,7 +158,6 @@
                     rec.rows = mapRows(data.rows, cleanGal);
                 }
 
-                /* filas fuera del set grande; null borra las viejas */
                 const rowsOut = rec.rows || null;
                 if (rowsOut) rec.rows = null;
 

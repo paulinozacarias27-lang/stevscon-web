@@ -34,14 +34,13 @@
 
     const D = SCSOC.dm = {};
 
-    D.WINDOW_MS = 10 * 60 * 60 * 1000;   /* 10 horas de ventana activa */
-    D.MAX_TEXT = 2000;                    /* mismo tope que los comentarios */
+    D.WINDOW_MS = 10 * 60 * 60 * 1000;
+    D.MAX_TEXT = 2000;
 
-    /* candado anti-duplicado (mismo patrón que admin_post v10) */
     const _lastSend = { uid: '', text: '', at: 0 };
     const _peerCache = {};
-    const _prefCache = {};          /* settings del peer (TTL 30s) */
-    let _myPrefs = {};              /* mis settings (en vivo) */
+    const _prefCache = {};
+    let _myPrefs = {};
     const _myPrefCbs = [];
     let _myRef = null;
 
@@ -52,8 +51,6 @@
     D.convIdFor = function (a, b) {
         return [String(a || ''), String(b || '')].sort().join('__');
     };
-    /* v7 · peerOf HABÍA DESAPARECIDO (el parche v5 lo pisó al pegarse).
-       Sin él, peerIsFriend() reventaba en silencio y todo se veía EXPIRADO. */
     D.peerOf = function (usersObj, myUid) {
         const keys = Object.keys(usersObj || {});
         for (let i = 0; i < keys.length; i++) if (keys[i] !== myUid) return keys[i];
@@ -70,8 +67,6 @@
         return Math.max(0, Number(meta.expiresAt) - Date.now());
     };
 
-    /* v4: ¿el peer es mi amigo? Los amigos SIEMPRE pueden escribirse,
-       aunque el otro tenga mdAllow:'nadie' (eso solo frena desconocidos). */
     function isFriendOf(peerUid) {
         try {
             const C = SCSOC.dmContacts;
@@ -79,10 +74,6 @@
         } catch (e) { return false; }
     }
 
-    /* v5: AMIGOS = MD SIN VENCIMIENTO.
-       peerIsFriend(meta) mira meta.users y dice si el otro es mi amigo.
-       Con amigos: la ventana nunca cierra (UI, cliente Y reglas via
-       meta/friends). Sin amigos: ventana de 10 h de siempre. */
     D.peerIsFriend = function (meta) {
         try {
             const a = me();
@@ -112,8 +103,6 @@
         });
     };
 
-    /* ==== PREFERENCIAS (v3) ==== */
-    /* settings de OTRA persona (una lectura, cache 30s) */
     D.prefOf = function (uid, cb) {
         if (!uid || !db()) { cb({}); return; }
         const c = _prefCache[uid];
@@ -125,7 +114,6 @@
         }).catch(function () { cb({}); });
     };
 
-    /* MIS settings en vivo (badge, vista previa, sonido...) */
     D.myPrefs = function () { return _myPrefs; };
     D.watchMyPrefs = function (cb) {
         const a = me();
@@ -149,7 +137,6 @@
         };
     };
 
-    /* ==== abrir (o recuperar) una conversación ==== */
     D.open = function (peerUid, cb) {
         const a = me();
         if (!a) { if (SCSOC.deny) SCSOC.deny(); return; }
@@ -157,7 +144,6 @@
             SCSOC.toast('No puedes abrir un MD contigo mismo.');
             return;
         }
-        /* v4: ¿me deja mandarle MD? (si son amigos, siempre pasa) */
         D.prefOf(peerUid, function (p) {
             if (p && p.mdAllow === 'nadie' && !isFriendOf(peerUid)) {
                 SCSOC.toast('Esta persona tiene los Mensajes Directos desactivados.');
@@ -185,7 +171,6 @@
                     touchInboxEntry(a.uid, peerUid, id);
                     if (cb) cb(id, meta);
                 }).catch(function () {
-                    /* carrera: la otra persona la creó en el mismo instante */
                     convRef(id).child('meta').once('value').then(function (s2) {
                         if (s2.exists()) {
                             touchInboxEntry(a.uid, peerUid, id);
@@ -199,7 +184,6 @@
         });
     };
 
-    /* crea mi entrada de bandeja SOLO si no existe (no toca unread) */
     function touchInboxEntry(uid, peerUid, convId) {
         const ref = db().ref('dms/inbox/' + uid + '/' + convId);
         ref.once('value').then(function (s) {
@@ -214,7 +198,6 @@
         }).catch(function (err) { console.warn('[MD] inbox read:', err); });
     }
 
-    /* ==== enviar (filtro anti-bad + preferencias + candados) ==== */
     D.send = function (convId, raw, cb) {
         SCSOC.requireLogin(function (a) {
             const text = String(raw || '').trim();
@@ -224,7 +207,6 @@
                 if (cb) cb(new Error('long'));
                 return;
             }
-            /* candado 1: mismo texto en <10s = bloqueado */
             if (_lastSend.uid === a.uid && _lastSend.text === text && (Date.now() - _lastSend.at) < 10000) {
                 SCSOC.toast('Ese mensaje ya se envió hace un momento.');
                 if (cb) cb(new Error('dup'));
@@ -243,15 +225,12 @@
                     return;
                 }
                 const peerUid = D.peerOf(meta.users, a.uid);
-                /* v4: por si nos cerró los MD hace un segundo (amigos pasan) */
                 D.prefOf(peerUid, function (p) {
                     if (p && p.mdAllow === 'nadie' && !isFriendOf(peerUid)) {
                         SCSOC.toast('Esta persona tiene los MDs desactivados.');
                         if (cb) cb(new Error('pref'));
                         return;
                     }
-                    /* candado 2: filtro anti-bad (v4: en MDs SIN flood —
-                       escribir rápido es normal en un chat; palabras/enlaces sí filtran) */
                     const AB = SCSOC.secAntiBad;
                     const ab = (AB && AB.checkChat) ? AB.checkChat(text)
                         : (AB && AB.check) ? AB.check(text) : { ok: true };
@@ -276,21 +255,15 @@
                         upd['meta/lastAt'] = firebase.database.ServerValue.TIMESTAMP;
                         upd['meta/lastFrom'] = a.uid;
                         upd['meta/lastText'] = text.slice(0, 120);
-                        /* v4 FIX: si es mi amigo, la bandera viaja DENTRO del mismo
-                           update (atómico). Antes iba en un set() aparte que llegaba
-                           tarde o las reglas lo rechazaban en silencio → el mensaje
-                           caía en PERMISSION_DENIED y salía «No se pudo enviar». */
                         if (D.peerIsFriend(meta)) upd['meta/friends'] = true;
                         convRef(convId).update(upd).then(function () {
                             _lastSend.uid = a.uid; _lastSend.text = text; _lastSend.at = Date.now();
-                            /* mi bandeja: refresca posición (unread intacto) */
                             db().ref('dms/inbox/' + a.uid + '/' + convId).update({
                                 peerUid: peerUid,
                                 lastAt: firebase.database.ServerValue.TIMESTAMP,
                                 lastText: text.slice(0, 120),
                                 lastFrom: a.uid
                             }).catch(function () {});
-                            /* bandeja del otro: entrada + unread +1 (transacción) */
                             const theirs = db().ref('dms/inbox/' + peerUid + '/' + convId);
                             theirs.update({
                                 peerUid: a.uid,
@@ -315,7 +288,6 @@
         });
     };
 
-    /* intento bloqueado -> registro del staff (mismo nodo que anti-bad) */
     function logBlocked(u, text, ab) {
         try {
             db().ref('security/moderation/logs').push({
@@ -330,7 +302,6 @@
         } catch (e) {}
     }
 
-    /* ==== bandeja EN VIVO (badge + lista) ==== */
     D.watchInbox = function (cb) {
         const a = me();
         if (!a || typeof cb !== 'function') return function () {};
@@ -365,7 +336,6 @@
         return t;
     };
 
-    /* ==== conversación EN VIVO ==== */
     D.metaOnce = function (convId, cb) {
         convRef(convId).child('meta').once('value')
             .then(function (s) { cb(s.val() || null); })
@@ -398,10 +368,6 @@
 
     console.log('[Stevscon] md_core.js listo (v3) — MDs con ventana de 10 h + preferencias de MD.');
 
-    /* ==== v6 · AMIGOS = MD SIN EXPIRACIÓN (parche final) ====
-       Va AL FINAL para ganar a CUALQUIER definición anterior.
-       Envuelve las funciones originales: si el peer es mi amigo,
-       nunca expira; si no es amigo, todo sigue idéntico. */
     (function () {
         const oldMsLeft = D.msLeft, oldIsExpired = D.isExpired;
         D.peerIsFriend = function (meta) {

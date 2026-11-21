@@ -44,7 +44,6 @@
         return list.length ? list[0].css : '#7c3aed';
     };
 
-    /* v3 · "Miembro desde" de reserva (si SCp.age no existe en esta página) */
     function memberSinceFallback(d) {
         const v = d.createdAt || (d.metadata && d.metadata.createdAt) || null;
         const dt = v ? new Date(v) : null;
@@ -53,7 +52,6 @@
             String(dt.getMonth() + 1).padStart(2, '0') + '/' + dt.getFullYear();
     }
 
-    // Avatar: imagen si hay URL; degradado + inicial si no.
     SCp.ui.avatarEl = function (data, px, letter) {
         const d = data || {};
         let el;
@@ -75,7 +73,6 @@
         return el;
     };
 
-    // Banner: imagen si hay URL; degradado si no.
     SCp.ui.bannerEl = function (data, height) {
         const d = data || {};
         let el;
@@ -102,8 +99,6 @@
         return p;
     }
 
-    // Tarjeta completa: banner, avatar, nombre, @handler, ID, descripción,
-    // miembro desde y género (abajo de TODO, como pediste).
     SCp.ui.renderProfileCard = function (container, data, authUser, opts) {
         const d = data || {};
         const options = opts || {};
@@ -123,8 +118,6 @@
         avatarRow.style.cssText = 'display:flex;align-items:flex-end;justify-content:space-between;margin-top:-38px;margin-bottom:10px;position:relative;z-index:2;';
         const letter = (d.username || d.handler || (authUser && authUser.email) || 'S').charAt(0).toUpperCase();
         const av = SCp.ui.avatarEl(d, 76, letter);
-        /* v3 · el aro abraza AL avatar: color del tema y bordes redondos
-           garantizados DESPUÉS del borde. Nunca más esquinas asomando. */
         av.style.border = '4px solid var(--bg-card,#1a1526)';
         av.style.borderRadius = '50%';
         avatarRow.appendChild(av);
@@ -189,14 +182,12 @@
 
         inner.appendChild(sectionLabel('MIEMBRO DESDE'));
         const since = document.createElement('p');
-        /* v3 · blindaje: usa SCp.age si existe; si no, calcula aquí. */
         since.textContent = (SCp.age && typeof SCp.age.memberSince === 'function')
             ? SCp.age.memberSince(d, authUser)
             : memberSinceFallback(d);
         since.style.cssText = 'margin:4px 0 0;font-size:13.5px;color:var(--text-main,#ede9fe);font-variant-numeric:tabular-nums;';
         inner.appendChild(since);
 
-        // Género: abajo de todo (después de descripción, avatar y banner)
         inner.appendChild(sectionLabel('GÉNERO'));
         const gen = document.createElement('p');
         gen.textContent = d.gender || 'Sin especificar';

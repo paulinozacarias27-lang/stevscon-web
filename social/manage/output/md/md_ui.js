@@ -28,7 +28,6 @@
         openConv: function (convId, peerUid) { openConv(convId, peerUid); },
         close: close,
         isOpen: function () { return !!S.on; },
-        /* v3 · extras para md_tabs.js / md_actions.js */
         state: function () { return { on: S.on, view: S.view, convId: S.convId, peerUid: S.peerUid, meta: S.meta }; },
         backToList: function () { if (S.on) renderList(); }
     };
@@ -113,7 +112,6 @@
         if (typeof cb === 'function') cb();
     }
 
-    /* ==== VISTA 1 · LISTA DE CONVERSACIONES ==== */
     function renderList() {
         if (!S.on || !win) return;
         stopChat();
@@ -140,7 +138,6 @@
 
         const meUid = me() ? me().uid : '';
         const list = S.inbox || [];
-        /* v3 · si md_tabs.js está cargado, ÉL pinta las pestañas y las filas */
         if (SCSOC.dmTabs && SCSOC.dmTabs.render) {
             SCSOC.dmTabs.render(win, body, list, meUid);
             document.dispatchEvent(new CustomEvent('sc:dm-view', { detail: { view: 'list', win: win } }));
@@ -183,7 +180,6 @@
         document.dispatchEvent(new CustomEvent('sc:dm-view', { detail: { view: 'list', win: win } }));
     }
 
-    /* ==== VISTA 2 · CHAT ==== */
     function openConv(convId, peerUid) {
         if (!S.on) { open(function () { renderChat(convId, peerUid); }); return; }
         renderChat(convId, peerUid);
@@ -196,7 +192,6 @@
         S.convId = convId; S.peerUid = peerUid;
         clear(win);
 
-        /* --- cabecera --- */
         const head = E('div', 'scdm-head');
         const back = E('button', 'scdm-x');
         back.type = 'button'; back.setAttribute('aria-label', 'Volver a la lista');
@@ -219,7 +214,6 @@
         head.appendChild(back); head.appendChild(idb); head.appendChild(timer); head.appendChild(x);
         win.appendChild(head);
 
-        /* --- cuerpo: mensajes + composer --- */
         body = E('div', 'scdm-body');
         const msgs = E('div', 'scdm-msgs');
         body.appendChild(msgs);
@@ -227,14 +221,12 @@
         body.appendChild(compSlot);
         win.appendChild(body);
 
-        /* estado de expiración */
         D.metaOnce(convId, function (meta) { S.meta = meta; paintTimer(); paintLock(); });
         S.timer = setInterval(paintTimer, 30000);
 
         let composerMode = null;
         function paintTimer() {
             if (!S.meta) { tTx.textContent = '—'; return; }
-            /* v4: con un AMIGO no hay reloj — chip morado «Amigos» */
             if (D.peerIsFriend(S.meta)) {
                 tTx.textContent = 'Amigos';
                 timer.style.color = PURPLE;
@@ -293,7 +285,6 @@
         }
         paintLock();
 
-        /* --- mensajes en vivo --- */
         const meUid = me() ? me().uid : '';
         function scrollBottom() {
             requestAnimationFrame(function () { msgs.scrollTop = msgs.scrollHeight; });
@@ -324,7 +315,6 @@
             }
         });
         scheduleMark();
-        /* v3 · avisa a md_actions.js: botones Reportar / Bloquear / Ignorar */
         document.dispatchEvent(new CustomEvent('sc:dm-view', { detail: { view: 'chat', win: win, convId: convId, peerUid: peerUid } }));
     }
 
@@ -351,7 +341,6 @@
         return b;
     }
 
-    /* ==== reportar un MD (mismo flujo que report.js -> security/reports) ==== */
     const REASONS = [
         { v: 'Ofensivo', icon: 'fa-face-angry' },
         { v: 'Spam', icon: 'fa-envelope' },
@@ -480,7 +469,6 @@
         try { return firebase.auth().currentUser; } catch (e) { return null; }
     }
 
-    /* ==== CSS ==== */
     function injectCss() {
         if (document.querySelector('style[data-scdm]')) return;
         const css = document.createElement('style');

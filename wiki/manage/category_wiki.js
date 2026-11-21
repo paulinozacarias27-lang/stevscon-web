@@ -22,28 +22,25 @@
 (function (window, document) {
     'use strict';
 
-    /* Dentro de la wiki la puerta no existe */
     if (location.pathname.toLowerCase().indexOf('/wiki/') !== -1) {
         console.log('[Stevscon] category_wiki.js v3: dentro de la Wiki, puerta oculta.');
         return;
     }
 
-    /* ==== CONFIG ==== */
     var WIKI_URL = '/wiki/wiki.html';
-    var WIKIFACE_URL = '/wiki/manage/WikiFace.png';  /* ← tu imagen */
+    var WIKIFACE_URL = '/wiki/manage/WikiFace.png';
     var LOGO_FALLBACK = '/SC-LOGO-20260825013121.png';
     var TAB_ID = 'sc-wiki-tab';
     var DOCK_ID = 'sc-top-dock';
     var LOADER_ID = 'sc-wiki-loader';
 
-    var MIN_SHOW = 2400;   /* ms mínimos (se lee el mensaje) */
-    var MAX_SHOW = 6500;   /* ms máximos (nunca atrapar al usuario) */
-    var MSG_EVERY = 1700;  /* ms entre mensajes */
+    var MIN_SHOW = 2400;
+    var MAX_SHOW = 6500;
+    var MSG_EVERY = 1700;
 
     var state = { opened: false, going: false, prewarm: false, msgTimer: 0 };
     var loader = {};
 
-    /* ==== MENSAJES ==== */
     var MSGS = [
         { chip: 'SUERTE', color: 'gold', text: 'Hoy los easter eggs se dejan encontrar. Es ley.' },
         { chip: 'SUERTE', color: 'gold', text: 'Dicen que quien entra a la Wiki un viernes encuentra un devlog épico.' },
@@ -69,7 +66,6 @@
     ];
     var RARE_MSG = 'EASTER EGG: Encontraste la WikiFace dorada de los secretos. La wiki siempre estuvo observando… y ya te vio llegar.';
 
-    /* ==== ESTILOS (prefijo scw- para no pisar NADA, ni al de Social) ==== */
     var CSS = [
         '/* ---- DOCK SUPERIOR (mismo del Social, por si la Wiki carga primero) ---- */',
         '#' + DOCK_ID + ' {',
@@ -242,7 +238,6 @@
         st.id = 'sc-wiki-style';
         st.textContent = CSS;
         document.head.appendChild(st);
-        /* Inter por si el index no la carga aún (la pantalla de carga la usa) */
         if (!document.querySelector('link[href*="family=Inter"]')) {
             var f = document.createElement('link');
             f.rel = 'stylesheet';
@@ -251,7 +246,6 @@
         }
     }
 
-    /* ==== DOCK SUPERIOR · se crea solo una vez (lo comparte el Social) ==== */
     function ensureDock() {
         var d = document.getElementById(DOCK_ID);
         if (!d) {
@@ -262,7 +256,6 @@
         return d;
     }
 
-    /* ==== PRECARGA de TODA la wiki (cache warm-up real) ==== */
     var load = { total: 0, done: 0, promise: null, resolve: null };
 
     function ensurePrefetch() {
@@ -318,7 +311,6 @@
         if (load.total && load.done >= load.total && load.resolve) load.resolve();
     }
 
-    /* ==== LA PESTAÑA (v3 · píldora superior) ==== */
     function buildTab() {
         if (document.getElementById(TAB_ID)) return;
         var b = document.createElement('button');
@@ -332,7 +324,7 @@
         var img = document.createElement('img');
         img.src = WIKIFACE_URL;
         img.alt = '';
-        img.onerror = function () {          /* fallback: logo SC -> letra W */
+        img.onerror = function () {
             var fb = document.createElement('span');
             fb.className = 'scw-face-fb';
             var lgo = new Image();
@@ -361,7 +353,7 @@
         b.addEventListener('touchstart', startPrewarm, { passive: true });
         b.addEventListener('click', function () {
             b.classList.remove('is-pressing');
-            void b.offsetWidth;              /* reinicia el squish */
+            void b.offsetWidth;
             b.classList.add('is-pressing');
             setTimeout(openWiki, 140);
         });
@@ -375,7 +367,6 @@
         ensurePrefetch();
     }
 
-    /* ==== PANTALLA DE CARGA (intacta) ==== */
     function pickMsg(not) {
         var i, m;
         do { i = Math.floor(Math.random() * MSGS.length); m = MSGS[i]; }
@@ -395,7 +386,6 @@
         var gb = document.createElement('span'); gb.className = 'scw-glow-b';
         ov.appendChild(ga); ov.appendChild(gb);
 
-        /* partículas moradas/doradas */
         for (var i = 0; i < 18; i++) {
             var p = document.createElement('span');
             p.className = 'scw-pt';
@@ -471,7 +461,6 @@
         loader.el = ov; loader.chipEl = chip; loader.msgEl = msg;
         loader.barEl = bar; loader.faceEl = face;
 
-        /* primer mensaje al instante (6% de que toque el easter egg raro) */
         if (Math.random() < 0.06) {
             setMsg('WIKIFACE', 'gold', RARE_MSG, true);
             loader.rareMode = true;
@@ -516,8 +505,8 @@
     function paintProgress(t0, allDone) {
         if (!loader.barEl) return;
         var elapsed = Date.now() - t0;
-        var creep = Math.min(88, (elapsed / MIN_SHOW) * 88);       /* se arrastra con el tiempo */
-        var real = load.total ? (load.done / load.total) * 100 : 0; /* y salta con la carga real */
+        var creep = Math.min(88, (elapsed / MIN_SHOW) * 88);
+        var real = load.total ? (load.done / load.total) * 100 : 0;
         var pct = allDone ? 100 : Math.max(creep, real);
         loader.barEl.style.width = Math.min(100, pct) + '%';
     }
@@ -550,12 +539,10 @@
             setTimeout(function () { location.href = WIKI_URL; }, 280);
         }
 
-        /* navega cuando TODO se precargó Y el mínimo pasó; cap duro de seguridad */
         Promise.all([prefetch, new Promise(function (r) { setTimeout(r, MIN_SHOW); })]).then(go);
         setTimeout(go, MAX_SHOW);
     }
 
-    /* ==== INIT ==== */
     function init() {
         injectStyles();
         buildTab();

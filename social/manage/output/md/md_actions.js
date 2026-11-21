@@ -26,7 +26,7 @@
 
     const A = SCSOC.dmActions = {};
 
-    let cur = null;            /* { convId, peerUid, row, bRep, bBlk, bIgn, armT } */
+    let cur = null;
 
     function E(tag, cls, css) {
         const n = document.createElement(tag);
@@ -55,7 +55,6 @@
         document.head.appendChild(css);
     }
 
-    /* ==== overlay de reporte (misma pinta que el de md_ui) ==== */
     const REASONS = [
         { v: 'Ofensivo', icon: 'fa-face-angry' },
         { v: 'Spam', icon: 'fa-envelope' },
@@ -148,7 +147,6 @@
         box.appendChild(row);
     }
 
-    /* ==== botones ==== */
     function mkAct(icon, label) {
         const b = E('button', 'scdm-act');
         b.type = 'button';
@@ -161,16 +159,13 @@
 
     function paintStates() {
         if (!cur || !cur.bBlk) return;
-        /* v2: entre AMIGOS no existe "Ignorar" — se oculta en vivo */
         if (cur.bIgn) cur.bIgn.style.display = (C.isFriend && C.isFriend(cur.peerUid)) ? 'none' : '';
         const blk = C.isBlocked(cur.peerUid);
         const ign = C.isIgnored(cur.convId);
-        /* Bloquear <-> Desbloquear */
         cur.bBlk.classList.toggle('scdm-on', blk);
         cur.bBlk.classList.remove('scdm-arm');
         cur.bBlk._label = blk ? 'Desbloquear' : 'Bloquear';
         setLabel(cur.bBlk, blk ? 'lock-open' : 'ban', cur.bBlk._label);
-        /* Ignorar <-> Quitar de ignorados */
         cur.bIgn._label = ign ? 'Quitar ignorados' : 'Ignorar';
         setLabel(cur.bIgn, ign ? 'rotate-left' : 'comment-slash', cur.bIgn._label);
     }
@@ -212,7 +207,6 @@
                 });
                 return;
             }
-            /* confirmación en 2 pasos: el botón se arma rojo 2.6s */
             if (cur.bBlk.classList.contains('scdm-arm')) {
                 disarm();
                 C.block(peer, '', function (err) {
@@ -263,14 +257,12 @@
         cur = null;
     }
 
-    /* md_ui avisa en cada cambio de vista */
     document.addEventListener('sc:dm-view', function (e) {
         const d = (e && e.detail) || {};
         if (d.view === 'chat' && d.win && d.convId && d.peerUid) mount(d.win, d.convId, d.peerUid);
         else reset();
     });
 
-    /* si cambian bloqueos/ignorados en vivo, refresca los botones */
     if (C) {
         C.watchBlocked(function () { paintStates(); });
         C.watchIgnored(function () { paintStates(); });

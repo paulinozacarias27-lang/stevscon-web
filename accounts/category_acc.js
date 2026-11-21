@@ -21,7 +21,7 @@
 
     const SC = window.StevsconCreate = window.StevsconCreate || {};
 
-    const LOGO_SRC = 'SC-LOGO-20260825013121.png'; // mismo nombre que en el navbar
+    const LOGO_SRC = 'SC-LOGO-20260825013121.png';
 
     let createModalEl = null;
     let createModalOpen = false;
@@ -29,9 +29,7 @@
     let successTimer = null;
     let lastSessionUser = null;
 
-    // ---- HOME: las dos categorias juntas ----
 
-    // Helper: una tarjeta de categoria (icono + titulo + descripcion + flecha)
     function makeCategoryCard(id, iconClass, title, desc, onClick) {
         const card = document.createElement('button');
         card.type = 'button';
@@ -84,7 +82,6 @@
         subtitle.className = 'home-subtitle';
         subtitle.textContent = 'Tu plataforma social, mensajeria y comunidad en tiempo real.';
 
-        // ---- Tarjetas ACCESS + CREATE, juntas y unidas ----
         const stack = document.createElement('div');
         stack.className = 'category-stack';
 
@@ -104,7 +101,6 @@
             openCreateModal
         ));
 
-        // Zona donde vive la tarjeta de sesion (si el usuario ya inicio sesion)
         const sessionBox = document.createElement('div');
         sessionBox.className = 'hidden';
         sessionBox.id = 'home-session-box';
@@ -117,7 +113,6 @@
         viewport.appendChild(home);
     }
 
-    // ---- Sesion: CREATE y ACCESS ceden cuando ya hay usuario ----
 
     function watchSession() {
         if (typeof window.StevsconFirebase === 'undefined' || !window.StevsconFirebase.auth) return;
@@ -144,8 +139,6 @@
         });
     }
 
-    // Refresca la tarjeta de sesion (avatar nuevo, username nuevo, etc.)
-    // sin recargar la web. Lo dispara el evento 'stevscon:profile-updated'.
     function refreshSessionCard() {
         if (!lastSessionUser) return;
         const box = document.getElementById('home-session-box');
@@ -155,16 +148,12 @@
     }
     document.addEventListener('stevscon:profile-updated', refreshSessionCard);
 
-    // ---- TARJETA DE SESION: autocontenida, con estilos inline ----
 
     function renderSessionCard(container, user) {
         const card = document.createElement('div');
         card.className = 'category-card is-static session-card';
-        // Layout FIJO con inline: avatar | columna de texto | boton copiar.
         card.style.cssText = 'display:flex;align-items:center;gap:14px;text-align:left;';
 
-        // 1) AVATAR: span circular GARANTIZADO con inline (aunque el CSS no
-        //    tenga la clase). Aqui se pinta la imagen/GIF con background.
         const avatar = document.createElement('span');
         avatar.className = 'session-avatar';
         avatar.style.cssText = [
@@ -178,8 +167,6 @@
         ].join(';');
         avatar.textContent = 'S';
 
-        // 2) COLUMNA de texto SIEMPRE al lado del avatar:
-        //    username GRANDE / handler pequeno / ID normal hasta abajo.
         const info = document.createElement('span');
         info.style.cssText = 'display:flex;flex-direction:column;justify-content:center;gap:2px;flex:1;min-width:0;overflow:hidden;';
 
@@ -199,7 +186,6 @@
         info.appendChild(handlerEl);
         info.appendChild(idEl);
 
-        // 3) Boton de copiar ID: fijo a la derecha, sin pisar la columna.
         const copyBtn = document.createElement('button');
         copyBtn.type = 'button';
         copyBtn.className = 'copy-id-btn';
@@ -218,8 +204,6 @@
         let currentId = null;
         copyBtn.addEventListener('click', function () { if (currentId) copyId(currentId); });
 
-        // Cerebro propio: el perfil vive en users/{uid} y el avatar
-        // (base64 o GIF animado) en users/{uid}/profile
         if (typeof window.StevsconFirebase !== 'undefined' && window.StevsconFirebase.database) {
             window.StevsconFirebase.database.ref('users/' + user.uid).once('value')
                 .then(function (snap) {
@@ -230,19 +214,14 @@
                     currentId = p.userId || null;
                     idEl.textContent = 'ID: ' + (p.userId || '—');
                 })
-                .catch(function () { /* sin perfil aun: dejamos el correo */ });
+                .catch(function () {  });
         }
     }
 
-    // Pintor LOCAL de la tarjeta: SOLO background-image sobre el span.
-    // NUNCA crea <img> y NUNCA llama a media_acc.js: la tarjeta no puede
-    // romperse por ninguna otra version de ningun otro file.
     function paintSessionAvatar(avatarEl, profile, userRow) {
         const letter = String((userRow && userRow.username) || (profile && profile.username) || 'S').charAt(0).toUpperCase();
         const url = profile && (profile.avatarUrl || profile.avatarURL);
 
-        // Limpieza: sin URL (o antes de pintar) volvemos al color de fabrica
-        // y al preset guardado si existe, con la letra de respaldo.
         avatarEl.style.background = '';
         avatarEl.style.backgroundColor = '#2e2440';
 
@@ -293,10 +272,8 @@
         }
     }
 
-    // ---- MODAL CREATE: ensambla OUTPUT + BUTTONS ----
 
     function buildCreateModal() {
-        // Sin limpiar modals-root: ahi tambien vive el modal de ACCESS.
         if (document.getElementById('create-modal-overlay')) {
             createModalEl = document.getElementById('create-modal-overlay');
             return;
@@ -347,31 +324,25 @@
         form.noValidate = true;
         form.addEventListener('submit', function (e) { e.preventDefault(); });
 
-        // Defensa: si los modulos no cargaron, avisamos en vez de fallar
         if (typeof SC.output === 'undefined' || typeof SC.output.renderAll !== 'function') {
             const warn = document.createElement('p');
             warn.className = 'field-hint hint-error';
             warn.textContent = 'Error interno: los modulos OUTPUT no cargaron. Revisa el orden de los scripts en el index.';
             form.appendChild(warn);
         } else {
-            // 1) Campos: account, username, handler, password
             SC.output.renderAll(form);
 
-            // 2) Caja de errores/exito de los botones
             if (SC.buttons && SC.buttons.errors && typeof SC.buttons.errors.render === 'function') {
                 form.appendChild(SC.buttons.errors.render());
             }
-            // 3) Checkbox "No soy un robot"
             if (SC.buttons && SC.buttons.allow && typeof SC.buttons.allow.render === 'function') {
                 form.appendChild(SC.buttons.allow.render());
             }
-            // 4) Boton Crear cuenta
             if (SC.buttons && SC.buttons.create && typeof SC.buttons.create.render === 'function') {
                 form.appendChild(SC.buttons.create.render());
             }
         }
 
-        // Puente entre categorias: desde CREATE tambien puedes ir a ACCESS
         const toAccess = document.createElement('button');
         toAccess.type = 'button';
         toAccess.textContent = '¿Ya tienes cuenta? Inicia sesion';
@@ -396,7 +367,6 @@
     }
 
     function openCreateModal() {
-        // Alternancia limpia: si ACCESS esta abierto, se cierra primero
         if (SC.access && typeof SC.access.close === 'function') SC.access.close();
         if (!createModalEl) buildCreateModal();
         if (!createModalEl) return;
@@ -427,10 +397,8 @@
         }
     }
 
-    // ---- ACCESS: se delega en acc_access.js (modal propio) ----
 
     function openAccess() {
-        // Alternancia limpia: si CREATE esta abierto, se cierra primero
         closeCreateModal();
         if (SC.access && typeof SC.access.open === 'function') {
             SC.access.open();
@@ -439,10 +407,8 @@
         }
     }
 
-    // Enlace "¿Aun no tienes cuenta? Crear una" del modal ACCESS
     document.addEventListener('sc:open-create', openCreateModal);
 
-    // ---- Exito de cada categoria + toast global ----
 
     function onCreateSuccess(data) {
         showToast('¡Cuenta creada! Bienvenido, ' + data.username + ' (ID: ' + data.userId + ')');
@@ -463,7 +429,7 @@
         icon.className = kind === 'error' ? 'fa-solid fa-circle-exclamation' : 'fa-solid fa-circle-check';
 
         const text = document.createElement('span');
-        text.textContent = msg; // siempre textContent: nunca innerHTML
+        text.textContent = msg;
 
         toast.appendChild(icon);
         toast.appendChild(text);
@@ -477,7 +443,6 @@
         }, 4500);
     }
 
-    // ---- Init ----
 
     function init() {
         renderHome();

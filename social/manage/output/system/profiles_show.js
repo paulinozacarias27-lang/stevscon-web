@@ -34,9 +34,6 @@
         return !!(a && a.uid === uid);
     }
 
-    /* ==== aplanar users/{uid} para la tarjeta ====
-     * users/{uid} = { username, handler, rank, userId, status, profile: {...} }
-     * Base: raíz · Encima: profile/ (lo que editas en Perfiles manda). */
     function flattenProfile(raw) {
         if (!raw || typeof raw !== 'object') return null;
         const p = (raw.profile && typeof raw.profile === 'object') ? raw.profile : {};
@@ -52,7 +49,6 @@
         return out;
     }
 
-    /* ==== lectura de campos (tolerante, para la tarjeta de respaldo) ==== */
     function nameFor(d) { const p = d.profile || {}; return d.name || d.displayName || d.username || p.name || p.username || 'Usuario'; }
     function handlerFor(d) { const p = d.profile || {}; return String(d.handler || d.tag || p.handler || '').toLowerCase().replace(/^@/, ''); }
     function avatarUrlFor(d) {
@@ -61,7 +57,6 @@
             (d.media && (d.media.avatar || d.media.avatarUrl)) || '');
     }
 
-    /* ==== estado en vivo (users/{uid}/status = {state,...}) ==== */
     function paintStatus(raw) {
         if (!statusRow) return;
         const st = raw && raw.status;
@@ -72,7 +67,6 @@
         statusTxt.textContent = STATUS_TXT[state];
     }
 
-    /* ==== tarjeta de respaldo (si ui_profile.js no está) ==== */
     function label(txt) {
         const p = SCSOC.el('p', 'margin:14px 0 0;font-size:10.5px;font-weight:800;letter-spacing:.14em;color:var(--text-muted,#8f7fc0);');
         p.textContent = txt;
@@ -123,7 +117,6 @@
         const inner = SCSOC.el('div', 'padding:0 16px 16px;');
         const row = SCSOC.el('div', 'display:flex;align-items:flex-end;margin-top:-34px;margin-bottom:10px;position:relative;');
         const av = avatarFor(d, 72);
-        /* v7 · aro redondo SIEMPRE, con el color del tema */
         av.style.border = '4px solid var(--bg-card,#1a1526)';
         av.style.borderRadius = '50%';
         row.appendChild(av);
@@ -171,7 +164,6 @@
         cardHost.appendChild(card);
     }
 
-    /* ==== badge de estado ajeno fuera (mostraría MI estado) ==== */
     function neutralizeForeign() {
         if (!cardHost) return;
         const wraps = cardHost.querySelectorAll('[data-sc-status-wrap]');
@@ -217,7 +209,6 @@
         fallbackCard(data);
     }
 
-    /* ==== ciclo de vida del modal ==== */
     function detachLive() {
         if (detach) { try { detach(); } catch (e) {} detach = null; }
     }
@@ -237,9 +228,6 @@
 
     function buildShell() {
         backdrop = SCSOC.el('div', 'position:fixed;left:0;top:0;right:0;bottom:0;z-index:4500;background:rgba(5,4,10,.66);display:flex;align-items:center;justify-content:center;padding:18px;box-sizing:border-box;font-family:Inter,sans-serif;');
-        /* v7 · clases del sistema: con .modal-overlay + .modal, el rescate de
-           tema claro que ya vive en social.html TAMBIÉN cubre este panel.
-           Los estilos inline ganan sobre las clases: el look no cambia. */
         backdrop.classList.add('modal-overlay');
         modal = SCSOC.el('div', 'width:440px;max-width:100%;max-height:86vh;overflow-y:auto;position:relative;background:var(--bg-card,#1a1526);border:1px solid rgba(167,139,250,.4);border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.6);box-sizing:border-box;');
         modal.classList.add('modal');
@@ -310,7 +298,6 @@
         setTimeout(function () { if (b.parentNode) b.parentNode.removeChild(b); }, 140);
     }
 
-    /* ==== API pública + clic en avatar/nombre del Social ==== */
     SCSOC.profiles.open = open;
     SCSOC.profiles.close = close;
 

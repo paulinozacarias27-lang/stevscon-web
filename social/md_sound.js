@@ -34,7 +34,6 @@
     let muted = false;
     try { muted = localStorage.getItem(MUTE_KEY) === '1'; } catch (e) {}
 
-    /* ==== AUDIO · tu mp3 real (notify-md.mp3, misma carpeta) ==== */
     var AUDIO_URL = (function () {
         try {
             var s = document.currentScript || document.querySelector('script[src*="md_sound.js"]');
@@ -69,7 +68,6 @@
         } catch (e) { return false; }
     }
 
-    /* ==== TOASTS (abajo a la izquierda, encima de la campana) ==== */
     function injectCss() {
         if (document.querySelector('style[data-scnt]')) return;
         const css = document.createElement('style');
@@ -137,7 +135,6 @@
         setTimeout(kill, 6000);
     }
 
-    /* ==== CAMPANA · silenciador completo (esquina inferior izquierda) ==== */
     let bell = null;
     function ensureBell() {
         if (bell && document.body.contains(bell)) return bell;
@@ -166,7 +163,6 @@
         paintBell();
     }
 
-    /* ==== NÚCLEO · escucha la bandeja dms/inbox/{uid} ==== */
     let base = null;
     let alerted = {};
     let offInbox = null;
@@ -192,7 +188,6 @@
         console.log('[Stevscon md_sound] escuchando dms/inbox/' + u.uid + ' …');
     }
 
-    /* v4 · traza: cada cambio real de la bandeja imprime su decisión */
     function trace(k, p, e, msg) {
         console.info('[Stevscon md_sound] bandeja [' + k + ']'
             + ' lastAt ' + p.lastAt + '→' + e.lastAt
@@ -214,7 +209,7 @@
                 peerUid: String(e.peerUid)
             };
         });
-        if (!base) { base = now; return; }        /* arranque: línea base, sin sonido */
+        if (!base) { base = now; return; }
         Object.keys(now).forEach(function (k) {
             const e = now[k], p = base[k] || { unread: 0, lastAt: 0 };
             const changed = (e.lastAt !== p.lastAt) || (e.unread !== p.unread);
@@ -257,7 +252,6 @@
         if (n < 200) setTimeout(function () { waitFirebase(n + 1); }, 250);
     })(0);
 
-    /* ==== API pública ==== */
     window.StevsconNotify = {
         version: VERSION,
         get muted() { return muted; },
@@ -268,7 +262,6 @@
             return playPing();
         },
         simulate: function () {
-            /* v4 · inyecta un MD FALSO que recorre el MISMO camino que uno real */
             if (!base) { console.warn('[Stevscon md_sound] simulate(): aún no hay bandeja (¿sin sesión?).'); return false; }
             console.info('[Stevscon md_sound] simulate(): inyectando MD falso por el camino real…');
             const fake = {};
@@ -283,8 +276,8 @@
             fake[k].lastFrom = 'no-soy-yo';
             fake[k].lastText = '🔍 SIMULACIÓN — así se ve y suena un MD real al llegar';
             const real = base;
-            onSnap(fake);          /* pasa por la MISMA lógica de decisión */
-            base = real;           /* deja la bandeja real intacta */
+            onSnap(fake);
+            base = real;
             Object.keys(fake).forEach(function (kk) { if (alerted[kk] === fake[kk].lastAt) delete alerted[kk]; });
             return true;
         },
@@ -299,7 +292,6 @@
         }
     };
 
-    /* ==== Init ==== */
     function init() {
         injectCss();
         ensureBell();

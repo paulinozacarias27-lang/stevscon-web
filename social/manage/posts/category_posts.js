@@ -32,7 +32,6 @@
     let isOpen = false;
     let lastFocus = null;
 
-    /* ---- Estilos propios de la página ---- */
     const CSS = [
         '#' + PAGE_ID + ' .scsoc-composer-host:empty { display: none; }',
         '#' + PAGE_ID + ' .scsoc-feed-loader {',
@@ -94,7 +93,6 @@
         feedHost.appendChild(box);
     }
 
-    /* ---- Construcción de la página (UNA sola vez) ---- */
     function buildPage() {
         if (pageEl) return;
 
@@ -104,7 +102,6 @@
         pageEl.style.cssText = 'position:fixed;left:0;top:0;right:0;bottom:0;z-index:1500;display:none;flex-direction:column;' +
             'background:var(--bg-main,#0d0b14);font-family:Inter,sans-serif;';
 
-        // ---- Cabecera: Volver | Social | EN VIVO ----
         const header = document.createElement('div');
         header.style.cssText = 'display:flex;align-items:center;gap:14px;padding:13px 20px;flex:none;' +
             'border-bottom:1px solid var(--border-color,#2e2440);background:var(--bg-main,#0d0b14);';
@@ -150,7 +147,6 @@
         header.appendChild(title);
         header.appendChild(live);
 
-        // ---- Cuerpo: columna centrada con composer + feed ----
         const scroll = document.createElement('div');
         scroll.style.cssText = 'flex:1;overflow-y:auto;min-height:0;';
 
@@ -181,17 +177,13 @@
         pageEl.appendChild(scroll);
         document.body.appendChild(pageEl);
 
-        // El loader se va cuando el feed pinta su primer bloque
         const obs = new MutationObserver(function () {
             if (feedHost && feedHost.firstChild) { removeLoader(); obs.disconnect(); }
         });
         obs.observe(feedHost, { childList: true });
-        // Red de seguridad: si el feed está vacío y no pinta nada,
-        // el loader no puede quedarse girando para siempre.
         loaderTimer = setTimeout(removeLoader, 4000);
     }
 
-    /* ---- Montaje del motor (UNA sola vez: los listeners quedan vivos) ---- */
     function mountCore() {
         if (mounted) return;
         if (!coreReady()) { paintCoreError(); return; }
@@ -202,7 +194,6 @@
         catch (e) { console.error('[Stevscon] category_posts: fallo mountFeed ->', e); }
     }
 
-    /* ---- Abrir / cerrar (API pública SCSOC.pages) ---- */
     function open() {
         buildPage();
         if (!pageEl || isOpen) return;
@@ -231,15 +222,12 @@
     SCSOC.pages.toggle = toggle;
     SCSOC.pages.isOpen = function () { return isOpen; };
 
-    // Escape cierra la página, PERO si hay un modal abierto por encima
-    // (perfil, ajustes...), el Escape es de ese modal y no nuestro.
     document.addEventListener('keydown', function (e) {
         if (e.key !== 'Escape' || !isOpen) return;
         if (document.querySelector('.modal-overlay:not(.hidden)')) return;
         close();
     });
 
-    /* ---- Init ---- */
     function init() { injectStyles(); }
 
     if (document.readyState === 'loading') {

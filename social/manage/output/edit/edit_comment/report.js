@@ -29,7 +29,6 @@
         { v: 'Otros',       icon: 'fa-ellipsis' }
     ];
 
-    /* anti-doble-envío: contenido -> timestamp del último reporte */
     const _recent = {};
 
     function nameOf(raw) {
@@ -62,7 +61,6 @@
         return b;
     }
 
-    /* ==== modal de reporte (mismo shell que editTextModal, z-index propio) ==== */
     function openModal(ctx, data, me) {
         const isComment = !!ctx.comment;
         const key = (isComment ? 'c:' : 'r:') + data.id;
@@ -86,7 +84,6 @@
         document.addEventListener('keydown', esc2, true);
         document.body.appendChild(ov);
 
-        /* header: bandera + título */
         const head = SCSOC.el('div', 'display:flex;align-items:center;gap:10px;margin-bottom:12px;');
         const icoBox = SCSOC.el('div', 'width:34px;height:34px;border-radius:10px;background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.35);display:flex;align-items:center;justify-content:center;color:var(--purple-accent,#8b5cf6);font-size:14px;flex:0 0 auto;');
         const ico = SCSOC.el('i', ''); ico.className = 'fa-solid fa-flag';
@@ -100,7 +97,6 @@
         head.appendChild(icoBox); head.appendChild(hWrap);
         box.appendChild(head);
 
-        /* cita del contenido reportado (solo lectura) */
         const quote = SCSOC.el('div', 'background:var(--bg-main,#0d0b14);border:1px solid var(--border-color,#2e2440);border-left:3px solid var(--purple-accent,#8b5cf6);border-radius:10px;padding:10px 12px;margin-bottom:12px;');
         const qName = SCSOC.el('div', 'font:800 12px Inter,sans-serif;color:var(--purple-accent,#a78bfa);margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;');
         qName.textContent = (data.authorName || 'Usuario') + (data.authorHandler ? ' · @' + data.authorHandler : '');
@@ -110,7 +106,6 @@
         quote.appendChild(qName); quote.appendChild(qTxt);
         box.appendChild(quote);
 
-        /* motivo */
         const lbl = SCSOC.el('div', 'font:800 10px Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted,#94a3b8);margin-bottom:7px;');
         lbl.textContent = 'Motivo del reporte';
         box.appendChild(lbl);
@@ -141,7 +136,6 @@
         });
         box.appendChild(grid);
 
-        /* detalle opcional */
         const ta = SCSOC.el('textarea', 'width:100%;box-sizing:border-box;min-height:70px;resize:vertical;background:var(--bg-main,#0d0b14);color:var(--text-main,#f8fafc);border:1px solid var(--border-color,#2e2440);border-radius:10px;padding:10px 12px;font:400 13px/1.55 Inter,sans-serif;outline:none;');
         ta.placeholder = 'Detalle extra (opcional): qué pasó, links, contexto…';
         ta.maxLength = 500;
@@ -150,7 +144,6 @@
         ta.addEventListener('input', paint); paint();
         box.appendChild(ta); box.appendChild(cnt);
 
-        /* footer */
         const row = SCSOC.el('div', 'display:flex;justify-content:flex-end;gap:8px;');
         const c = mkBtn('Cancelar', 'sec'), ok = mkBtn('Enviar reporte', 'pri');
         c.addEventListener('click', close);
@@ -195,12 +188,11 @@
         box.appendChild(row);
     }
 
-    /* ==== ofrecer "Reportar" (logueado y NUNCA sobre contenido propio) ==== */
     function offer(ctx, data) {
         if (!data || !data.id) return;
         const u = firebase.auth().currentUser;
-        if (!u) return;                        /* visitantes: nada (el menú hace deny) */
-        if (data.authorUid === u.uid) return;  /* lo tuyo no se reporta */
+        if (!u) return;
+        if (data.authorUid === u.uid) return;
         SCSOC.menuAdd(ctx, {
             label: 'Reportar',
             icon: 'fa-flag',

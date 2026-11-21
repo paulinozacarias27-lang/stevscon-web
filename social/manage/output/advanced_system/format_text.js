@@ -26,7 +26,6 @@
 
     const FMT = window.StevsconFormats = { version: '1.0' };
 
-    /* ==== ESTILOS (se inyectan solos — funciona en Social Y en Perfiles) ==== */
     const CSS = [
         '.scfmt{display:block;white-space:pre-wrap;word-break:break-word;font-family:inherit;color:inherit}',
         '.scfmt-b{font-weight:800}.scfmt-i{font-style:italic}',
@@ -62,14 +61,12 @@
         document.head.appendChild(st);
     })();
 
-    /* ==== ESCAPES: \* \_ \~ \` \| \# \> \\ (se vuelven char invisible) ==== */
     const ESC = { '*': '\uE001', '_': '\uE002', '~': '\uE003', '`': '\uE004', '|': '\uE005', '#': '\uE006', '>': '\uE007', '\\': '\uE008' };
     const UNESC = { '\uE001': '*', '\uE002': '_', '\uE003': '~', '\uE004': '`', '\uE005': '|', '\uE006': '#', '\uE007': '>', '\uE008': '\\' };
     function escapeSrc(s) { return s.replace(/\\([*_~`|>#\\])/g, function (_, c) { return ESC[c]; }); }
     function plain(s) { return s.replace(/[\uE001-\uE008]/g, function (c) { return UNESC[c] || c; }); }
     function txt(s) { return document.createTextNode(plain(s)); }
 
-    /* ==== REGLAS INLINE (orden = prioridad al empate de posición) ==== */
     function underscoreOK(s, m) {
         const before = m.index > 0 ? s.charAt(m.index - 1) : '';
         const after = s.charAt(m.index + m[0].length) || '';
@@ -107,7 +104,7 @@
                 let iS = start + (rule.pre || 0), iE = end - (rule.post || 0);
                 if (rule.link) { const u = trimUrl(m[0]); end = start + u.length; iS = start; iE = end; }
                 if (!best || start < best.start) best = { rule: rule, start: start, end: end, iS: iS, iE: iE };
-                break;   /* primera coincidencia válida de esta regla */
+                break;
             }
         }
         return best;
@@ -154,7 +151,6 @@
         }
     }
 
-    /* ==== BLOQUES: títulos, citas, listas, código, párrafos ==== */
     function isBlockStart(l) {
         return /^\s*```/.test(l) || /^#{1,3}\s/.test(l) || /^>/.test(l) ||
                /^\s*(?:[-*]\s|\d+\.\s)/.test(l);
@@ -215,7 +211,6 @@
         let i = 0;
         while (i < lines.length) {
             const line = lines[i];
-            /* ``` bloque de código (con o sin lenguaje) ``` */
             const f = line.match(/^\s*```(.*)$/);
             if (f) {
                 const lang = f[1].trim();
@@ -226,10 +221,8 @@
                 root.appendChild(codeBlock(buf.join('\n'), lang));
                 continue;
             }
-            /* # ## ### títulos */
             const h = line.match(/^(#{1,3})\s+(.+)$/);
             if (h) { root.appendChild(header(h[1].length, h[2])); i++; continue; }
-            /* >>> cita multilínea (hasta el final) */
             if (/^>>>\s?/.test(line)) {
                 const buf = [line.replace(/^>>>\s?/, '')];
                 i++;
@@ -237,21 +230,18 @@
                 root.appendChild(quote(buf.join('\n')));
                 continue;
             }
-            /* > cita (agrupa líneas seguidas) */
             if (/^>\s?/.test(line)) {
                 const buf = [];
                 while (i < lines.length && /^>\s?/.test(lines[i])) { buf.push(lines[i].replace(/^>\s?/, '')); i++; }
                 root.appendChild(quote(buf.join('\n')));
                 continue;
             }
-            /* listas (con anidación por espacios) */
             if (/^\s*(?:[-*]\s|\d+\.\s)/.test(line)) {
                 const res = list(lines, i, line.match(/^\s*/)[0].length);
                 root.appendChild(res.el);
                 i = res.i;
                 continue;
             }
-            /* párrafo: líneas normales (los saltos se conservan) */
             const buf = [];
             while (i < lines.length && !isBlockStart(lines[i])) { buf.push(lines[i]); i++; }
             while (buf.length && !String(buf[buf.length - 1]).trim()) buf.pop();
@@ -263,7 +253,6 @@
         }
     }
 
-    /* ==== API PÚBLICA ==== */
     FMT.render = function (text) {
         const root = document.createElement('span');
         root.className = 'scfmt';
@@ -271,7 +260,6 @@
         catch (e) { console.error('[Stevscon] format_text:', e); root.textContent = String(text == null ? '' : text); }
         return root;
     };
-    /* Pinta texto formateado dentro de un elemento (para Perfiles) */
     FMT.paint = function (el, text) {
         if (!el) return el;
         while (el.firstChild) el.removeChild(el.firstChild);
@@ -279,9 +267,6 @@
         return el;
     };
 
-    /* ==== INTEGRACIÓN 1 · SOCIAL: posts, comentarios y respuestas ====
-     * Reemplaza SCSOC.richText — los files que pintan texto la llaman
-     * en vivo, así que NO hay que editar admin_post/comments/responses. */
     if (window.SCSOC) {
         const SCSOC = window.SCSOC;
         const prev = SCSOC.richText;
@@ -294,10 +279,6 @@
             }
         };
 
-        /* ==== INTEGRACIÓN 2 · PANEL DE PERFIL DEL SOCIAL ====
-         * La descripción de la tarjeta se pinta como texto plano;
-         * aquí la re-formateamos DESPUÉS de cada repaint (el listener
-         * de profiles_show se registró antes -> nosotros pintamos detrás). */
         let panelOff = null;
         if (typeof SCSOC.onHook === 'function') {
             SCSOC.onHook('profilePanel', function (uid, modal, cardHost) {
@@ -316,20 +297,18 @@
         }
     }
 
-    /* Busca hojas de texto EXACTAMENTE iguales a la descripción y las formatea */
     FMT.enhanceTree = function (host, desc) {
         const all = host.querySelectorAll('p, div, span');
         for (let i = 0; i < all.length; i++) {
             const el = all[i];
             if (el.dataset.scfmtDone) continue;
-            if (el.firstElementChild) continue;              /* solo hojas */
+            if (el.firstElementChild) continue;
             if (el.textContent !== desc) continue;
             el.dataset.scfmtDone = '1';
             FMT.paint(el, desc);
         }
     };
 
-    /* ==== SPOILERS: un solo listener global (click para revelar) ==== */
     document.addEventListener('click', function (e) {
         const t = e.target && e.target.closest ? e.target.closest('.scfmt-spoiler') : null;
         if (t && !t.classList.contains('scfmt-open')) t.classList.add('scfmt-open');

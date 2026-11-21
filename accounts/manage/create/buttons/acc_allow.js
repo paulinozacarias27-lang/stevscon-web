@@ -11,7 +11,6 @@
 
     const SC = window.StevsconCreate = window.StevsconCreate || {};
 
-    // ---- Mini bus de eventos compartido (lo define el primer file cargado) ----
     SC.listeners = SC.listeners || {};
     if (typeof SC.on !== 'function') {
         SC.on = function (evt, cb) {

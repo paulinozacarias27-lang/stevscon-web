@@ -73,7 +73,6 @@
         return EMAIL_RE.test(getValue());
     }
 
-    // Handler limpio (sin @, en minúsculas) o null si es correo
     function handlerValue() {
         if (isEmailValue()) return null;
         return getValue().replace(/^@/, '').toLowerCase();
@@ -97,7 +96,6 @@
     const FIELD = { id: 'access-id', order: 1, render, getValue, validate, clear, isEmailValue, handlerValue };
     SC.access.fields.push(FIELD);
 
-    // ---- Orquestador propio de ACCESS (independiente del de CREATE) ----
     if (typeof SC.access.get !== 'function') {
         SC.access.get = function (id) {
             return SC.access.fields.find(function (f) { return f.id === id; }) || null;

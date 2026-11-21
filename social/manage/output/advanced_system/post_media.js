@@ -21,19 +21,16 @@
     if (SCSOC.postMedia) return;
     const CONFIG = SCSOC.CONFIG;
 
-    const IMG_PASS_B64 = 120000;    /* pasa intacta hasta ~90KB reales */
-    const IMG_TARGET_B64 = 90000;   /* objetivo tras comprimir */
+    const IMG_PASS_B64 = 120000;
+    const IMG_TARGET_B64 = 90000;
     const VID_MAX_RAW = 2 * 1024 * 1024;
-    const TOTAL_MAX_B64 = 2800000;  /* presupuesto de TODO el post */
+    const TOTAL_MAX_B64 = 2800000;
 
     const PM = SCSOC.postMedia = {
         MAX: 10,
         LIMITS: { IMG_PASS_B64: IMG_PASS_B64, IMG_TARGET_B64: IMG_TARGET_B64, VID_MAX_RAW: VID_MAX_RAW, TOTAL_MAX_B64: TOTAL_MAX_B64 }
     };
 
-    /* ==== UNIÓN con Profiles (media_acc.js): misma mecánica base64 ====
-     * Este va SIN comprimir: avatares/banners se recortan pequeños
-     * aguas abajo y la transparencia del PNG es sagrada ahí. */
     function processFile(file) {
         return new Promise(function (resolve, reject) {
             if (!file || !file.type) return reject({ code: 'tipo' });
@@ -55,7 +52,6 @@
         SCp.media.postProcess = processFile;
     } catch (e) {}
 
-    /* ==== NORMALIZA lo guardado en la BD a un array limpio de dataURLs ==== */
     function norm(media) {
         const out = [];
         const ok = function (u) { return typeof u === 'string' && /^data:(image|video)\//i.test(u) && u.length <= TOTAL_MAX_B64; };
@@ -66,7 +62,6 @@
         return out;
     }
 
-    /* ==== LECTURA + COMPRESIÓN (solo para POSTS; Profiles sigue intacto) ==== */
     function readAsDataURL(file, cb) {
         const r = new FileReader();
         r.onload = function () { cb(String(r.result || '')); };
@@ -87,7 +82,6 @@
         ctx.drawImage(im, 0, 0, w, h);
         return c.toDataURL(png ? 'image/png' : 'image/jpeg', q);
     }
-    /* File -> dataURL liviano o rechazo {code:'big'} */
     function fitFile(file) {
         return new Promise(function (resolve, reject) {
             const t = String(file.type || '');
@@ -104,9 +98,7 @@
             }
             readAsDataURL(file, function (dataUrl) {
                 if (dataUrl.indexOf('data:image/') !== 0) return reject({ code: 'tipo' });
-                /* liviana: intacta (GIF anima, PNG transparente, cero pérdida) */
                 if (dataUrl.length <= IMG_PASS_B64) return resolve(dataUrl);
-                /* GIF grande NO se toca: el canvas mataría la animación */
                 if (/^data:image\/gif/.test(dataUrl)) return reject({ code: 'big' });
                 loadImg(dataUrl, function (im) {
                     if (!im || !im.width) return reject({ code: 'tipo' });
@@ -115,7 +107,6 @@
                     const sc0 = Math.min(1, 1600 / Math.max(w, h));
                     w = Math.max(1, Math.round(w * sc0));
                     h = Math.max(1, Math.round(h * sc0));
-                    /* intento 1: PNG re-escala conservando transparencia */
                     if (isPng) {
                         let tries = 0, out = shrink(im, w, h, 1, true, false);
                         while (out.length > IMG_TARGET_B64 && tries < 3) {
@@ -126,7 +117,6 @@
                         }
                         if (out.length <= IMG_TARGET_B64) return resolve(out);
                     }
-                    /* intento 2: bucle JPEG progresivo (transparencia -> fondo) */
                     let q = 0.82, guard = 0, out = shrink(im, w, h, q, false, true);
                     while (out.length > IMG_TARGET_B64 && guard < 6) {
                         if (q > 0.52) q -= 0.16;
@@ -141,7 +131,6 @@
         });
     }
 
-    /* ==== PICKER reutilizable (composer + modales de edición) ==== */
     function picker(host, initial) {
         const items = [];
         const totalLen = function () { return items.reduce(function (a, u) { return a + u.length; }, 0); };
@@ -238,11 +227,8 @@
         };
     }
 
-    /* ==== GALERÍA en la tarjeta del post (+ lightbox de imágenes) ==== */
     PM.paint = function (host, media) {
         const arr = norm(media);
-        /* firma barata (solo longitudes) para NO re-pintar en cada
-         * child_changed de texto -> los videos no parpadean */
         const sig = arr.length + ':' + arr.map(function (u) { return u.length; }).join(',');
         if (host.dataset.scsocMediaSig === sig && (arr.length === 0 || host.firstChild)) return;
         host.dataset.scsocMediaSig = sig;
@@ -309,7 +295,6 @@
         document.body.appendChild(ov);
     }
 
-    /* ==== COMPOSER (admin_post.js invita vía hook 'composer') ==== */
     const _pickers = new WeakMap();
     SCSOC.onHook('composer', function (ctx) {
         if (!ctx || !ctx.box || !ctx.col || !ctx.foot || _pickers.has(ctx.box)) return;
@@ -329,7 +314,6 @@
         if (pk) pk.clear();
     };
 
-    /* ==== GUARDAR multimedia de un post existente ==== */
     function saveMedia(postId, arr, withToast) {
         const list = arr || [];
         const total = list.reduce(function (a, u) { return a + u.length; }, 0);
@@ -343,7 +327,6 @@
             .catch(function () { SCSOC.toast('No se pudo guardar (¿archivos muy pesados para la BD?).'); });
     }
 
-    /* ==== EDITOR: modal de post CON botón de multimedia ==== */
     function openEditor(post, text, max, onSave) {
         const isEdit = typeof onSave === 'function';
         const ov = SCSOC.el('div', 'position:fixed;left:0;top:0;right:0;bottom:0;z-index:2500;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:16px;');
@@ -409,7 +392,6 @@
         if (isEdit) setTimeout(function () { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }, 0);
     }
 
-    /* El modal compartido editTextModal, cuando es de POST, se potencia aquí */
     if (SCSOC.editTextModal) {
         const _origModal = SCSOC.editTextModal;
         SCSOC.editTextModal = function (title, text, max, onSave) {

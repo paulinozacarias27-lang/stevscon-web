@@ -56,7 +56,6 @@ var D = FM.data = FM.data || {};
 
 if (!core) { console.warn('[Stevscon] public_forms.js: falta forms_core.js'); return; }
 
-/* ==== RUTAS (una sola fuente de verdad) ==== */
 var P_DEFS = 'forms/defs';
 var P_RESP = 'forms/responses';
 var P_MINE = 'forms/myResponses';
@@ -77,12 +76,10 @@ function me() {
     try { return firebase.auth().currentUser || null; } catch (e) { return null; }
 }
 
-/* ==== IDS ==== */
 D.id = function () {
     return 'f_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
 };
 
-/* ==== NORMALIZAR ==== */
 function normDef(id, raw) {
     raw = raw || {};
     return { id: id, meta: raw.meta || {}, panels: raw.panels || {}, questions: raw.questions || {} };
@@ -92,7 +89,6 @@ function toArr(map) {
         .sort(function (a, b) { return (b.meta.createdAt || 0) - (a.meta.createdAt || 0); });
 }
 
-/* ==== LEER DEFS (público — sin sesión) ==== */
 D.getDef = function (formId, cb) {
     cb = cb || function () {};
     if (!formId) return cb(null);
@@ -108,8 +104,6 @@ D.listDefs = function (cb) {
     }).catch(function () { cb([]); });
 };
 
-/* publicados: un form sin bandera cuenta como publicado (compat con los
-   defs que ya guardó el creador de la Parte 2) */
 D.listPublished = function (cb) {
     D.listDefs(function (all) {
         cb((all || []).filter(function (d) { return d.meta.published !== false; }));
@@ -123,7 +117,6 @@ D.formName = function (formId, cb) {
     }).catch(function () { cb('Formulario'); });
 };
 
-/* ==== GUARDAR / PUBLICAR / BORRAR DEFS (Owner y Admins) ==== */
 D.saveDef = function (def, cb) {
     cb = cb || function () {};
     needStaff(function (s) {
@@ -160,15 +153,12 @@ D.deleteDef = function (formId, cb) {
     cb = cb || function () {};
     needStaff(function (s) {
         if (!s) { core.toast('Solo el staff puede eliminar formularios.', 'error'); return cb(false, 'permiso'); }
-        /* las respuestas se quedan (auditoría); en "Mis apostulaciones"
-           el form aparece tachado como "eliminado" */
         core.db().ref(P_DEFS + '/' + formId).remove()
             .then(function () { cb(true); })
             .catch(function (e) { cb(false, (e && e.message) || 'error'); });
     });
 };
 
-/* ==== RESPUESTAS · LEER ==== */
 D.getMyResponse = function (formId, cb) {
     cb = cb || function () {};
     var u = me();
@@ -188,7 +178,6 @@ D.myResponses = function (cb) {
     }).catch(function () { cb([]); });
 };
 
-/* ==== ENVIAR / EDITAR / RE-ENVIAR (lo usa submit_form.js en la Parte 4) ==== */
 D.writeResponse = function (formId, answers, opts, cb) {
     if (typeof opts === 'function') { cb = opts; opts = null; }
     cb = cb || function () {};
@@ -200,7 +189,6 @@ D.writeResponse = function (formId, answers, opts, cb) {
 
     var clean = sanitizeAnswers(answers || {});
 
-    /* el form debe existir y estar abierto */
     D.getDef(formId, function (def) {
         if (!def) return cb({ ok: false, error: 'Ese formulario ya no existe.' });
         if (def.meta.published === false) return cb({ ok: false, error: 'Ese formulario no está abierto ahora mismo.' });
@@ -226,12 +214,10 @@ D.writeResponse = function (formId, answers, opts, cb) {
                 patch[base + '/answers'] = clean;
 
                 if (mode === 'edit') {
-                    /* EDITAR: NO se pisa status/score/staffNote del staff */
                     patch[base + '/meta/profile'] = prof;
                     patch[base + '/meta/editedAt'] = now;
                     patch[base + '/meta/editedCount'] = (Number(prevMeta.editedCount) || 0) + 1;
                 } else {
-                    /* NUEVO o RE-ENVÍO tras rechazo: meta pending limpia */
                     patch[base + '/meta'] = {
                         submittedAt: now,
                         status: 'pending',
@@ -240,7 +226,6 @@ D.writeResponse = function (formId, answers, opts, cb) {
                         editedCount: 0
                     };
                 }
-                /* índice "mis apostulaciones" (solo membresía) */
                 patch[P_MINE + '/' + u.uid + '/' + formId] = true;
 
                 core.db().ref().update(patch).then(function () {
@@ -255,8 +240,6 @@ D.writeResponse = function (formId, answers, opts, cb) {
     });
 };
 
-/* saneo de respuestas: sin vacías, textos acotados y imágenes con su
-   propio tope de peso (base64 ≈ +37%, por eso NO se recortan) */
 function sanitizeAnswers(answers) {
     var out = {};
     var MAXB64 = Math.floor(core.LIMITS.imgBytes * 1.4);
@@ -280,7 +263,6 @@ function sanitizeAnswers(answers) {
     return out;
 }
 
-/* ==== NOTIFICACIONES (forms/notifications/{uid}) ==== */
 D.notifyUser = function (uid, payload, cb) {
     cb = cb || function () {};
     needStaff(function (s) {
@@ -295,7 +277,6 @@ D.notifyUser = function (uid, payload, cb) {
     });
 };
 
-/* avisa a TODOS los que se postularon a un form que este fue editado */
 D.notifyEdited = function (formId, cb) {
     cb = cb || function () {};
     needStaff(function (s) {
@@ -337,16 +318,9 @@ D.myNotifications = function (cb) {
     }).catch(function () { cb([]); });
 };
 
-/* ==== VIGILANTE DE EDICIONES (respuesta #19) ====
-   - Solo corre en sesiones Owner/Admin (los demás ni lo intentan).
-   - Primera vez que ve un form = línea base, NO avisa.
-   - Huella SIN banners/imágenes (eso no cambia las preguntas).
-   - 30s de calma: varios guardados seguidos = UNA notificación.
-   - 2 staff con la página abierta a la vez puede duplicar el aviso
-     (raro e inofensivo). */
 var WKEY = 'fm_editwatch_v1';
-var seenFp = null;   /* fid -> huella ya avisada */
-var lastFp = {};     /* fid -> última huella vista */
+var seenFp = null;
+var lastFp = {};
 var timers = {};
 
 function fingerprint(def) {
@@ -400,13 +374,12 @@ D.watchEdits = function () {
     });
 };
 
-/* encendido automático: solo cuando un staff tiene sesión */
 (function bootWatch() {
     function wire() {
         try {
             firebase.auth().onAuthStateChanged(function (u) {
                 if (!u || D.__watching) return;
-                core.clearSession();          /* sesión fresca tras el login */
+                core.clearSession();
                 core.session(function (s) {
                     if (s && s.isStaff && !D.__watching) {
                         D.__watching = true;
@@ -415,7 +388,7 @@ D.watchEdits = function () {
                     }
                 });
             });
-        } catch (e) { /* firebase aún no inicializado */ }
+        } catch (e) {  }
     }
     if (typeof firebase !== 'undefined' && firebase.auth) wire();
     else window.addEventListener('load', wire);

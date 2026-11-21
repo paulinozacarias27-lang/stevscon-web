@@ -42,7 +42,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
-    /* Mismas variables que usa tu sistema (category_posts.js las hereda de aquí) */
     :root{
         --bg-main:#0d0b14; --border-color:#2e2440; --bg-hover:#261f36; --bg-card:#1a1625;
         --purple-accent:#8b5cf6; --purple-dark:#6d28d9; --purple-glow:rgba(139,92,246,.35);
@@ -57,7 +56,6 @@
     html,body{margin:0;padding:0}
     body{background:var(--bg-main);color:var(--text-main);font-family:Inter,system-ui,sans-serif;min-height:100vh}
 
-    /* ---- Pantalla de arranque (se ve un segundo mientras carga el motor) ---- */
     #sc-boot{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:var(--bg-main);z-index:100}
     #sc-boot .sc-boot-logo{font-size:26px;font-weight:800;letter-spacing:-.02em}
     #sc-boot .sc-boot-logo span{color:var(--purple-accent)}
@@ -66,11 +64,9 @@
     @keyframes sc-boot-spin{to{transform:rotate(360deg)}}
     #sc-boot .sc-boot-error{display:none;max-width:540px;margin:0 20px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.08);color:#f87171;border-radius:12px;padding:14px 16px;font-size:13px;font-weight:600;line-height:1.6}
 
-   /* ---- Destello del post llegado por deep link ---- */
     .scsoc-post-flash{animation:scsocFlash 1.1s ease-in-out 2}
     @keyframes scsocFlash{50%{box-shadow:0 0 0 3px var(--purple-glow)}}
 
-    /* ---- PERFIL · el modal de perfiles no tiene CSS propio aquí ---- */
     .modal-overlay{position:fixed;left:0;top:0;right:0;bottom:0;z-index:1500;background:rgba(5,3,12,.62);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:16px;}
     .modal-overlay.hidden{display:none;}
     .modal-overlay .modal{width:min(560px,100%);max-height:calc(100vh - 40px);overflow-y:auto;background:var(--bg-card,#1a1625);border:1px solid var(--border-color,#2e2440);border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,.35);color:var(--text-main,#f8fafc);font-family:Inter,sans-serif;}
@@ -80,8 +76,6 @@
     .modal-overlay .modal-close{flex:none;width:30px;height:30px;border-radius:9px;border:1px solid var(--border-color,#2e2440);background:transparent;color:var(--text-muted,#94a3b8);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;padding:0;}
     .modal-overlay .modal-body{padding:16px 18px;color:var(--text-main,#f8fafc);}
 
-    /* TEMA CLARO · textos blancos pintados a mano dentro del panel de
-       perfil se vuelven oscuros (los botones con fondo sólido no se tocan) */
     html[data-theme="light"] .modal-overlay .modal *:not([style*="background:#"]):not([style*="background: #"]):not([style*="background:rgb"]):not([style*="background: rgb"]):not([style*="background:var"]):not([style*="background: var"]){color:#221e33 !important;}
     html[data-theme="light"] .modal-overlay .modal [style*="background:#7c3aed"],
     html[data-theme="light"] .modal-overlay .modal [style*="background:#8b5cf6"],
@@ -89,10 +83,8 @@
     html[data-theme="light"] .modal-overlay .modal [style*="background: rgb(139"],
     html[data-theme="light"] .modal-overlay .modal [style*="background: rgb(124"]{color:#fff !important;}
 </style>
-<!-- MOVE v2 · barra de scroll del sitio (adopta la capa del Social cuando el documento no scrollea) -->
 <script src="/social/move.js?v=2"></script>
 <script>
-/* TEMA · aplica al instante el Oscuro/Claro guardado desde Preferencias */
 (function () {
     var t = 'dark';
     try { t = localStorage.getItem('stevscon_theme') || 'dark'; } catch (e) {}
@@ -111,7 +103,6 @@
 <script defer src="/translate.js?v=5"></script>
 <body>
 
-<!-- Arranque: se apaga solo cuando el Social abre -->
 <div id="sc-boot" aria-live="polite">
     <div class="sc-boot-logo">Stevscon<span>.</span></div>
     <span class="sc-boot-spin"></span>
@@ -119,17 +110,13 @@
     <div class="sc-boot-error" id="sc-boot-error"></div>
 </div>
 
-<!-- ==== FIREBASE · SDK compat 9.23.0, LOS MISMOS de tu index ==== -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 
-<!-- ==== CONFIG · tu firebase_data.js de la raíz (el MISMO del index). Cero pegar configs. ==== -->
 <script src="/firebase_data.js?v=13"></script>
 <script>
-    /* Defensa: si firebase_data.js solo expone el config (window.StevsconFirebase)
-       y no llama a initializeApp, lo inicializamos aquí. Si ya inicializó, no se toca. */
     try {
         if (typeof firebase !== 'undefined' && !firebase.apps.length &&
             window.StevsconFirebase && window.StevsconFirebase.apiKey) {
@@ -139,8 +126,6 @@
 </script>
 
 <script>
-/* TEMA · al iniciar sesión, manda el guardado en Firebase (Preferencias)
-   (movido del head a aquí: arriba explotaba porque firebase aún no existía) */
 firebase.auth().onAuthStateChanged(function (u) {
     if (!u || !firebase.database) return;
     firebase.database().ref('users/' + u.uid + '/settings/theme').once('value').then(function (s) {
@@ -153,7 +138,6 @@ firebase.auth().onAuthStateChanged(function (u) {
 });
 </script>
 
-<!-- SETTINGS · UNA sola carga y rutas ABSOLUTAS (este HTML vive en /social/) -->
   <script defer src="/accounts/manage/settings/output/ui_settings.js?v=7"></script>
   <script defer src="/accounts/manage/settings/output/ui_preferences.js?v=2"></script>
   <script defer src="/accounts/manage/settings/output/ui_privacy.js?v=1"></script>
@@ -162,14 +146,12 @@ firebase.auth().onAuthStateChanged(function (u) {
   <script defer src="/accounts/manage/settings/buttons/set_privacy.js?v=1"></script>
   <script defer src="/accounts/manage/settings/buttons/set_data.js?v=1"></script>
 
-  <!-- ==== ONLINE STATUS · cerebro que mantiene tu estado vivo también aquí ==== -->
 <script src="/profiles/manage/online_status/online.js?v=1"></script>
 <script src="/profiles/manage/online_status/inactive.js?v=2"></script>
 <script src="/profiles/manage/online_status/busy.js?v=1"></script>
 <script src="/profiles/manage/online_status/offline.js?v=2"></script>
 <script src="/profiles/manage/profile_manage/edit/status_online.js?v=3"></script>
 
-<!-- ==== TU STACK REAL (mismas rutas ABSOLUTAS, orden y versiones que tu index) ==== -->
 <script src="/social/manage/output/system/numbers.js?v=2"></script>
 <script src="/social/manage/output/advanced_system/utils.js?v=7"></script>
 <script src="/social/manage/output/advanced_system/verified.js?v=3"></script>
@@ -177,7 +159,6 @@ firebase.auth().onAuthStateChanged(function (u) {
 <script src="/social/manage/output/system/likes.js?v=3"></script>
 <script src="/social/manage/output/system/comments.js?v=3"></script>
 <script src="/social/manage/output/system/responses.js?v=5"></script>
-<!-- EDIT · editar/eliminar (posts SOLO staff; comentarios para todos) -->
 <script src="/social/manage/output/edit/edit_post/edit.js?v=2"></script>
 <script src="/social/manage/output/edit/edit_post/remove.js?v=2"></script>
 <script src="/social/manage/output/edit/edit_comment/edit.js?v=2"></script>
@@ -196,7 +177,6 @@ firebase.auth().onAuthStateChanged(function (u) {
 <script src="/social/manage/output/advanced_system/social_layout.js?v=2"></script>
 
 <script src="/social/manage/output/security/security_panel.js?v=4"></script>
-<!-- SECURITY · módulo ACCOUNTS (cuentas registradas, baneos, historial) -->
 <script src="/social/manage/output/security/accounts/accounts.js?v=5"></script>
 <script src="/social/manage/output/security/accounts/reports.js?v=3"></script>
 <script src="/social/manage/output/security/accounts/anti-bad.js?v=5"></script>
@@ -215,10 +195,8 @@ firebase.auth().onAuthStateChanged(function (u) {
 
 <script src="/social/md_sound.js?v=4"></script>
 
-<!-- EL MOTOR: category_posts.js monta la página Social completa.
-     Ruta REAL (según tu árbol y tu index): social/manage/posts/ -->
 <script src="/social/manage/posts/category_posts.js?v=2"></script>
-<script src="/social/manage/posts/errors.js?v=1"></script>
+<script src="/social/manage/errors.js?v=1"></script>
 
 <script src="/banned.js?v=4"></script>
 <script src="/unban.js?v=1"></script>
@@ -226,16 +204,6 @@ firebase.auth().onAuthStateChanged(function (u) {
 <script>
 (function () {
     'use strict';
-    /* ====
-       Arranque de social.html (v2 — TODO listo antes de mostrar):
-       1) Espera al motor (category_posts.js + admin_post.js)
-       2) Espera a que Auth resuelva la sesión (o invitado)
-       3) Abre el Social (SCSOC.pages.open()) MANTENIENDO la pantalla
-          de carga hasta que el feed pinte su primer post (o el vacío)
-          -> NUNCA se ve el Social a medio armar. Cero refresh.
-       4) sc:social-closed -> regreso al inicio (web de varios HTML)
-       5) Deep links: #post/{id} y #u/{handler}
-       ==== */
     var boot = document.getElementById('sc-boot');
 
     function coreReady() {
@@ -258,7 +226,6 @@ firebase.auth().onAuthStateChanged(function (u) {
         if (hint) hint.textContent = 'Algo falló:';
     }
 
-    /* Auth resuelto (sesión guardada o invitado) con tope de 3.5s */
     function warmAuth(cb) {
         try {
             var a = firebase.auth();
@@ -276,13 +243,12 @@ firebase.auth().onAuthStateChanged(function (u) {
         } catch (e) { cb(null); }
     }
 
-    /* Espera (con tope de 6s) al primer post pintado o al estado vacío */
     function waitFirstPaint(cb) {
         var n = 0;
         (function look() {
             var any = document.querySelector('[data-scsoc-post]') ||
                 (document.body.textContent || '').indexOf('No hay publicaciones todavía.') !== -1;
-            if (any || n >= 30) return cb();   /* 30 x 200ms = 6s tope */
+            if (any || n >= 30) return cb();
             n++; setTimeout(look, 200);
         })();
     }
@@ -296,7 +262,6 @@ firebase.auth().onAuthStateChanged(function (u) {
 
     function bootFlow() {
         warmAuth(function (u) {
-            /* Calienta TU nodo: avatar/status listos al primer frame */
             if (u && window.SCSOC && SCSOC.users && SCSOC.users.get) {
                 try { SCSOC.users.get(u.uid, function () {}); } catch (e) {}
             }
@@ -309,14 +274,12 @@ firebase.auth().onAuthStateChanged(function (u) {
     var tries = 0;
     (function waitCore() {
         if (coreReady()) { bootFlow(); return; }
-        if (++tries > 75) return fail();   /* 15 s y nada -> error visible */
+        if (++tries > 75) return fail();
         setTimeout(waitCore, 200);
     })();
 
-    /* Volver / Escape cierran la capa -> URL cambia de vuelta al inicio */
     document.addEventListener('sc:social-closed', function () { location.href = '/'; });
 
-    /* Deep links */
     function route() {
         var h = (location.hash || '').replace(/^#\/?/, '');
         if (h.indexOf('post/') === 0) return openPost(h.slice(5));
@@ -334,7 +297,7 @@ firebase.auth().onAuthStateChanged(function (u) {
                 setTimeout(function () { el.classList.remove('scsoc-post-flash'); }, 2600);
                 return;
             }
-            if (++n < 40) setTimeout(find, 400);   /* el feed carga en tiempo real */
+            if (++n < 40) setTimeout(find, 400);
         })();
     }
 

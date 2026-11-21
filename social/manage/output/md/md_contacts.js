@@ -83,7 +83,6 @@
         });
     } catch (e) { console.warn('[MDc] auth:', e); }
 
-    /* ==== lecturas en vivo ==== */
     C.isFriend = function (uid) { return !!(S.friends && S.friends[uid]); };
     C.isBlocked = function (uid) { return !!(S.blocked && S.blocked[uid]); };
     C.isIgnored = function (convId) { return !!(S.ignored && S.ignored[convId]); };
@@ -95,7 +94,6 @@
     C.watchBlocked = function (fn) { cbs.blocked.push(fn); fn(S.blocked); return offFn(cbs.blocked, fn); };
     C.watchIgnored = function (fn) { cbs.ignored.push(fn); fn(S.ignored); return offFn(cbs.ignored, fn); };
 
-    /* ==== ¿el OTRO me bloqueó a mí? ==== */
     C.blockedBy = function (peerUid, cb) {
         const a = me();
         if (!a || !peerUid || peerUid === a.uid) { cb(false); return; }
@@ -104,7 +102,6 @@
             .catch(function () { cb(false); });
     };
 
-    /* candado total: mis bloqueos + los suyos. err = null | 'mine' | 'theirs' */
     C.guard = function (peerUid, cb) {
         const a = me();
         if (!a || !peerUid || peerUid === a.uid) { cb(null); return; }
@@ -119,7 +116,6 @@
         });
     };
 
-    /* ==== ENVOLTURIO de md_core: open() y send() ahora respetan bloqueos ==== */
     if (D) {
         const _open = D.open;
         D.open = function (peerUid, cb) {
@@ -135,7 +131,6 @@
             if (!peer) { _send(convId, raw, cb); return; }
             C.guard(peer, function (err) { if (!err) _send(convId, raw, cb); });
         };
-        /* el badge global NO cuenta lo ignorado */
         if (D.unreadTotal) {
             const _total = D.unreadTotal;
             D.unreadTotal = function (list) {
@@ -146,7 +141,6 @@
         }
     }
 
-    /* ==== acciones ==== */
     function inboxRef(convId) {
         const a = me();
         return (a && convId) ? db().ref('dms/inbox/' + a.uid + '/' + convId) : null;
@@ -183,7 +177,6 @@
             .catch(function (err) { console.warn('[MDc] unblock:', err); if (cb) cb(err); });
     };
 
-    /* ==== reportar a la PERSONA (type dm -> Box REPORTS del staff) ==== */
     C.reportPeer = function (convId, peerUid, reason, detail, cb) {
         const a = me();
         if (!a || !peerUid) { if (cb) cb(new Error('auth')); return; }
@@ -209,7 +202,6 @@
                 status: 'pendiente',
                 at: firebase.database.ServerValue.TIMESTAMP
             };
-            /* nombre del reportado + último texto como evidencia */
             db().ref('users/' + peerUid).once('value').then(function (s) {
                 const p = s.val() || {};
                 payload.contentName = String(p._name || p.name || 'Usuario').slice(0, 60);

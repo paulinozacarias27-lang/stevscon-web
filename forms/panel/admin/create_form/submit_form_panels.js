@@ -26,7 +26,6 @@ FM.creator = FM.creator || {};
 var C = FM.creator;
 var core = FM.core;
 
-/* ================= ESTILOS DEL FORMULARIO (vista pública) ================= */
 var styled = false;
 function style() {
     if (styled) return;
@@ -67,7 +66,6 @@ function style() {
     (document.head || document.documentElement).appendChild(st);
 }
 
-/* ================= EL RENDER PÚBLICO ================= */
 FM.formView = FM.formView || {};
 
 FM.formView.render = function (def, container) {
@@ -136,7 +134,6 @@ FM.formView.render = function (def, container) {
         wrap.appendChild(core.el('div', 'text-align:center;font:600 12.5px Inter,sans-serif;color:var(--text-muted,#94a3b8);padding:20px', 'Este formulario todavía no tiene categorías.'));
     }
 
-    /* el creador, al final del formulario */
     var cr = document.createElement('div');
     cr.className = 'fmv-creator';
     var cri = document.createElement('i');
@@ -244,7 +241,6 @@ function ctrl(kind, qid, fmvType, ph) {
     return e;
 }
 
-/* ================= VISTA PREVIA ================= */
 C.preview = C.preview || {};
 C.preview.open = function () {
     var ui = C.ui;
@@ -281,11 +277,10 @@ C.preview.open = function () {
     ov.root.appendChild(win);
 
     var host = document.createElement('div');
-    host.className = 'fmv-ro';   /* se ve real pero no se puede tocar */
+    host.className = 'fmv-ro';
     body.appendChild(host);
     FM.formView.render(def, host);
 
-    /* botón de envío de mentira, en su posición real */
     var sendWrap = document.createElement('div');
     sendWrap.className = 'fmv-send';
     var sb = document.createElement('button');
@@ -299,7 +294,6 @@ C.preview.open = function () {
     host.appendChild(sendWrap);
 };
 
-/* ================= COMPARTIR (después de publicar) ================= */
 C.share = C.share || {};
 C.share.open = function (formId, name) {
     var ui = C.ui;

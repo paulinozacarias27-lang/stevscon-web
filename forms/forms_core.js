@@ -23,18 +23,17 @@
     var FM = window.StevsconForms = window.StevsconForms || {};
     var core = FM.core = FM.core || {};
 
-    var OWNER_EMAIL = 'steven23hd@gmail.com';      /* el Owner, igual que tus rules */
+    var OWNER_EMAIL = 'steven23hd@gmail.com';
     var LIMITS = core.LIMITS = {
-        imgMB: 20,                                  /* 20MB — cambia a 30 y listo */
+        imgMB: 20,
         imgBytes: 20 * 1024 * 1024,
         textMax: 15000
     };
 
-    /* ==== HELPERS ==== */
     core.el = function (tag, style, text) {
         var e = document.createElement(tag);
         if (style) e.style.cssText = style;
-        if (text != null) e.textContent = text;     /* XSS fuera: nunca innerHTML */
+        if (text != null) e.textContent = text;
         return e;
     };
 
@@ -61,9 +60,6 @@
         return new Date(Number(ts) || 0).toLocaleDateString('es');
     };
 
-    /* ==== SESIÓN + RANGO (una sola lectura, cacheada) ====
-       Acepta el staff guardado como string 'admin' o como {role:'admin'},
-       exactamente como lo leen tus Firebase rules. */
     var sess = null;
     core.session = function (cb) {
         if (sess) return cb(sess);
@@ -85,10 +81,8 @@
             out({ user: null, uid: null, email: '', isOwner: false, isAdmin: false, isStaff: false });
         }
     };
-    /* al cerrar sesión / cambiar de cuenta: que se vuelva a leer */
     core.clearSession = function () { sess = null; };
 
-    /* ==== IMÁGENES → base64 (tope LIMITS.imgBytes, gifs incluidos) ==== */
     core.imgToB64 = function (file, cb) {
         if (!file) return cb(null, 'No seleccionaste ninguna imagen.');
         if (!/^image\//.test(file.type)) return cb(null, 'Solo imágenes (JPG, PNG, GIF, WebP…). Los videos no.');
@@ -99,7 +93,6 @@
         r.readAsDataURL(file);
     };
 
-    /* ==== TOAST (claro/oscuro automático, se apaga solo) ==== */
     var toastCss = false;
     core.toast = function (msg, kind) {
         if (!toastCss) {

@@ -26,7 +26,7 @@
 
     const OWNER_EMAIL = 'steven23hd@gmail.com';
     const NODE = 'social/badges';
-    const MAX_ROWS = 100; /* tope de filas visibles antes de "…y N más" */
+    const MAX_ROWS = 100;
 
     function db() { return firebase.database(); }
     function el(tag, css, cls) {
@@ -45,7 +45,7 @@
         prev: null, pav: null, pn: null, pu: null, sortBtnIc: null, sortBtnLb: null,
         dir: {}, staff: {}, badgesAll: {},
         loaded: false, loading: false, permErr: '',
-        q: '', sort: 'az' /* 'az' | 'old' | 'rank' */
+        q: '', sort: 'az'
     };
 
     const SORTS = [
@@ -77,7 +77,6 @@
         document.head.appendChild(st);
     })();
 
-    /* ==== HELPERS de usuarios (mismos campos que tu accounts.js) ==== */
     function adapt(raw) {
         raw = raw || {};
         const p = raw.profile || {};
@@ -139,10 +138,9 @@
         state.fb.style.color = isErr ? '#f87171' : '#4ade80';
     }
 
-    /* ==== CARGA del directorio (users + staff + badges) — igual que ACCOUNTS ==== */
     function loadDirectory(cb) {
         if (state.loaded) { if (cb) cb(); return; }
-        if (state.loading) return; /* el render está pendiente; cae al terminar */
+        if (state.loading) return;
         state.loading = true;
         renderUserList();
         Promise.all([
@@ -169,7 +167,6 @@
         }).catch(function () {});
     }
 
-    /* ==== LISTA DE USUARIOS (filtrar + ordenar + render) ==== */
     function filteredUids() {
         const q = state.q.trim().toLowerCase();
         let uids = Object.keys(state.dir).filter(function (u) { return state.dir[u]; });
@@ -190,7 +187,7 @@
             out.sort(function (a, b) {
                 return (Number(state.dir[a].createdAt) || 0) - (Number(state.dir[b].createdAt) || 0);
             });
-        } else { /* rank: Owner → Admin → Mod → Usuario (empate: más nuevo primero) */
+        } else {
             out.sort(function (a, b) {
                 const ra = RANK_ORDER[rankOf(a)], rb = RANK_ORDER[rankOf(b)];
                 if (ra !== rb) return ra - rb;
@@ -272,7 +269,6 @@
         }
     }
 
-    /* ==== CATÁLOGO (lista de TODOS los badges, ordenada por rango) ==== */
     function renderCatalog() {
         const box = state.catBox, body = state.catBody;
         if (!box || !body) return;
@@ -308,7 +304,6 @@
         });
     }
 
-    /* ==== SELECCIÓN de usuario ==== */
     function selectUser(uid) {
         state.uid = uid;
         const raw = state.dir[uid];
@@ -325,7 +320,6 @@
         renderUserList();
     }
 
-    /* Abre un uid aunque no esté en el directorio (búsqueda exacta) */
     function openUid(uid) {
         if (state.dir[uid]) { selectUser(uid); return; }
         db().ref('users/' + uid).once('value').then(function (s) {
@@ -337,7 +331,6 @@
         });
     }
 
-    /* ==== BÚSQUEDA EXACTA (@handler -> uid, o UID directo) ==== */
     function resolve(q, cb) {
         const raw = String(q || '').trim();
         const h = raw.toLowerCase().replace(/^@/, '');
@@ -352,7 +345,6 @@
         }).catch(function () { cb(null); });
     }
 
-    /* ==== LISTA DE BADGES del usuario seleccionado (vía SYSTEM) ==== */
     function renderList() {
         const host = state.list;
         if (!host) return;
@@ -394,7 +386,6 @@
         st.style.color = has ? '#4ade80' : 'var(--text-muted,#94a3b8)';
         row.appendChild(st);
 
-        /* permisos SIEMPRE desde el system (única fuente de verdad) */
         const may = SB.system ? SB.system.roleCan(state.role, id) : false;
 
         const g = el('button', null, 'scbm-btn'); g.type = 'button';
@@ -420,7 +411,6 @@
         return row;
     }
 
-    /* ==== ACCIONES: delegadas 100% al SYSTEM ==== */
     function grant(id) {
         if (!SB.system) { fb('❌ badges_system.js no cargó. Revisa el orden: core → system → manage.', true); return; }
         if (!state.uid) return;
@@ -438,7 +428,6 @@
         }).catch(function (e) { fb('❌ No se pudo quitar: ' + (e && e.message || e), true); });
     }
 
-    /* ==== REGISTRO DE AUDITORÍA del usuario seleccionado (vía SYSTEM) ==== */
     function renderLog() {
         const box = state.logBox, bd = state.logBody;
         if (!box || !bd) return;
@@ -458,7 +447,6 @@
         }).catch(function () { box.style.display = 'none'; });
     }
 
-    /* ==== PANEL ==== */
     function buildPanel() {
         const backdrop = el('div', 'position:fixed;left:0;top:0;right:0;bottom:0;z-index:4600;background:rgba(5,4,10,.7);display:flex;align-items:center;justify-content:center;padding:18px;font-family:Inter,sans-serif;');
         const panel = el('div', 'width:620px;max-width:92vw;max-height:88vh;overflow-y:auto;background:var(--bg-card,#1a1625);border:1px solid rgba(251,191,36,.45);border-radius:20px;box-shadow:0 24px 70px rgba(0,0,0,.6),0 0 30px rgba(251,191,36,.12);color:var(--text-main,#f8fafc);box-sizing:border-box;');
@@ -477,7 +465,6 @@
 
         const body = el('div', 'padding:20px 22px 22px;');
 
-        /* buscador + botón de orden cíclico */
         const srow = el('div', 'display:flex;gap:10px;');
         const inp = el('input', 'flex:1;min-width:0;padding:12px 15px;border-radius:12px;border:1px solid var(--border-color,#2e2440);background:var(--bg-hover,#261f36);color:var(--text-main,#f8fafc);font:600 14px Inter,sans-serif;outline:none;box-sizing:border-box;');
         inp.placeholder = 'Filtrar por nombre, @handler, correo o UID…';
@@ -507,7 +494,6 @@
         sortBtn.addEventListener('click', cycleSort);
         paintSortBtn();
 
-        /* CATÁLOGO (plegable) */
         state.catBox = el('div', 'margin-top:16px;border:1px solid var(--border-color,#2e2440);border-radius:14px;overflow:hidden;background:rgba(124,58,237,.06);');
         const catHead = el('button', 'display:flex;align-items:center;gap:9px;width:100%;box-sizing:border-box;border:0;background:transparent;padding:11px 14px;cursor:pointer;color:var(--text-main,#f8fafc);');
         catHead.type = 'button';
@@ -527,11 +513,9 @@
         state.catBox.appendChild(catHead); state.catBox.appendChild(state.catBody);
         body.appendChild(state.catBox);
 
-        /* NAVEGADOR DE USUARIOS */
         state.ulist = el('div', 'margin-top:14px;border:1px solid var(--border-color,#2e2440);border-radius:14px;background:var(--bg-main,#0d0b14);max-height:250px;overflow-y:auto;');
         body.appendChild(state.ulist);
 
-        /* preview del usuario seleccionado */
         const prev = el('div', 'display:none;align-items:center;gap:12px;margin-top:14px;padding:12px 14px;border-radius:14px;border:1px dashed var(--border-color,#2e2440);');
         const pav = el('span', 'width:44px;height:44px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff;font:800 16px Inter,sans-serif;');
         const ptx = el('div', 'display:flex;flex-direction:column;min-width:0;');
@@ -542,11 +526,9 @@
         body.appendChild(prev);
         state.prev = prev; state.pav = pav; state.pn = pn; state.pu = pu;
 
-        /* badges del usuario seleccionado */
         state.list = el('div', 'display:flex;flex-direction:column;gap:10px;margin-top:14px;');
         body.appendChild(state.list);
 
-        /* REGISTRO DE AUDITORÍA del usuario seleccionado (v4) */
         state.logBox = el('div', 'display:none;margin-top:12px;border:1px dashed var(--border-color,#2e2440);border-radius:12px;padding:10px 12px;');
         const logT = el('div', 'font:800 9.5px Inter,sans-serif;letter-spacing:.16em;color:var(--text-muted,#94a3b8);margin-bottom:6px;');
         logT.textContent = 'REGISTRO DE ESTE USUARIO';
@@ -623,7 +605,6 @@
 
     SB.manage = { open: open, close: close };
 
-    /* Botón flotante 👑 — SOLO staff (rol resuelto por el SYSTEM) */
     function ensureButton() {
         if (!SB.system) { setTimeout(ensureButton, 300); return; }
         SB.system.who().then(function (w) {

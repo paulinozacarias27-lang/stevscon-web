@@ -16,12 +16,10 @@
     }
 
     R.Admin = {
-        // ¿Este correo tiene permisos de administración? (ADMIN u OWNER)
         isAdmin: function (email) {
             return R.atLeast('ADMIN', email);
         },
 
-        // Rango guardado de un usuario en users/{uid}/rank
         rankOfUser: function (uid) {
             const FB = window.StevsconFirebase;
             if (!FB || !FB.database) return Promise.resolve('USER');
@@ -30,9 +28,6 @@
                 .catch(function () { return 'USER'; });
         },
 
-        // ¿El usuario ACTUALMENTE logueado puede hacer X?
-        // El Owner pasa siempre por su correo; los demás, por su
-        // rank guardado en el perfil de la base de datos.
         canCurrentUser: function (rank) {
             const FB = window.StevsconFirebase;
             const user = FB && FB.auth ? FB.auth.currentUser : null;

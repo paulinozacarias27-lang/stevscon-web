@@ -17,12 +17,10 @@
 
     WK.state = { view: 'home', arg: '', ready: false, booted: false };
 
-    /* ---- Título de la pestaña (Stevscon.wiki) ---- */
     function setTitle(t) {
         document.title = t ? (t + ' — Stevscon.wiki') : 'Stevscon.wiki';
     }
 
-    /* ---- Router ---- */
     function route() {
         const h = (location.hash || '').replace(/^#\/?/, '');
         let view = 'home', arg = '';
@@ -53,7 +51,6 @@
             main.appendChild(p);
         }
 
-        /* Marcar chip activo en la barra de categorías */
         WK.core.paintCatNav(WK.state.view === 'category' ? WK.state.arg : '');
 
         if (!WK.state.ready) {
@@ -62,7 +59,6 @@
         }
     }
 
-    /* ---- Boot: el HTML le pasa el mando aquí ---- */
     WK.boot = function () {
         if (WK.state.booted) return;
         WK.state.booted = true;
@@ -70,7 +66,6 @@
         WK.core.start();
         WK.system.start();
 
-        /* Re-render en vivo cuando llegan datos o cambia la sesión */
         let deb = null;
         document.addEventListener('sc:wiki-data', function () {
             if (!WK.state.ready) return;
@@ -81,7 +76,6 @@
             if (WK.state.ready) render();
         });
 
-        /* Header: logo -> portada, buscador -> #s/, Volver -> index */
         const homeBtn = document.getElementById('wk-home-btn');
         if (homeBtn) homeBtn.addEventListener('click', function () { location.hash = ''; route(); });
 
@@ -100,7 +94,6 @@
         const back = document.getElementById('wk-back-btn');
         if (back) back.addEventListener('click', function () { location.href = '/'; });
 
-        /* Escape: vuelve a la portada de la wiki */
         document.addEventListener('keydown', function (e) {
             if (e.key !== 'Escape') return;
             if (WK.state.view !== 'home') { location.hash = ''; route(); }

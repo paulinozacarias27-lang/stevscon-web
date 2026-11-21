@@ -5,14 +5,13 @@
  *  - Se cuelga del ⋯ de cada post (hook 'postMenu')
  *  - Confirmación antes de borrar. El feed lo quita solo en tiempo real.
  *  - Los usuarios normales NUNCA ven esta opción.
- * ==== 
+ * ====
  */
 (function (window, document) {
     'use strict';
 
     const SCSOC = window.SCSOC = window.SCSOC || {};
 
-    /* ==== UI compartida del menú ⋯ (idéntica a edit.js — el guard evita duplicarla) ==== */
     if (!SCSOC.menuAdd) {
         const POP_CSS = 'position:fixed;z-index:2400;min-width:170px;background:var(--bg-card,#1a1625);border:1px solid var(--border-color,#2e2440);border-radius:12px;padding:6px;box-shadow:0 14px 40px rgba(0,0,0,.5);font-family:Inter,sans-serif;box-sizing:border-box;';
         let pop = null;
@@ -129,12 +128,11 @@
         };
     }
 
-    /* ==== hook del ⋯ del post: opción Eliminar (solo staff) ==== */
     SCSOC.onHook('postMenu', function (ctx) {
         const p = ctx.post;
         if (!p || !p.id) return;
         SCSOC.staff.role(function (r) {
-            if (!r) return; /* NO staff -> ni siquiera ve "Eliminar" */
+            if (!r) return;
             SCSOC.menuAdd(ctx, {
                 label: 'Eliminar',
                 icon: 'fa-trash-can',

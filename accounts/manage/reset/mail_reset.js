@@ -13,11 +13,10 @@
     const SC = window.StevsconCreate = window.StevsconCreate || {};
     SC.reset = SC.reset || {};
 
-    // ⚠️ Copia estas 3 llaves EXACTAS desde EmailJS. Una letra mal y falla.
     const CONFIG = {
         serviceId: 'stevscon_servicebot',
         templateId: 'template_p89fuyt',
-        publicKey: 'RYyF8BFvKEL2CwV4y'
+        publicKey: 'RYyF8BfVKEL2CwV4y'
     };
 
     function init() {

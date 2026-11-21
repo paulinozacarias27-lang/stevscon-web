@@ -27,7 +27,6 @@
             return SCSOC.db().ref(CONFIG.LIKES).child(type).child(id);
         },
 
-        /* observa en vivo: { count, me } — el conteo REAL (fuente de verdad) */
         watch: function (type, id, cb) {
             const r = L.node(type, id);
             const h = r.on('value', function (s) {
@@ -40,23 +39,19 @@
             return function () { r.off('value', h); };
         },
 
-        /* toggle: 1 like por usuario (transacción sobre TU ranura) */
         toggle: function (type, id) {
             const auth = firebase.auth().currentUser;
             if (!auth) { SCSOC.deny(); return; }
             const key = type + '/' + id;
             const now = Date.now();
-            if (L._last[key] && now - L._last[key] < 250) return; /* anti martilleo */
+            if (L._last[key] && now - L._last[key] < 250) return;
             L._last[key] = now;
             L.node(type, id).child(auth.uid).transaction(function (cur) {
                 return cur === true ? null : true;
             });
-            /* v2: SIN bump al contador — las reglas congelan counters/likes
-             * y la cifra visible nace del nodo likes (incorruptible). */
         },
         _last: {},
 
-        /* une un botón [data-scsoc-like-btn] + [data-scsoc-like-count] */
         bind: function (btn, cntEl, type, id) {
             btn.dataset.scsocLikeBound = '1';
             let trueCount = 0;
@@ -68,8 +63,6 @@
                 const ic = btn.querySelector('i');
                 if (ic) ic.className = v.me ? 'fa-solid fa-heart' : 'fa-regular fa-heart';
             });
-            /* CORRECTOR: el contador viejo (o un troll con consola) puede
-             * escribir basura en counters/likes -> se pisa con el real. */
             if (SCSOC.counters && SCSOC.counters.watch) {
                 SCSOC.counters.watch(type, id, function () { paintCount(); });
             }
@@ -79,7 +72,6 @@
             });
         },
 
-        /* engancha todos los botones de like dentro de una tarjeta */
         attach: function (scope, type, id) {
             const btn = scope.querySelector ? scope.querySelector('[data-scsoc-like-btn]') : null;
             if (!btn || btn.dataset.scsocLikeBound) return;

@@ -28,15 +28,12 @@ C.panelEditor = {
 
         var m = ui.modal(isNew ? 'Nueva categoría' : 'Editar categoría', { icon: 'fa-layer-group' }, function (body, foot) {
 
-            /* título */
             var inTitle = ui.input(p ? p.title : '', 'Ej: Sobre ti');
             body.appendChild(ui.field('Título de la categoría', inTitle, 'Máximo 120 caracteres.'));
 
-            /* descripción */
             var inDesc = ui.textarea(p ? p.description : '', 'Descripción opcional de la categoría…');
             body.appendChild(ui.field('Descripción (opcional)', inDesc, 'Se muestra debajo del título.'));
 
-            /* imagen opcional */
             var zone = document.createElement('div');
             zone.className = 'fmc-bzone';
             var zi = document.createElement('i');
@@ -85,7 +82,6 @@ C.panelEditor = {
             });
             drawPrev();
 
-            /* footer */
             foot.appendChild(ui.btn('Cancelar', 'ghost', function () { m.close(); }));
             foot.appendChild(ui.btn(isNew ? 'Crear categoría' : 'Guardar cambios', '', function () {
                 var t = (inTitle.value || '').trim();

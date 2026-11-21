@@ -76,7 +76,6 @@ FM.createButton = {
     }
 };
 
-/* Encendido automático: escucha el login desde forms.html */
 (function boot() {
     function wire() {
         try {
@@ -85,7 +84,7 @@ FM.createButton = {
                 if (u) FM.createButton.mount();
                 else FM.createButton.hide();
             });
-        } catch (e) { /* firebase no inicializado todavía */ }
+        } catch (e) {  }
     }
     if (typeof firebase !== 'undefined' && firebase.auth) wire();
     else window.addEventListener('load', wire);

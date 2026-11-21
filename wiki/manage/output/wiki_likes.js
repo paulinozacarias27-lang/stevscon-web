@@ -35,7 +35,6 @@
     function logged() { return !!(WK.system && WK.system.session && WK.system.session.user); }
     function fmtNum(n) { return Number(n || 0).toLocaleString('es'); }
 
-    /* ==== CSS ==== */
     const CSS = `
     .wk-like{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border-color,#2e2440);background:var(--bg-hover,#261f36);color:var(--text-muted,#94a3b8);border-radius:999px;padding:4px 12px;font:700 12px Inter,sans-serif;cursor:pointer;transition:color .2s,border-color .2s,background .2s}
     .wk-like i{font-size:11.5px;transition:color .2s}
@@ -57,7 +56,6 @@
         document.head.appendChild(st);
     }
 
-    /* ==== ESTADO: un listener por artículo sirve artículo + subs ==== */
     const state = { artId: null, snap: { users: {}, subs: {} }, ref: null, cb: null };
 
     function detach() {
@@ -77,7 +75,6 @@
         state.ref.on('value', state.cb, function () {});
     }
 
-    /* ==== PINTAR ==== */
     function usersOf(subId) {
         if (subId) {
             const s = (state.snap.subs || {})[subId] || {};
@@ -100,10 +97,9 @@
         });
     }
 
-    /* ==== FIESTA: pop + corazones flotando ==== */
     function pop(btn) {
         btn.classList.remove('pop');
-        void btn.offsetWidth; /* reinicia la animación */
+        void btn.offsetWidth;
         btn.classList.add('pop');
     }
     function burst(btn) {
@@ -119,7 +115,6 @@
         }
     }
 
-    /* ==== TOGGLE ARTÍCULO ==== */
     function toggleArt(btn) {
         if (!state.artId) return;
         const me = uid();
@@ -136,7 +131,6 @@
         });
     }
 
-    /* ==== TOGGLE SUB-PÁGINA ==== */
     function toggleSub(subId, btn) {
         if (!state.artId) return;
         const me = uid();
@@ -158,7 +152,6 @@
         });
     }
 
-    /* ==== BOTÓN ==== */
     function makeBtn(subId, small) {
         const b = el('button', 'wk-like' + (small ? ' wk-like-sm' : ''));
         b.type = 'button';
@@ -176,7 +169,6 @@
         return b;
     }
 
-    /* ==== INYECCIÓN EN SUB-PÁGINAS (sobrevive a re-pintados) ==== */
     let obs = null;
     function injectSubs() {
         if (!state.artId) return;
@@ -198,7 +190,6 @@
         if (m) obs.observe(m, { childList: true, subtree: true });
     }
 
-    /* ==== GANCHO SEGURO EN renderArticle (el core NO se toca) ==== */
     function wrapCore() {
         if (!WK.core || typeof WK.core.renderArticle !== 'function') return false;
         if (WK.core.__likesWrapped) return true;
@@ -224,7 +215,6 @@
         return true;
     }
 
-    /* Si cambia la sesión (login/logout), re-pinta los corazones */
     document.addEventListener('sc:wiki-auth', paintAll);
 
     function boot() {

@@ -43,7 +43,6 @@
     function me() { try { return firebase.auth().currentUser; } catch (e) { return null; } }
     function emit(arr, v) { arr.forEach(function (fn) { try { fn(v); } catch (e) {} }); }
 
-    /* ==== sincronizar UNA solicitud enviada (escucha su status) ==== */
     function watchSentOne(peerUid) {
         const a = me();
         if (!a || sentOffs[peerUid]) return;
@@ -62,7 +61,6 @@
                 ref.remove().catch(function () {});
                 db().ref('users/' + a.uid + '/frSent/' + peerUid).remove().catch(function () {});
             } else if (v.status === 'pendiente' && C && C.isFriend && C.isFriend(peerUid)) {
-                /* ya son amigos (solicitud mutua aceptada): limpio lo viejo */
                 ref.remove().catch(function () {});
                 db().ref('users/' + a.uid + '/frSent/' + peerUid).remove().catch(function () {});
             }
@@ -99,11 +97,10 @@
         firebase.auth().onAuthStateChanged(function (u) { if (u) start(u); else stop(); });
     } catch (e) { console.warn('[mdF] auth:', e); }
 
-    /* ==== lecturas en vivo ==== */
     function pendingIncoming() {
         const out = [];
         Object.keys(S.incoming || {}).forEach(function (uid) {
-            if (C && C.isFriend && C.isFriend(uid)) return;   /* ya son amigos */
+            if (C && C.isFriend && C.isFriend(uid)) return;
             const r = S.incoming[uid];
             if (r && r.status === 'pendiente') {
                 out.push({ uid: uid, name: r.name || 'Usuario', handler: r.handler || '', at: Number(r.at) || 0 });
@@ -125,7 +122,6 @@
         return '';
     };
 
-    /* ==== acciones ==== */
     F.send = function (peerUid, cb) {
         const a = me();
         if (!a || !peerUid || peerUid === a.uid) { if (cb) cb(new Error('auth')); return; }
@@ -221,7 +217,6 @@
             .catch(function (err) { console.warn('[mdF] removeFriend:', err); if (cb) cb(err); });
     };
 
-    /* ==== BARRA DE ACCIONES del perfil ==== */
     const MAIN = 'var(--text-main,#f8fafc)';
     const MUTED = 'var(--text-muted,#94a3b8)';
     const BORDER = 'var(--border-color,#2e2440)';
@@ -254,7 +249,6 @@
             + '.scdm-pbtn:disabled{opacity:.55;cursor:default;}';
         document.head.appendChild(css);
     }
-    /* el modal-card real: profiles_show manda (uid, modal, cardHost) */
     function cardOf(modal, host) {
         const cands = [modal, host];
         for (let i = 0; i < cands.length; i++) {
@@ -298,11 +292,10 @@
 
     function mount(uid, modal, host) {
         const a = me();
-        if (!a || !uid || uid === a.uid) return;      /* en tu propio perfil no hay barra */
+        if (!a || !uid || uid === a.uid) return;
         const card = cardOf(modal, host);
         if (!card || card.nodeType !== 1) return;
         injectCss();
-        /* red de seguridad: si algún file viejo aún pinta el botón suelto, fuera */
         Array.prototype.forEach.call(card.querySelectorAll('[data-scdm-prof]'), function (n) {
             if (n.parentNode) n.parentNode.removeChild(n);
         });
@@ -331,7 +324,6 @@
                 bFr.disabled = true;
                 F.accept(curUid, function () { if (bar && document.contains(bar)) paintBar(); });
             } else if (mode === 'cancel' || mode === 'unfriend') {
-                /* confirmación en 2 pasos, mismo patrón que Bloquear */
                 if (bFr.classList.contains('scdm-arm')) {
                     bFr.classList.remove('scdm-arm');
                     if (mode === 'cancel') F.cancel(curUid, function () { if (bar && document.contains(bar)) paintBar(); });
@@ -361,12 +353,10 @@
         paintBar();
     }
 
-    /* refresco en vivo: amigos, solicitudes que llegan y estados enviados */
     if (C && C.watchFriends) C.watchFriends(function () { if (bar && document.contains(bar)) paintBar(); });
     F.watchIncoming(function () { if (bar && document.contains(bar)) paintBar(); });
     F.watchSent(function () { if (bar && document.contains(bar)) paintBar(); });
 
-    /* hook defensivo (mismo patrón que md_button) */
     (function waitHook() {
         if (SCSOC.onHook) {
             SCSOC.onHook('profilePanel', function () {

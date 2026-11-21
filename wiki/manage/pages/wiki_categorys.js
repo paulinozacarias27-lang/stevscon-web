@@ -39,10 +39,8 @@
             this.started = true;
             const self = this;
 
-            /* Adiós chips viejos: desde ahora el nav lo pinta este file */
             WK.core.paintCatNav = function (activeSlug) { self.paint(activeSlug); };
 
-            /* Click fuera o Escape -> cierra el panel abierto */
             document.addEventListener('click', function (e) {
                 if (!state.openFor) return;
                 const nav = document.getElementById('wk-catnav');
@@ -77,7 +75,6 @@
 
             const bar = el('div', 'wkc-bar');
 
-            /* Inicio */
             const home = el('button', 'wkc-item' + (!actCat ? ' is-active' : ''));
             home.type = 'button';
             home.appendChild(icon('fa-house'));
@@ -85,7 +82,6 @@
             home.addEventListener('click', function () { self.close(); go(''); });
             bar.appendChild(home);
 
-            /* Categorías principales */
             WK.core.sortedCats().forEach(function (c) {
                 const subsOf = subsMod ? subsMod.byParent(c.id) : [];
                 const isActive = actCat === String(c.slug).toLowerCase() ||
@@ -129,7 +125,6 @@
                 bar.appendChild(wrap);
             });
 
-            /* Contador global a la derecha */
             const total = WK.core.pages || WK.core.published().length;
             bar.appendChild(el('span', 'wkc-count', fmtNum(total) + ' PÁGINAS'));
 
@@ -140,7 +135,6 @@
             const self = this;
             const drop = el('div', 'wkc-drop');
 
-            /* Cabecera: ir a la categoría entera */
             const head = el('button', 'wkc-viewall');
             head.type = 'button';
             head.appendChild(icon('fa-layer-group'));
@@ -150,7 +144,6 @@
 
             const cols = el('div', 'wkc-cols');
 
-            /* SECCIONES: sub-categorías de esta categoría */
             const colA = el('div', 'wkc-col');
             colA.appendChild(el('h4', null, 'Secciones'));
             if (subsOf.length && WK.subcats) {
@@ -171,7 +164,6 @@
             }
             cols.appendChild(colA);
 
-            /* PÁGINAS: las últimas publicadas de la categoría */
             const colB = el('div', 'wkc-col');
             colB.appendChild(el('h4', null, 'Páginas'));
             const arts = WK.core.byCategory(c.id).sort(function (a, b) {
@@ -199,7 +191,6 @@
 
             drop.appendChild(cols);
 
-            /* Staff: crear sub-categorías directo desde el menú */
             if (WK.core.staffView() && WK.subcats && typeof WK.subcats.openEditor === 'function') {
                 const foot = el('div', 'wkc-dropfoot');
                 const add = el('button', 'wkc-addbtn');
@@ -211,13 +202,11 @@
                 drop.appendChild(foot);
             }
 
-            /* Click dentro del panel no lo cierra */
             drop.addEventListener('click', function (e) { e.stopPropagation(); });
             return drop;
         }
     };
 
-    /* ---- Init ---- */
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function () { WK.catsNav.start(); });
     } else {

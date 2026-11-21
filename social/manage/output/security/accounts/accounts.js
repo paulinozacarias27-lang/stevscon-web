@@ -23,7 +23,6 @@
     const SCSOC = window.SCSOC = window.SCSOC || {};
     if (SCSOC.secAccounts) return;
 
-    /* ==== RUTAS (alineadas a tu árbol real) ==== */
     const CFG = {
         USERS: 'users',
         STAFF: 'social/staff',
@@ -42,7 +41,6 @@
         close: closeWin
     };
 
-    /* ==== ESTADO ==== */
     let myRole = null;
     let mounted = false;
     const S = {
@@ -57,13 +55,10 @@
         win: false, modalFor: null
     };
 
-    /* ==== DOM refs ==== */
     let statN, statS, statB, listHost, winEl, backdropEl, winBody, winCount, tabBtnC, tabBtnH, modalEl, modalTitle, modalReason;
 
-    /* ==== HELPERS ==== */
     function toast(m) { if (SCSOC.toast) try { SCSOC.toast(m); } catch (e) {} else console.log('[SEC accounts] ' + m); }
 
-    /* el() LOCAL — css inline y clase van por SEPARADO (este era el bug v1) */
     function el(tag, css, cls) {
         const n = document.createElement(tag);
         if (css) n.style.cssText = css;
@@ -145,7 +140,6 @@
         setTimeout(function () { renderSoon._p = false; render(); }, 60);
     }
 
-    /* ==== LOG / HISTORIAL ==== */
     const LOG_META = {
         ban:          { icon: 'fa-ban',         color: '#f87171', label: 'BANEÓ' },
         unban:        { icon: 'fa-unlock',      color: '#22c55e', label: 'DESBANEÓ' },
@@ -181,7 +175,6 @@
         return out;
     }
 
-    /* ==== ACCIONES (escrituras) ==== */
     function doBan(uid, reason) {
         if (!canAct()) return toast('⚠️ Solo Owner y Admins pueden banear');
         if (isOwnerAcc(uid)) return toast('⚠️ El Owner no puede ser baneado');
@@ -199,7 +192,6 @@
         }).catch(function (e) { toast('⚠️ No se pudo banear (' + (e && e.code || 'error') + ')'); });
     }
     function emailKey(e) {
-        /* Firebase no permite . # $ [ ] en llaves: el punto va a coma (igual que banned.js) */
         return String(e || '').trim().toLowerCase().replace(/[.#$\[\]]/g, function (ch) {
             return ch === '.' ? ',' : '_';
         });
@@ -213,10 +205,8 @@
             reason: String(reason || '').slice(0, 300),
             at: firebase.database.ServerValue.TIMESTAMP
         };
-        /* Rutas de emergencia: aunque CFG venga de una versión vieja, esto SIEMPRE apunta bien */
         const UNBANS_REF = CFG.UNBANS || 'security/accounts/unbans';
         const BAN_EMAILS_REF = CFG.BAN_EMAILS || 'security/accounts/ban_emails';
-        /* 1) Aviso (si falla, el desban IGUAL procede) → 2) quitar ban → 3) limpiar espejo del correo */
         db().ref(UNBANS_REF).child(uid).set(rec).catch(function (err) {
             console.warn('[SC-ACC] aviso de unban no guardado:', err && err.code);
             return null;
@@ -267,7 +257,6 @@
         else ref.remove().then(done, fail);
     }
 
-    /* ==== MODAL DE BANEO ==== */
     function ensureModal() {
         if (modalEl) return;
         const back = el('div', 'position:fixed;inset:0;background:rgba(5,3,12,.7);z-index:2147483050;display:none;align-items:center;justify-content:center;padding:20px;');
@@ -280,7 +269,7 @@
         modalReason.rows = 3;
         modalReason.style.cssText = 'width:100%;box-sizing:border-box;resize:vertical;background:var(--bg-main,#0d0b14);border:1px solid var(--border-color,#2e2440);border-radius:10px;color:var(--text-main,#f8fafc);font:600 13px Inter,sans-serif;padding:10px 12px;outline:none;';
         const note = el('div', 'font:600 11.5px Inter,sans-serif;color:var(--text-muted,#94a3b8);margin-top:10px;line-height:1.5;');
-        note.textContent = 'Nota: esto registra el ban en la base de datos. Que la web lo ejecute (bloquear publicar/comentar) lo conectamos en el siguiente paso.';
+        note.textContent = 'Nota: esto registra el ban en la base de datos y la web ya lo ejecuta al momento: la cuenta baneada no puede publicar, comentar ni volver a entrar.';
         const btns = el('div', 'display:flex;gap:10px;justify-content:flex-end;margin-top:14px;');
         const c = el('button', 'border:1px solid var(--border-color,#2e2440);background:transparent;color:var(--text-main,#f8fafc);font:700 12.5px Inter,sans-serif;padding:9px 14px;border-radius:9px;cursor:pointer;');
         c.type = 'button'; c.textContent = 'Cancelar';
@@ -309,7 +298,6 @@
         if (modalEl) modalEl.style.display = 'none';
     }
 
-    /* ==== MODAL DE DESBANEO (v3) ==== */
     let unbanModalEl = null, unbanTitleEl = null, unbanReasonEl = null;
     function ensureUnbanModal() {
         if (unbanModalEl) return;
@@ -350,7 +338,6 @@
         if (unbanModalEl) unbanModalEl.style.display = 'none';
     }
 
-    /* ==== ACTIVIDAD (posts/comentarios/respuestas del usuario) ==== */
     function loadActivity(uid, cb) {
         const now = Date.now();
         if (S.act && S.actFor === uid && now - S.actAt < 30000) return cb(S.act);
@@ -390,9 +377,7 @@
         }).catch(function (e) { cb(null, e); });
     }
 
-    /* ==== RENDER MAESTRO ==== */
     function render() {
-        /* contadores de la caja (siempre, aunque la ventana esté cerrada) */
         const n = Object.keys(S.users).length;
         let st = 0; Object.keys(S.staff).forEach(function (k) { if (roleOf(S.staff[k])) st++; });
         const b = Object.keys(S.bans).length;
@@ -469,7 +454,6 @@
         const scroll = listHost.scrollTop;
         while (listHost.firstChild) listHost.removeChild(listHost.firstChild);
 
-        /* barra de búsqueda + filtros */
         const bar = el('div', 'display:flex;flex-direction:column;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border-color,#2e2440);position:sticky;top:0;background:var(--bg-card,#16121f);z-index:1;');
         const search = el('input', 'width:100%;box-sizing:border-box;background:var(--bg-main,#0d0b14);border:1px solid var(--border-color,#2e2440);border-radius:10px;color:var(--text-main,#f8fafc);font:600 13px Inter,sans-serif;padding:10px 12px;outline:none;');
         search.type = 'text';
@@ -489,7 +473,6 @@
         bar.appendChild(chips);
         listHost.appendChild(bar);
 
-        /* error de permisos */
         if (S.permUsers) {
             const err = el('div', 'margin:16px;border:1px solid rgba(239,68,68,.4);background:rgba(239,68,68,.08);color:#f87171;border-radius:12px;padding:14px;font:600 12.5px Inter,sans-serif;line-height:1.6;');
             err.textContent = 'PERMISSION_DENIED leyendo users/ — publica las reglas nuevas de Firebase (lectura staff de users + nodo security). Sin eso, ACCOUNTS no puede listar las cuentas.';
@@ -555,7 +538,6 @@
             listHost.appendChild(row);
         });
 
-        /* devolver el foco al buscador tras re-render (no perder teclas) */
         if (S.refocus) {
             S.refocus = false;
             const inp = listHost.querySelector('input');
@@ -683,7 +665,6 @@
 
         const pad = el('div', 'padding:10px 16px 26px;');
 
-        /* cabecera del detalle */
         const head = el('div', 'display:flex;align-items:center;gap:14px;margin:8px 0 4px;');
         head.appendChild(avatarEl(a, 62, st));
         const hmid = el('div', 'min-width:0;');
@@ -707,7 +688,6 @@
         head.appendChild(hmid);
         pad.appendChild(head);
 
-        /* líneas de info */
         pad.appendChild(sectTtl('CUENTA'));
         const lines = el('div');
         const uidVal = el('span', 'font-family:monospace;font-size:11.5px;');
@@ -738,7 +718,6 @@
         lines.appendChild(line('Descripción', p.description ? String(p.description).slice(0, 220) : '—'));
         pad.appendChild(lines);
 
-        /* contadores + contenido */
         pad.appendChild(sectTtl('ACTIVIDAD'));
         const stats = el('div', 'display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--border-color,#2e2440);border-radius:12px;overflow:hidden;margin-bottom:12px;');
         const cPosts = el('div', 'padding:12px 8px;text-align:center;border-right:1px solid var(--border-color,#2e2440);');
@@ -814,7 +793,6 @@
             });
         });
 
-        /* acciones */
         pad.appendChild(sectTtl('ACCIONES'));
         const isMe = me() && uid === me().uid;
         const acts = el('div', 'display:flex;flex-wrap:wrap;gap:9px;align-items:center;');
@@ -845,7 +823,6 @@
         }
         pad.appendChild(acts);
 
-        /* historial de esta cuenta */
         pad.appendChild(sectTtl('HISTORIAL DE LA CUENTA'));
         const own = S.logs.filter(function (e) { return e.uid === uid; });
         const hbox = el('div', 'border:1px solid var(--border-color,#2e2440);border-radius:12px;overflow:hidden;');
@@ -872,7 +849,6 @@
         listHost.appendChild(pad);
     }
 
-    /* ==== VENTANA (ahora SÍ con clases bien puestas) ==== */
     function openWin(uid) {
         if (!winEl) return;
         S.win = true;
@@ -891,7 +867,6 @@
         closeModal();
     }
 
-    /* ==== ESTILOS ==== */
     function injectCss() {
         const css = document.createElement('style');
         css.textContent = ''
@@ -923,19 +898,16 @@
         document.head.appendChild(css);
     }
 
-    /* ==== MONTAJE ==== */
     function mount() {
         if (mounted || !SCSOC.security || !SCSOC.security.body) return;
         mounted = true;
         injectCss();
 
-        /* quitar el placeholder "zona vacía" del panel */
         const bodyEl = SCSOC.security.body;
         Array.prototype.slice.call(bodyEl.querySelectorAll('.scsec-empty')).forEach(function (n) {
             if (n.parentNode) n.parentNode.removeChild(n);
         });
 
-        /* --- BOX ACCOUNTS dentro del panel de seguridad --- */
         const box = E('div', 'scacc-box');
         const top = E('div', 'scacc-boxtop');
         const ic = E('div', 'scacc-boxic');
@@ -953,7 +925,6 @@
         sub.textContent = 'Cuentas registradas de la web: información completa línea por línea, verificaciones, rango staff, baneos, su contenido (posts, comentarios y respuestas) e historial de acciones.';
         box.appendChild(sub);
 
-        /* contadores en 3 celdas (vivos) */
         const statsRow = E('div', 'scacc-boxstats');
         const mkStat = function (label, color, first) {
             const c = el('div', 'flex:1;text-align:center;padding:9px 4px;' + (first ? '' : 'border-left:1px solid var(--border-color,#2e2440);'));
@@ -981,7 +952,6 @@
 
         bodyEl.appendChild(box);
 
-        /* --- VENTANA --- */
         backdropEl = E('div', 'scacc-backdrop');
         backdropEl.addEventListener('click', closeWin);
         document.body.appendChild(backdropEl);
@@ -1021,7 +991,6 @@
         winEl.appendChild(winBody);
         document.body.appendChild(winEl);
 
-        /* Escape: cierra modal > detalle > ventana (sin dejar pasar al panel) */
         document.addEventListener('keydown', function (e) {
             if (e.key !== 'Escape' || !S.win) return;
             e.preventDefault(); e.stopPropagation();
@@ -1031,7 +1000,6 @@
             closeWin();
         }, true);
 
-        /* --- LISTENERS EN VIVO --- */
         db().ref(CFG.USERS).on('value', function (s) {
             S.users = s.val() || {}; S.permUsers = false;
             Object.keys(S.users).forEach(function (uid) {
@@ -1054,7 +1022,6 @@
         console.log('[Stevscon][SEC] accounts.js listo (v2) — el() arreglado, botón funcional, caja con contadores.');
     }
 
-    /* ==== ARRANQUE: espera motor + confirma staff (monta solo para staff) ==== */
     (function wait() {
         const ok = window.firebase && SCSOC.security && SCSOC.security.body &&
             SCSOC.verified && SCSOC.staff;

@@ -33,17 +33,12 @@
 
     const P = SCSOC.posts = {};
 
-    /* ==== ¿puede postear? (solo staff) ==== */
     P.canPost = function (cb) { SCSOC.staff.role(function (r) { if (cb) cb(!!r, r); }); };
 
-    /* ==== v4: WATCHER DE SESIÓN ==== */
     function watchAuth(cb) {
         return firebase.auth().onAuthStateChanged(function (u) { cb(u || null); });
     }
 
-    /* ==== v10: ÍNDICE DEL FEED + FILTRO POR PESTAÑA ====
-     * P._findex = { fbKey: { el, cat } } — saber qué categoría es cada
-     * tarjeta SIN re-mount: al cambiar de pestaña solo se oculta/muestra. */
     P.filter = null;
     P._findex = {};
     P._empty = null;
@@ -65,15 +60,12 @@
         });
         if (P._empty) {
             P._empty.style.display = visible ? 'none' : 'block';
-            /* La frase base 'No hay publicaciones todavía.' se conserva
-             * EXACTA al inicio: social.html la usa para quitar la carga. */
             P._empty.textContent = P.filter
                 ? 'No hay publicaciones todavía. Nada en «' + P.filter + '» por ahora.'
                 : 'No hay publicaciones todavía.';
         }
     };
 
-    /* v10: categorías que existen en el feed pero NO en la lista base */
     P.extraCats = function () {
         const base = SCSOC.categories();
         const out = [];
@@ -84,7 +76,6 @@
         return out;
     };
 
-    /* v10: avisa a feed_tabs.js (contadores por pestaña) */
     function fireCats() {
         try {
             const counts = {};
@@ -96,7 +87,6 @@
         } catch (e) {}
     }
 
-    /* ==== PUBLICAR (v2: a prueba de duplicados · v6: con multimedia) ==== */
     const _lastPub = { uid: '', text: '', at: 0 };
 
     P.publish = function (text, category, media, cb) {
@@ -110,14 +100,12 @@
             if (!text && !hasMedia) { SCSOC.toast('Escribe algo antes de publicar.'); if (cb) cb(new Error('empty')); return; }
             if (text.length > CONFIG.MAX_POST) { SCSOC.toast('Muy largo: máx ' + SCSOC.nums.full(CONFIG.MAX_POST) + ' caracteres.'); if (cb) cb(new Error('too-long')); return; }
 
-            /* Candado 1: mismo autor + mismo texto en <10s = bloqueado */
             if (_lastPub.uid === auth.uid && _lastPub.text === text && (Date.now() - _lastPub.at) < 10000) {
                 SCSOC.toast('Ese post ya se publicó hace un momento.');
                 if (cb) cb(new Error('duplicated'));
                 return;
             }
 
-            /* Candado 2 (LA RAÍZ del bug): lectura de UNA sola vez. */
             const userOnce = SCSOC.users.once || SCSOC.users.get;
             userOnce(auth.uid, function (u) {
                 const id = SCSOC.ids.make();
@@ -132,7 +120,6 @@
                     editedAt: null,
                     pinned: false
                 };
-                /* v6: la multimedia viaja DENTRO del post (1 write, cero reglas) */
                 post.media = hasMedia ? media : null;
                 _lastPub.uid = auth.uid;
                 _lastPub.text = text;
@@ -144,7 +131,6 @@
         });
     };
 
-    /* ==== COMPOSER (v4 reactivo a la sesión · v6: hook 'composer' · v10: sigue a la pestaña) ==== */
     P.mountCompose = function (host) {
         if (host.__scsocComposeOff) { try { host.__scsocComposeOff(); } catch (e) {} host.__scsocComposeOff = null; }
 
@@ -169,7 +155,6 @@
                 o.value = c; o.textContent = c;
                 sel.appendChild(o);
             });
-            /* v10: el select arranca en la pestaña activa del feed */
             if (P.filter) {
                 for (let i = 0; i < sel.options.length; i++) {
                     if (sel.options[i].value === P.filter) { sel.value = P.filter; break; }
@@ -188,7 +173,6 @@
             btn.textContent = 'Publicar';
             btn.addEventListener('click', function () {
                 btn.disabled = true; btn.style.opacity = '.6';
-                /* v6: multimedia del composer (post_media.js la guarda) */
                 const media = (SCSOC.postMedia && SCSOC.postMedia.composerGet) ? SCSOC.postMedia.composerGet(box) : null;
                 P.publish(ta.value, sel.value, media, function (err) {
                     btn.disabled = false; btn.style.opacity = '1';
@@ -202,8 +186,6 @@
             left.appendChild(sel); left.appendChild(cnt);
             foot.appendChild(left); foot.appendChild(btn);
             col.appendChild(ta); col.appendChild(foot);
-            /* v7/v10: hook con el DOM YA armado — UNA SOLA vez (la línea
-             * duplicada del parche v7 reordenaba el slot de multimedia) */
             SCSOC.runHooks('composer', { box: box, ta: ta, sel: sel, btn: btn, left: left, foot: foot, col: col });
             row.appendChild(avSlot); row.appendChild(col);
             box.appendChild(row);
@@ -225,7 +207,6 @@
         host.__scsocComposeOff = watchAuth(evaluate);
     };
 
-    /* ==== v10: el select del composer SIGUE a la pestaña activa ==== */
     document.addEventListener('sc:social-tab', function (e) {
         const cat = e && e.detail && e.detail.category;
         const sel = P._composerSel;
@@ -235,14 +216,12 @@
         }
     });
 
-    /* ==== TARJETA DE POST (v6: host de galería multimedia) ==== */
     P.renderCard = function (post, fbKey) {
         const k = fbKey || post.id;
         let live = post;
         const card = SCSOC.el('article', 'background:' + CARD_BG + ';border:1px solid ' + BORDER + ';border-radius:14px;padding:16px 18px 12px;margin-bottom:14px;box-sizing:border-box;font-family:Inter,sans-serif;');
         card.dataset.scsocPost = k;
 
-        /* cabeza */
         const head = SCSOC.el('div', 'display:flex;align-items:flex-start;gap:12px;');
         head.appendChild(SCSOC.userHead(post.authorUid, 42, {}));
         const meta = SCSOC.el('div', 'display:flex;flex-direction:column;gap:2px;justify-content:center;min-width:0;flex:1;');
@@ -259,15 +238,12 @@
         head.appendChild(dots);
         card.appendChild(head);
 
-        /* texto */
         const txt = SCSOC.el('div', 'color:var(--text-main,#f8fafc);font:400 14.5px/1.6 Inter,sans-serif;white-space:pre-wrap;word-break:break-word;margin:10px 0 4px 54px;');
         card.appendChild(txt);
 
-        /* v6: galería multimedia (post_media.js la pinta; invisible si no hay) */
         const mHost = SCSOC.el('div', 'display:none;margin:10px 0 2px 54px;');
         card.appendChild(mHost);
 
-        /* barra de acciones */
         const bar = SCSOC.el('div', 'display:flex;align-items:center;gap:22px;margin:8px 0 0 54px;');
         const likeBtn = SCSOC.el('button', 'display:inline-flex;align-items:center;gap:7px;border:0;background:transparent;color:var(--text-muted,#94a3b8);font:700 12.5px Inter,sans-serif;cursor:pointer;padding:5px 8px;border-radius:8px;');
         likeBtn.innerHTML = '<i class="fa-regular fa-heart"></i>';
@@ -284,21 +260,18 @@
         bar.appendChild(likeBtn); bar.appendChild(comBtn);
         card.appendChild(bar);
 
-        /* host de comentarios */
         const cHost = SCSOC.el('div', 'display:none;margin-top:10px;');
         card.appendChild(cHost);
 
-        /* pintado */
         function paint(p) {
             timeEl.textContent = SCSOC.timeAgo(p.createdAt) + (p.editedAt ? ' · editado' : '');
             timeEl.title = p.createdAt ? new Date(p.createdAt).toLocaleString('es') : '';
             catEl.textContent = p.category ? '· ' + p.category : '';
             txt.innerHTML = '';
             txt.appendChild(SCSOC.richText(p.text));
-            if (SCSOC.postMedia) SCSOC.postMedia.paint(mHost, p.media);   /* v6 */
+            if (SCSOC.postMedia) SCSOC.postMedia.paint(mHost, p.media);
         }
 
-        /* contadores en vivo (v3: 💬 = comentarios + respuestas) */
         const offCnt = SCSOC.counters.watch('post', post.id, function (v) {
             const total = (Number(v.comments) || 0) + (Number(v.responses) || 0);
             likeCnt.textContent = SCSOC.nums.fmt(v.likes);
@@ -309,7 +282,6 @@
 
         paint(post);
 
-        /* ctx para los hooks */
         const ctx = {
             el: card, postId: post.id, commentsHost: cHost, mediaHost: mHost, _open: false,
             openComments: function () { SCSOC.comments.mount(cHost, ctx.postId); ctx._open = true; },
@@ -325,22 +297,19 @@
         };
     };
 
-    /* ==== FEED EN TIEMPO REAL (v2 dedupe · v10: obedece a las PESTAÑAS) ==== */
     P.mountFeed = function (host) {
         if (host.__scsocFeedOff) { try { host.__scsocFeedOff(); } catch (e) {} host.__scsocFeedOff = null; }
 
         host.innerHTML = '';
-        P._findex = {};                                     /* v10: feed fresco */
+        P._findex = {};
 
-        /* v10: aquí arriba se monta la BARRA DE PESTAÑAS (feed_tabs.js
-         * escucha el hook 'feedMount' y se inserta como primer hijo) */
         SCSOC.runHooks('feedMount', { host: host });
 
         const empty = SCSOC.el('p', 'color:var(--text-muted,#94a3b8);font:600 13px Inter,sans-serif;text-align:center;padding:30px 0;font-family:Inter,sans-serif;');
         empty.textContent = 'No hay publicaciones todavía.';
         host.appendChild(empty);
-        P._empty = empty;                                   /* v10: estado vacío gestionado */
-        P.applyFilter();                                    /* v10 */
+        P._empty = empty;
+        P.applyFilter();
 
         const ref = SCSOC.db().ref(CONFIG.POSTS).orderByChild('createdAt').limitToLast(CONFIG.FEED_SIZE);
         const cards = {};
@@ -352,16 +321,15 @@
             if (host.querySelector('[data-scsoc-post="' + k + '"]')) return;
             const c = P.renderCard(p, k);
             cards[k] = c;
-            host.insertBefore(c.el, empty);                 /* v10: SIEMPRE detrás del aviso (la barra queda arriba) */
-            P._findex[k] = { el: c.el, cat: normCat(p.category) };   /* v10 */
-            P.applyFilter();                                /* v10: respeta la pestaña + estado vacío */
-            fireCats();                                     /* v10: contadores de pestañas */
+            host.insertBefore(c.el, empty);
+            P._findex[k] = { el: c.el, cat: normCat(p.category) };
+            P.applyFilter();
+            fireCats();
         };
         const onCh = function (s) {
             const p = s.val();
             if (p && cards[s.key]) {
                 cards[s.key].update(p);
-                /* v10: la categoría pudo cambiar -> re-filtra esa tarjeta */
                 if (P._findex[s.key]) {
                     P._findex[s.key].cat = normCat(p.category);
                     P.applyFilter();
@@ -376,7 +344,7 @@
                 if (c.off) c.off();
                 delete cards[s.key];
             }
-            if (P._findex[s.key]) {                         /* v10 */
+            if (P._findex[s.key]) {
                 delete P._findex[s.key];
                 P.applyFilter();
                 fireCats();

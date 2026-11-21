@@ -41,7 +41,6 @@
         return i;
     }
 
-    /* ==== FORMATOS: formats.js si está, fallback mínimo propio ==== */
     function esc(s) {
         return String(s == null ? '' : s)
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -70,7 +69,6 @@
         }
         return localMd(src);
     }
-    /* Celdas: una línea -> formats.md y quitamos el <p> envolvente */
     function cellMd(src) {
         let h = renderMd(src);
         const m = h.match(/^<p>([\s\S]*)<\/p>$/);
@@ -105,11 +103,9 @@
         return c;
     }
 
-    /* ==== ESTADO ==== */
-    let cur = null;                 /* { artId, sec, nav, list, ref, cb, addBtn, lastVal } */
-    const sorts = {};               /* subId -> {col: -1..4, dir: 1|-1} */
+    let cur = null;
+    const sorts = {};
 
-    /* ==== LIGHTBOX (compartido: galería, filas con imagen, normal) ==== */
     let lb = null;
     function closeLb() {
         if (!lb) return;
@@ -170,7 +166,6 @@
         show();
     }
 
-    /* ==== MONTAJE DE LA SECCIÓN ==== */
     function mountSection(main, artId) {
         if (!main || !artId) return;
         unmount();
@@ -294,7 +289,6 @@
         return b;
     }
 
-    /* ==== TIPO NORMAL ==== */
     function normalBody(sub) {
         const pos = sub.imgPos === 'lado' ? 'lado' : 'abajo';
         const u = safeUrl(sub.image);
@@ -317,7 +311,6 @@
         return w;
     }
 
-    /* ==== TIPO LISTA: tabla ordenable estilo Fandom ==== */
     const DEF_COLS = ['Nombre', 'Imagen', 'Cómo conseguirlo', 'Notas', 'Versión'];
     function listaTable(id, sub) {
         const cols = DEF_COLS.slice();
@@ -451,7 +444,6 @@
         return wrap;
     }
 
-    /* ==== TIPO GALERÍA ==== */
     function galeriaGrid(sub) {
         const raw = Array.isArray(sub.rows) ? sub.rows : [];
         const items = raw.map(function (r) {
@@ -479,12 +471,10 @@
         return grid;
     }
 
-    /* ==== re-pintar cuando cambie el estado de staff ==== */
     document.addEventListener('sc:wiki-auth', function () {
         if (cur && cur.lastVal) paint(cur.lastVal);
     });
 
-    /* ==== CSS ==== */
     const CSS = [
         '.wk-subs-sec{margin:22px 0 0}',
         '.wk-subs-head{display:flex;align-items:center;gap:10px;margin:0 0 12px}',
@@ -561,7 +551,6 @@
         document.head.appendChild(st);
     }
 
-    /* ==== API (aliases por compatibilidad) ==== */
     WK.subs = {
         mountSection: mountSection,
         mount: mountSection,

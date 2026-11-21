@@ -25,7 +25,6 @@
     const RE_HTTPS = new RegExp('^https://', 'i');
     const RE_DATAIMG = new RegExp('^data:image/[a-zA-Z0-9.+-]+;base64,', 'i');
 
-    /* ==== HELPERS ==== */
     function fmtDate(ts) {
         const n = Number(ts);
         if (!n) return '—';
@@ -41,7 +40,6 @@
         return e;
     }
 
-    /* ==== MARKDOWN: formats.js con fallback mínimo ==== */
     function esc(s) {
         return String(s == null ? '' : s)
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -63,7 +61,7 @@
     }
     function localMd(src) {
         const lines = String(src || '').split(/\r?\n/);
-        let out = '', list = null; /* 'ul' | 'ol' | null */
+        let out = '', list = null;
         const closeList = function () { if (list) { out += '</' + list + '>'; list = null; } };
         for (let i = 0; i < lines.length; i++) {
             const L = lines[i];
@@ -105,7 +103,6 @@
         return '';
     }
 
-    /* ==== ESTADO ==== */
     WK.core = {
         cats: {}, arts: {}, pages: 0, edits: 0, avatars: {}, started: false,
 
@@ -138,7 +135,6 @@
             }, function () {});
         },
 
-        /* ==== SLUGS / BÚSQUEDA ==== */
         slugIndex: function () {
             const map = {};
             Object.keys(this.arts).forEach(function (id) {
@@ -170,9 +166,6 @@
             return !!(WK.system && WK.system.session && WK.system.session.isStaff);
         },
 
-        /* ==== AUTOR (avatar + nombre desde users/{uid}) ====
-         * v5 FIX: los campos reales son username/handler (raíz) y
-         * profile/avatarUrl (lo que edita Perfiles). avatarURL no existe. */
         avatar: function (uid) {
             if (!uid) return Promise.resolve(null);
             if (this.avatars[uid]) return Promise.resolve(this.avatars[uid]);
@@ -191,7 +184,6 @@
             }).catch(function () { return null; });
         },
 
-        /* ==== BARRA DE CATEGORÍAS ==== */
         paintCatNav: function (activeSlug) {
             const nav = document.getElementById('wk-catnav');
             if (!nav) return;
@@ -231,7 +223,6 @@
             return found[0] || null;
         },
 
-        /* ==== VISTAS (bloques) ==== */
         typeChip: function (t) {
             const map = {
                 proyecto: ['fa-rocket', 'Proyecto'],
@@ -289,18 +280,15 @@
             return box;
         },
 
-        /* ==== PORTADA ==== */
         renderHome: function (main) {
             const self = this;
 
-            /* Banner (imagen oficial — wiki/manage/StevsconWiki.png) */
             const hero = el('section', 'wk-hero wk-hero-img');
             const hImg = document.createElement('img');
             hImg.className = 'wk-hero-banner';
             hImg.alt = 'Stevscon.wiki';
             hImg.src = '/wiki/manage/StevsconWiki.png';
             hImg.addEventListener('error', function () {
-                /* Fallback: si la imagen no está, vuelve el banner de texto */
                 hero.classList.remove('wk-hero-img');
                 if (hImg.parentNode) hImg.parentNode.removeChild(hImg);
                 const fb = el('h1');
@@ -312,7 +300,6 @@
             hero.appendChild(hImg);
             main.appendChild(hero);
 
-            /* Sobre la wiki */
             const about = el('section', 'wk-about');
             const at = el('h2');
             const ai = document.createElement('i');
@@ -323,7 +310,6 @@
             about.appendChild(el('p', null, 'Esta es la wiki oficial y real de Stevscon.com, donde toda la informacion de nuestros proyectos o mas conocidos, PotForce, se anunciara TODO sobre ello, skins, devlogs, uptades, versiones, alphas y pruebas y mucho mas! No olvides visitar mucho la wiki, porque casi todos los dias, se anuncia MUCHAS cosas mas!!'));
             main.appendChild(about);
 
-            /* Destacados */
             const feat = this.published().filter(function (x) { return x.a.featured; })
                 .sort(function (a, b) { return (b.a.updatedAt || 0) - (a.a.updatedAt || 0); });
             if (feat.length) {
@@ -340,7 +326,6 @@
                 main.appendChild(sec);
             }
 
-            /* Categorías */
             const cats = this.sortedCats();
             if (cats.length) {
                 const sec = el('section', 'wk-sec');
@@ -371,7 +356,6 @@
                 main.appendChild(sec);
             }
 
-            /* Últimas páginas */
             const latest = this.published().sort(function (a, b) { return (b.a.updatedAt || b.a.createdAt || 0) - (a.a.updatedAt || a.a.createdAt || 0); });
             if (latest.length) {
                 const sec = el('section', 'wk-sec');
@@ -391,7 +375,6 @@
             }
         },
 
-        /* ==== CATEGORÍA ==== */
         renderCategory: function (main, slug) {
             const c = this.catBySlug(slug);
             if (!c) return this.emptyBox(main, 'fa-folder-xmark', 'Categoría no encontrada', 'Quizá fue renombrada o borrada.');
@@ -410,7 +393,6 @@
             return h;
         },
 
-        /* ==== BUSCADOR ==== */
         renderSearch: function (main, q) {
             const self = this;
             const qq = String(q || '').trim().toLowerCase();
@@ -432,7 +414,6 @@
             sec.appendChild(grid);
         },
 
-        /* ==== ARTÍCULO ==== */
         renderArticle: function (main, key) {
             const self = this;
             const hit = this.resolveArticle(key);
@@ -441,7 +422,6 @@
 
             const art = el('article', 'wk-article');
 
-            /* Meta superior */
             const top = el('div', 'wk-art-top');
             top.appendChild(this.typeChip(a.type));
             const cat = this.catById(a.category);
@@ -472,7 +452,6 @@
             art.appendChild(el('h1', 'wk-art-title', a.title || 'Sin título'));
             if (a.summary) art.appendChild(el('p', 'wk-art-sum', a.summary));
 
-            /* Autor + fecha + vistas (avatar en vivo) */
             const meta = el('div', 'wk-art-meta');
             const avWrap = el('button', 'wk-author');
             avWrap.type = 'button';
@@ -499,7 +478,6 @@
                 avWrap.querySelector('.wk-author-name').textContent = info.name + (info.handler ? ' (' + info.handler + ')' : '');
             });
 
-            /* Portada del artículo */
             const cover = safeUrlAny(a.cover || '');
             if (cover) {
                 const cwrap = el('div', 'wk-cover');
@@ -510,7 +488,6 @@
                 art.appendChild(cwrap);
             }
 
-            /* Cuerpo (escape PRIMERO y formato DESPUÉS, via formats.js) */
             const body = el('div', 'wk-body');
             body.innerHTML = renderMd(a.body || '');
             art.appendChild(body);
@@ -518,18 +495,14 @@
             main.appendChild(art);
             enhanceBody(body);
 
-            /* Vistas: +1 por sesión (solo usuarios logueados; las rules lo permiten) */
             if (WK.system && WK.system.bumpViews) WK.system.bumpViews(id);
 
-            /* v4: SUB-PÁGINAS (normal / lista / galería) bajo el artículo */
             if (WK.subs && typeof WK.subs.mountSection === 'function') {
                 try { WK.subs.mountSection(main, id, a); } catch (e) { console.warn('[Wiki] subs:', e); }
             }
 
-            /* Historial (como las wikis de verdad) */
             this.renderHistory(main, id);
 
-            /* Relacionados por categoría */
             if (cat) {
                 const rel = this.byCategory(cat.id).filter(function (x) { return x.id !== id; })
                     .sort(function (a, b) { return (b.a.updatedAt || 0) - (a.a.updatedAt || 0); }).slice(0, 4);

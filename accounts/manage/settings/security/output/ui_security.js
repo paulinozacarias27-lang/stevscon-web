@@ -13,7 +13,6 @@
     const sec = SCSET.security = {};
     sec.forms = {};
 
-    /* ==== OWNER MODE (misma regla del proyecto) ==== */
 
     sec.isOwner = function () {
         const u = SCSET.user || {};
@@ -23,10 +22,8 @@
         return email === 'steven23hd@gmail.com' || /^stevscon$/i.test(uname);
     };
 
-    /* Owner: mínimo 6 · Normal: mínimo 8 */
     sec.minPass = function () { return sec.isOwner() ? 6 : 8; };
 
-    /* ==== ERRORES DE FIREBASE -> MENSAJES CLAROS ==== */
 
     sec.errMsg = function (err) {
         const code = (err && err.code) || '';
@@ -45,7 +42,6 @@
         return map[code] || 'No se pudo completar. Intenta de nuevo.';
     };
 
-    /* ==== FÁBRICA DE INPUTS ==== */
 
     sec.inputField = function (label, id, type) {
         const wrap = document.createElement('div');
@@ -66,7 +62,6 @@
         return { wrap: wrap, input: input };
     };
 
-    /* ==== MODAL (lo usan re-auth y la zona peligrosa) ==== */
 
     sec.modal = function (cfg) {
         const overlay = document.createElement('div');
@@ -134,7 +129,6 @@
         overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
         cancel.addEventListener('click', close);
 
-        /* Cuenta atrás opcional (zona peligrosa) */
         if (cfg.countdown && cfg.countdown > 0) {
             let left = cfg.countdown;
             confirm.disabled = true;
@@ -168,7 +162,6 @@
         return { close: close };
     };
 
-    /* ==== PESTAÑA 'seguridad' (pisa el cascarón PRONTO) ==== */
 
     SCSET.registerTab({
         id: 'seguridad', label: 'Seguridad', icon: 'fa-user-shield',

@@ -22,11 +22,9 @@
     if (SCSOC._verifiedLoaded) return;
     SCSOC._verifiedLoaded = true;
 
-    /* ==== CONFIG ==== */
-    const REF = 'social/verified';              // social/verified/{uid} = { type, by, at }
-    const ALLOWED_ROLES = ['owner', 'admin'];   // quién otorga (los mods NO)
+    const REF = 'social/verified';
+    const ALLOWED_ROLES = ['owner', 'admin'];
 
-    /* ==== LOS 5 TIPOS DE VERIFICACIÓN (cambia colores aquí) ==== */
     const TYPES = SCSOC.verifiedTypes = {
         classic: { label: 'Verificado clásico',        color: '#38bdf8', icon: 'check' },
         cc:      { label: 'Creador de contenido (CC)', color: '#ff0033', icon: 'youtube' },
@@ -35,7 +33,6 @@
         gold:    { label: 'Verificado de Oro',         color: '#facc15', icon: 'check' }
     };
 
-    /* ==== SVG de la insignia (estático, sin datos de usuario) ==== */
     function svgFor(type, px) {
         const t = TYPES[type] || TYPES.classic;
         const w = px || 15;
@@ -58,7 +55,6 @@
         return s;
     }
 
-    /* ==== ESCUCHA EN VIVO por usuario (cache estilo SCSOC.users) ==== */
     const _cache = {};
     function watch(uid, cb) {
         if (!uid) { if (cb) cb(null); return; }
@@ -78,7 +74,6 @@
         });
     }
 
-    /* ==== OTORGAR / QUITAR (Owner y Admins; las reglas lo refuerzan) ==== */
     function canGrant(cb) {
         SCSOC.staff.role(function (role) { cb(ALLOWED_ROLES.indexOf(role) !== -1); });
     }
@@ -108,29 +103,27 @@
         });
     }
 
-    /* ==== MONTAR HUECO DE INSIGNIA (lo usa userHead de utils.js) ==== */
     function mount(uid, line, px) {
         const slot = SCSOC.el('span', 'display:inline-flex;flex:none;align-items:center;');
         line.appendChild(slot);
         watch(uid, function (type) {
             while (slot.firstChild) slot.removeChild(slot.firstChild);
             const b = type ? badgeEl(type, px) : null;
-            if (b) slot.appendChild(b);   /* pinta siempre: nunca se come la insignia */
+            if (b) slot.appendChild(b);
         });
         return slot;
     }
 
    function ensureSlotAfterName(cardHost, slot) {
         if (!cardHost || !slot || slot.isConnected) return;
-        const nameEl = cardHost.querySelector('h3');   // el nombre grande de la tarjeta
+        const nameEl = cardHost.querySelector('h3');
         if (!nameEl) return;
-        nameEl.appendChild(slot);   // DENTRO del h3 -> queda AL LADO del nombre, en la misma línea
+        nameEl.appendChild(slot);
     }
 
     SCSOC.onHook('profilePanel', function (uid, modal, cardHost) {
         if (!modal || !cardHost || modal.querySelector('[data-sc-verified-bar]')) return;
 
-        /* insignia junto al nombre (para TODOS, en vivo) */
         const nameSlot = SCSOC.el('span', 'display:inline-flex;flex:none;align-items:center;');
         watch(uid, function (type) {
             while (nameSlot.firstChild) nameSlot.removeChild(nameSlot.firstChild);
@@ -141,7 +134,6 @@
         const obs = new MutationObserver(function () { ensureSlotAfterName(cardHost, nameSlot); });
         obs.observe(cardHost, { childList: true });
 
-        /* barra de staff abajo de todo del panel */
         canGrant(function (ok) {
             if (!ok || !modal.isConnected) return;
             modal.appendChild(buildBar(uid));
@@ -203,7 +195,6 @@
             picker.style.display = (picker.style.display === 'none' || !picker.style.display) ? 'flex' : 'none';
         });
 
-        /* estado actual en vivo + marca ACTUAL en las filas */
         watch(uid, function (type) {
             while (cur.firstChild) cur.removeChild(cur.firstChild);
             Object.keys(rows).forEach(function (k) {
@@ -224,7 +215,6 @@
         return bar;
     }
 
-    /* ==== API pública ==== */
     SCSOC.verified = {
         TYPES: TYPES,
         badgeEl: badgeEl,

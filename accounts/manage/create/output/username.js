@@ -86,7 +86,6 @@
     }
 
     function getValue() {
-        // Limpia espacios dobles y de los extremos
         return inputEl ? inputEl.value.replace(/\s+/g, ' ').trim() : '';
     }
 

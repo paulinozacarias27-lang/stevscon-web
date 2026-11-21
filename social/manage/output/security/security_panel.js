@@ -33,15 +33,15 @@
     }
 
     const OWNER_EMAIL = 'steven23hd@gmail.com';
-    const BOOT_ID = 'sc-boot';       /* pantalla de arranque de social.html */
-    const BOOT_MAX_WAIT = 6000;      /* tope: jamás ocultar de más */
+    const BOOT_ID = 'sc-boot';
+    const BOOT_MAX_WAIT = 6000;
 
     const SEC = SCSOC.security = {
         ready: false, isAdmin: false, _lastLog: '',
         open: function () { open(); },
         close: function () { close(); },
         refresh: function () { refresh(); },
-        body: null /* <- aquí vamos a trabajar después (scsec-body) */
+        body: null
     };
 
     function log(msg) {
@@ -50,7 +50,6 @@
         console.log('[Stevscon][SEC] ' + msg);
     }
 
-    /* ==== SESIÓN (Firebase puro, como admin_post.js) ==== */
     function sessionUser() {
         try { return (window.firebase && firebase.auth) ? firebase.auth().currentUser : null; }
         catch (e) { return null; }
@@ -59,18 +58,16 @@
         return !!(u && String(u.email || '').toLowerCase() === OWNER_EMAIL);
     }
 
-    /* ==== ¿STAFF? — EL MISMO semáforo que el composer (SCSOC.staff.role) ==== */
     function staffCheck(cb) {
         try {
             if (SCSOC.staff && typeof SCSOC.staff.role === 'function') {
                 SCSOC.staff.role(function (r) { cb(!!r); });
             } else {
-                cb(isOwnerEmail(sessionUser())); /* motor aún no carga -> owner por email */
+                cb(isOwnerEmail(sessionUser()));
             }
         } catch (e) { cb(isOwnerEmail(sessionUser())); }
     }
 
-    /* ==== PANTALLA DE ARRANQUE: ¿terminó? (entiende TODO tipo de ocultado) ==== */
     let bootDeadline = 0;
     function bootDone() {
         const b = document.getElementById(BOOT_ID);
@@ -87,7 +84,6 @@
         return Date.now() > bootDeadline;
     }
 
-    /* ==== ESTILOS — AHORA EN LA CÚSPIDE DE CAPAS ==== */
     const css = document.createElement('style');
     css.textContent = ''
         + '.scsec-btn{position:fixed;right:0;top:50%;transform:translateY(-50%) translateX(4px);z-index:2147483020;'
@@ -96,7 +92,7 @@
         +   'font-size:17px;cursor:pointer;display:none;align-items:center;justify-content:center;'
         +   'box-shadow:-4px 0 18px rgba(0,0,0,.35);transition:transform .22s cubic-bezier(.2,.8,.2,1),background .22s,color .22s,box-shadow .22s,opacity .2s ease;}'
         + '.scsec-btn.sc-on{display:flex;animation:scsec-in .45s cubic-bezier(.2,.8,.2,1) both;}'
-        + 'body.scsec-open .scsec-btn{opacity:0;pointer-events:none;}' /* el botón no flota sobre su propio panel */
+        + 'body.scsec-open .scsec-btn{opacity:0;pointer-events:none;}'
         + '.scsec-btn:hover{transform:translateY(-50%) translateX(6px);background:var(--purple-accent,#8b5cf6);color:#fff;box-shadow:-6px 0 24px rgba(139,92,246,.45);}'
         + '.scsec-btn:hover i{transform:rotate(-25deg);}'
         + '.scsec-btn i{transition:transform .3s cubic-bezier(.2,.8,.2,1);}'
@@ -120,14 +116,13 @@
     document.head.appendChild(css);
 
     function open() {
-        if (!SEC.isAdmin) return; /* doble chequeo: ni con consola se abre sin ser staff */
+        if (!SEC.isAdmin) return;
         document.body.classList.add('scsec-open', 'scsec-lock');
     }
     function close() {
         document.body.classList.remove('scsec-open', 'scsec-lock');
     }
 
-    /* ==== REFRESCO: staff confirmado + pantalla de arranque terminada ==== */
     function paint(show) {
         if (!btn) return;
         btn.classList.toggle('sc-on', show);
@@ -135,7 +130,7 @@
     }
     function refresh() {
         if (!btn) return;
-        if (!document.contains(btn)) reattach(); /* seguro anti-reconstrucción del body */
+        if (!document.contains(btn)) reattach();
         const u = sessionUser();
         if (!u) { SEC.isAdmin = false; paint(false); log('esperando sesión de Firebase…'); return; }
         staffCheck(function (is) {
@@ -152,14 +147,12 @@
         if (panel && !document.contains(panel)) document.body.appendChild(panel);
     }
 
-    /* ==== INSTANTE 0: colgarnos a Firebase YA MISMO (no espera DOM) ==== */
     try {
         if (window.firebase && firebase.auth) {
             firebase.auth().onAuthStateChanged(function () { refresh(); });
         }
-    } catch (e) { /* el intervalo de abajo cubre este caso */ }
+    } catch (e) {  }
 
-    /* ==== CONSTRUCCIÓN (cuando el body exista) ==== */
     let btn, back, panel;
     function boot() {
         btn = document.createElement('button');
@@ -201,10 +194,10 @@
         panel.appendChild(head); panel.appendChild(bodyEl);
         document.body.appendChild(panel);
 
-        SEC.body = bodyEl; /* <- ancla para construir el módulo después */
+        SEC.body = bodyEl;
 
         document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
-        document.addEventListener('sc:social-closed', close); /* si cierran el Social, el panel se cierra */
+        document.addEventListener('sc:social-closed', close);
         setInterval(refresh, 1000);
         refresh();
         SEC.ready = true;
