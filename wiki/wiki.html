@@ -190,13 +190,13 @@
     }
 
     html[data-theme="light"]{
-        --bg-main:#f4f2fa; --bg-card:#ffff; --border-color:#ddd5f0; --bg-hover:#ece7f8;
+        --bg-main:#e9e2f6; --bg-card:#f7f4fc; --border-color:#cfc2ea; --bg-hover:#e0d7f2;
         --purple-accent:#7c3aed; --purple-dark:#6d28d9; --purple-glow:rgba(124,58,237,.18);
         --gold:#b45309; --text-main:#1e1b2e; --text-muted:#5b5570;
     }
-    html[data-theme="light"] body{background:#f4f2fa;color:#1e1b2e}
-    html[data-theme="light"] .wk-header{background:rgba(244,242,250,.92)}
-    html[data-theme="light"] #wk-catnav{background:rgba(244,242,250,.9)}
+    html[data-theme="light"] body{background:#e9e2f6;color:#1e1b2e}
+    html[data-theme="light"] .wk-header{background:rgba(233,226,246,.92)}
+    html[data-theme="light"] #wk-catnav{background:rgba(233,226,246,.9)}
     html[data-theme="light"] .wk-card:hover,
     html[data-theme="light"] .wk-catcard:hover{box-shadow:0 12px 30px rgba(30,27,46,.14)}
     html[data-theme="light"] .wk-body h3{color:#6d28d9}
@@ -211,7 +211,7 @@
     var meta = document.querySelector('meta[name="theme-color"]');
     function paint(v) {
         document.documentElement.setAttribute('data-theme', v);
-        if (meta) meta.setAttribute('content', v === 'light' ? '#f4f2fa' : '#0d0b14');
+        if (meta) meta.setAttribute('content', v === 'light' ? '#e9e2f6' : '#0d0b14');
     }
     var t = 'dark';
     try { t = localStorage.getItem('stevscon_theme') || 'dark'; } catch (e) {}
@@ -238,7 +238,7 @@
 <script src="/console_guard.js?v=2"></script>
 
 </head>
-<script defer src="/translate.js?v=5"></script>
+<script defer src="/translate.js?v=6"></script>
 <body>
 
 <div id="wk-boot" aria-live="polite">

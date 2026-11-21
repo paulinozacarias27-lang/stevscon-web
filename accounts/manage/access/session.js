@@ -79,11 +79,17 @@
         if (!url || !el) return;
         const probe = new Image();
         probe.onload = function () {
+            const keep = [];
+            for (let i = el.children.length - 1; i >= 0; i--) {
+                const c = el.children[i];
+                if (c.dataset && c.dataset.scStatusBadge) { keep.push(c); el.removeChild(c); }
+            }
+            el.textContent = '';
             el.style.backgroundImage = 'url("' + String(url).replace(/"/g, '%22') + '")';
             el.style.backgroundSize = 'cover';
             el.style.backgroundPosition = 'center';
             el.style.backgroundRepeat = 'no-repeat';
-            el.textContent = '';
+            for (let i = keep.length - 1; i >= 0; i--) el.appendChild(keep[i]);
         };
         probe.src = String(url);
     }
@@ -97,7 +103,7 @@
         const letter = String(name).trim().charAt(0).toUpperCase() || 'S';
 
         const wrap = document.createElement('div');
-        wrap.style.cssText = 'position:relative;';
+        wrap.style.cssText = 'position:relative;flex:none;';
 
         const avatar = document.createElement('button');
         avatar.type = 'button';
@@ -109,7 +115,7 @@
         paintHeaderAvatar(avatar, p);
 
         const SCST = window.StevsconStatus;
-        if (SCST && typeof SCST.badge === 'function') SCST.badge(wrap, 14);
+        if (SCST && typeof SCST.badge === 'function') SCST.badge(avatar, 14);
 
         const menu = document.createElement('div');
         menu.hidden = true;

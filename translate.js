@@ -582,8 +582,6 @@
 
     function applyAll() {
         if (lang === 'en') scanNode(document.body); else restoreAll();
-        updateMenuItems();
-        updateFloatBtn();
     }
 
 
@@ -623,94 +621,6 @@
     }
 
 
-    function looksLikeMenu(el) {
-        if (!el || el.nodeType !== 1 || !el.textContent) return false;
-        var t = el.textContent;
-        if (!/ver\s+perfil|view\s+profile/i.test(t)) return false;
-        return (/editar\s+perfil|edit\s+profile/i.test(t) || /cerrar\s+sesi|sign\s+out/i.test(t));
-    }
-    function findMenuBoxesGlobal() {
-        var boxes = [], all = document.querySelectorAll('div,nav,aside,section'), i, m, k;
-        for (i = 0; i < all.length; i++) if (looksLikeMenu(all[i])) boxes.push(all[i]);
-        var deepest = [];
-        for (k = 0; k < boxes.length; k++) {
-            var wrapper = false;
-            for (m = 0; m < boxes.length; m++) if (m !== k && boxes[k].contains(boxes[m])) { wrapper = true; break; }
-            if (!wrapper) deepest.push(boxes[k]);
-        }
-        return deepest;
-    }
-    function makeMenuItem() {
-        var b = document.createElement('button');
-        b.type = 'button';
-        b.setAttribute('data-sctr-skip', '1');
-        b.setAttribute('data-sctr-item', '1');
-        b.style.cssText = 'display:flex;align-items:center;gap:9px;width:100%;box-sizing:border-box;background:none;border:0;border-radius:8px;padding:8px 10px;color:#ede9fe;font-family:Inter,sans-serif;font-size:13px;font-weight:600;cursor:pointer;text-align:left;';
-        var ic = document.createElement('i');
-        ic.className = 'fa-solid fa-globe';
-        ic.style.color = '#a78bfa';
-        var sp = document.createElement('span');
-        b.appendChild(ic); b.appendChild(sp);
-        b.addEventListener('mouseenter', function () { b.style.background = 'rgba(139,92,246,.15)'; });
-        b.addEventListener('mouseleave', function () { b.style.background = 'none'; });
-        b.addEventListener('click', function (e) { e.stopPropagation(); setLang(lang === 'es' ? 'en' : 'es'); });
-        return b;
-    }
-    function updateMenuItems() {
-        var items = document.querySelectorAll('[data-sctr-item]');
-        for (var i = 0; i < items.length; i++) {
-            var sp = items[i].querySelector('span');
-            if (sp) sp.textContent = (lang === 'es') ? 'Idioma: Español' : 'Language: English';
-        }
-    }
-    function injectInto(box) {
-        if (box.hasAttribute('data-sctr-injected') && box.querySelector('[data-sctr-item]')) return;
-        box.setAttribute('data-sctr-injected', '1');
-        box.insertBefore(makeMenuItem(), box.firstChild);
-        updateMenuItems();
-    }
-    function injectMenu() {
-        var slot = document.getElementById('user-header-actions');
-        if (slot) {
-            var divs = slot.getElementsByTagName('div');
-            for (var i = 0; i < divs.length; i++) if (looksLikeMenu(divs[i])) { injectInto(divs[i]); return; }
-        }
-        if (!document.querySelector('[data-sctr-item]')) {
-            var boxes = findMenuBoxesGlobal();
-            for (var j = 0; j < boxes.length; j++) { injectInto(boxes[j]); return; }
-        }
-    }
-
-
-    var floatBtn = null;
-    function ensureFloatBtn() {
-        if (floatBtn && document.body.contains(floatBtn)) return;
-        floatBtn = document.createElement('div');
-        floatBtn.setAttribute('data-sctr-skip', '1');
-        floatBtn.style.cssText = 'position:fixed;right:16px;bottom:16px;display:flex;align-items:center;gap:2px;background:#1a1625;border:1px solid #2e2440;border-radius:999px;padding:4px;z-index:10000;font-family:Inter,"Segoe UI",sans-serif;';
-        var es = document.createElement('button');
-        es.type = 'button'; es.textContent = 'ES';
-        es.style.cssText = 'border:0;border-radius:999px;padding:5px 12px;font-size:12px;font-weight:800;cursor:pointer;background:none;color:#94a3b8;font-family:inherit;';
-        es.addEventListener('click', function () { setLang('es'); });
-        var en = document.createElement('button');
-        en.type = 'button'; en.textContent = 'EN';
-        en.style.cssText = 'border:0;border-radius:999px;padding:5px 12px;font-size:12px;font-weight:800;cursor:pointer;background:none;color:#94a3b8;font-family:inherit;';
-        en.addEventListener('click', function () { setLang('en'); });
-        floatBtn.appendChild(es); floatBtn.appendChild(en);
-        document.body.appendChild(floatBtn);
-        updateFloatBtn();
-    }
-    function updateFloatBtn() {
-        if (!floatBtn) return;
-        var btns = floatBtn.querySelectorAll('button');
-        for (var i = 0; i < btns.length; i++) {
-            var active = ((btns[i].textContent === 'ES' && lang === 'es') || (btns[i].textContent === 'EN' && lang === 'en'));
-            btns[i].style.background = active ? '#7c3aed' : 'none';
-            btns[i].style.color = active ? '#ffff' : '#94a3b8';
-        }
-    }
-
-
     var batch = [], pending = false;
     function schedule(records) {
         batch = batch.concat(records);
@@ -741,8 +651,6 @@
                     if (ATTRS.indexOf(name) >= 0) translateAttr(rec.target, name);
                 }
             }
-            injectMenu();
-            ensureFloatBtn();
         });
     }
 
@@ -764,7 +672,6 @@
             console.log('- cola Google pendiente:', q.length, '| en vuelo:', inFlight);
             console.log('- nombres protegidos:', Object.keys(nameSet).length, '->', Object.keys(nameSet).slice(0, 20));
             console.log('- zonas MD excluidas:', DM_SELECTORS, '| drawer abierto:', !!document.querySelector('.scdm-win'));
-            console.log('- boton flotante:', floatBtn ? 'ok' : 'aun no creado');
         },
         debug: function () {
             console.log('[Stevscon translate] debug: los fallos de Google se imprimen con console.warn. Los textos >' + MAX_TEXT + ' caracteres, los @handles/correos/URLs, los NOMBRES DE USUARIO y TODO el MD (.scdm-win) se omiten por diseño.');
@@ -780,8 +687,6 @@
         document.documentElement.setAttribute('lang', lang);
         learnNamesUnder(document.body);
         applyAll();
-        injectMenu();
-        ensureFloatBtn();
         initFromFirebase();
         (function waitPainters(n) {
             hookIdentityPainters();

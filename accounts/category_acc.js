@@ -254,17 +254,18 @@
 
         const avatarWrap = document.createElement('span');
         avatarWrap.style.cssText = 'position:relative;flex:none;display:inline-flex;';
+        avatarWrap.appendChild(avatar);
 
         const info = document.createElement('span');
         info.style.cssText = 'display:flex;flex-direction:column;justify-content:center;gap:2px;flex:1;min-width:0;overflow:hidden;';
 
         const name = document.createElement('strong');
         name.textContent = 'Sesion iniciada';
-        name.style.cssText = 'font-size:1.05rem;font-weight:800;color:#f8fafc;letter-spacing:-.2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+        name.style.cssText = 'font-size:1.05rem;font-weight:800;color:var(--text-main,#f8fafc);letter-spacing:-.2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
 
         const handlerEl = document.createElement('span');
         handlerEl.textContent = user.email || '';
-        handlerEl.style.cssText = 'font-size:.8rem;font-weight:600;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+        handlerEl.style.cssText = 'font-size:.8rem;font-weight:600;color:var(--text-muted,#94a3b8);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
 
         const idEl = document.createElement('span');
         idEl.textContent = 'ID: —';
