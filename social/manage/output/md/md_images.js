@@ -1,8 +1,13 @@
 /**
  * ====
- * STEVSCON.COM — social/manage/output/md/md_images.js (v2)
+ * STEVSCON.COM — social/manage/output/md/md_images.js (v3)
  * IMÁGENES en los MDs — base64 directo a Firebase, sin Storage.
  *
+ *  v3 · ARREGLO: si el peer es amigo y el flag meta/friends aún no está
+ *      escrito, se escribe PRIMERO en su propio update (las rules firman
+ *      root ANTES de la escritura: el flag en el MISMO update no cuenta)
+ *      y después viaja la imagen. Antes, la primera imagen tras expirar
+ *      el MD entre amigos moría en PERMISSION_DENIED.
  *  v2 · DOS ARREGLOS:
  *   1) COMPRESOR: el objetivo baja de 190000 a 55000 chars (bajo el tope
  *      duro de 60000 que firman las rules). Antes casi toda foto legítima
@@ -136,8 +141,13 @@
                         upd['meta/lastAt'] = firebase.database.ServerValue.TIMESTAMP;
                         upd['meta/lastFrom'] = a.uid;
                         upd['meta/lastText'] = prev.slice(0, 120);
-                        if (D.peerIsFriend(meta)) upd['meta/friends'] = true;
-                        db().ref('dms/' + convId).update(upd).then(function () {
+                        const withFriends = D.peerIsFriend(meta);
+                        if (withFriends) upd['meta/friends'] = true;
+                        const sendMsg = function () { return db().ref('dms/' + convId).update(upd); };
+                        const afterFriends = (withFriends && meta.friends !== true)
+                            ? db().ref('dms/' + convId + '/meta').update({ friends: true }).then(sendMsg, sendMsg)
+                            : sendMsg();
+                        afterFriends.then(function () {
                             _lastImg.len = img.length; _lastImg.at = Date.now();
                             db().ref('dms/inbox/' + a.uid + '/' + convId).update({
                                 peerUid: peerUid,
@@ -338,5 +348,5 @@
         document.head.appendChild(css);
     })();
 
-    console.log('[Stevscon] md_images.js listo (v2) — compresor a 55KB + bloqueos respetados 📷');
+    console.log('[Stevscon] md_images.js listo (v3) — compresor a 55KB + bloqueos respetados 📷');
 })(window, document);

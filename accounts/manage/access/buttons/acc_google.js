@@ -11,6 +11,15 @@
  *    reservado en ids/, handler único reservado en handlers/ (derivado
  *    de su correo con sufijos si está tomado), email y createdAt.
  *    Si ya tenía perfil, entra directo sin tocar nada.
+ *  - v2 · ERRORES VISIBLES: antes cualquier fallo del popup (bloqueado,
+ *    dominio no autorizado, proveedor apagado) quedaba SILENCIOSO porque
+ *    SC.buttons.errors solo existe en el modal CREATE. Ahora el aviso se
+ *    pinta SIEMPRE inline bajo el propio botón del modal abierto (rojo
+ *    error / verde éxito) + console.error con el código. Popup bloqueado
+ *    → reintenta con signInWithRedirect y checkRedirect() completa el
+ *    perfil al volver. Ids únicos por formulario (#sc-google-btn y
+ *    #sc-google-btn-create) para que el clic del ACCESS no caiga en el
+ *    botón del CREATE.
  *  - Errores con los mismos toasts del formulario (SC.buttons.errors).
  * ====
  */
@@ -70,8 +79,37 @@
         });
     }
 
-    function errors() {
-        return (SC.buttons && SC.buttons.errors) ? SC.buttons.errors : null;
+    const GOOGLE_ERRORS = {
+        'auth/unauthorized-domain': 'Esta web no está autorizada en Firebase. Agrega el dominio en Authentication → Settings → Authorized domains.',
+        'auth/operation-not-allowed': 'El acceso con Google está APAGADO en Firebase. Actívalo en Authentication → Sign-in method → Google.',
+        'auth/network-request-failed': 'Sin conexión. Revisa tu internet e inténtalo de nuevo.',
+        'auth/too-many-requests': 'Demasiados intentos seguidos. Espera un momento y vuelve a intentarlo.'
+    };
+
+    function msgFor(code) {
+        return GOOGLE_ERRORS[code] || 'No pudimos conectar con Google. Detalle: ' + (code || 'desconocido');
+    }
+
+    function inlineMsg(btn, msg, kind) {
+        if (!btn || !btn.parentNode) return;
+        let p = btn.parentNode.querySelector('[data-sc-google-msg]');
+        if (!p) {
+            p = document.createElement('p');
+            p.setAttribute('data-sc-google-msg', '1');
+            p.style.cssText = 'margin:8px 0 0;font:600 12px Inter,sans-serif;text-align:left;';
+            btn.parentNode.insertBefore(p, btn.nextSibling);
+        }
+        p.style.color = kind === 'ok' ? '#34d399' : '#f87171';
+        p.textContent = msg;
+    }
+
+    function showErr(btn, code, msg) {
+        try { console.error('[Stevscon Google] ' + (code || 'error desconocido')); } catch (e2) {}
+        inlineMsg(btn, msg || msgFor(code));
+    }
+
+    function showOk(btn, msg) {
+        inlineMsg(btn, msg, 'ok');
     }
 
     function setBusyBtn(btn, state) {
@@ -115,39 +153,50 @@
         });
     }
 
-    function googleSignIn() {
+    function googleSignIn(btn) {
         const A = fauth();
-        const e = errors();
-        if (!A) { if (e) e.show('Firebase no está disponible ahora mismo. Recarga la página.'); return; }
-        if (A.currentUser) { if (e) e.show('Ya tienes una sesión abierta en esta pestaña.'); return; }
+        if (!A) {
+            showErr(btn, 'no-firebase', 'Firebase no está disponible ahora mismo. Recarga la página.');
+            return;
+        }
+        if (A.currentUser) {
+            showErr(btn, 'sc-session-activa', 'Ya tienes una sesión abierta en esta pestaña.');
+            return;
+        }
         const provider = new window.firebase.auth.GoogleAuthProvider();
         provider.setCustomParameters({ prompt: 'select_account' });
-        setBusyBtn(gBtn, true);
+        setBusyBtn(btn, true);
         A.signInWithPopup(provider).then(function (res) {
             return ensureProfile(res.user).then(function (r) {
-                setBusyBtn(gBtn, false);
+                setBusyBtn(btn, false);
                 try { if (SC.access && typeof SC.access.close === 'function') SC.access.close(); } catch (err) {}
-                if (r.created && e) e.success('¡Bienvenido a Stevscon, ' + r.profile.username + '! Tu ID es ' + r.profile.userId + '.');
-                if (!r.created && e) e.success('¡Sesión iniciada con Google!');
+                if (r.created) showOk(btn, '¡Bienvenido a Stevscon, ' + r.profile.username + '! Tu ID es ' + r.profile.userId + '.');
+                else showOk(btn, '¡Sesión iniciada con Google!');
             });
         }).catch(function (err) {
-            setBusyBtn(gBtn, false);
+            setBusyBtn(btn, false);
             const code = (err && err.code) || '';
             if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return;
-            if (e) e.show(SC.translateAuthError ? SC.translateAuthError(code) : 'No pudimos conectar con Google. Detalle: ' + (code || 'desconocido'));
+            if (code === 'auth/popup-blocked') {
+                A.signInWithRedirect(provider).catch(function (err2) {
+                    showErr(btn, (err2 && err2.code) || 'auth/popup-blocked');
+                });
+                return;
+            }
+            showErr(btn, code);
         });
     }
 
-    function makeGoogleButton() {
+    function makeGoogleButton(label) {
         const b = document.createElement('button');
         b.type = 'button';
-        b.id = BTN_ID;
+        b.id = label === 'create' ? BTN_ID + '-create' : BTN_ID;
         b.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:9px;width:100%;height:42px;margin-top:10px;' +
             'border-radius:10px;border:1px solid var(--border-color,#2e2440);background:#ffffff;color:#1f2937;' +
             'font:700 13px Inter,sans-serif;cursor:pointer;box-sizing:border-box;transition:transform .12s ease;';
         b.addEventListener('mouseenter', function () { b.style.transform = 'translateY(-1px)'; });
         b.addEventListener('mouseleave', function () { b.style.transform = 'none'; });
-        b.addEventListener('click', function (e) { e.preventDefault(); googleSignIn(); });
+        b.addEventListener('click', function (e) { e.preventDefault(); googleSignIn(b); });
 
         const g = document.createElement('span');
         g.style.cssText = 'width:18px;height:18px;flex:none;display:inline-block;';
@@ -159,8 +208,9 @@
 
     function wireForm(form, label) {
         if (!form || !form.tagName || form.tagName.toLowerCase() !== 'form') return;
-        if (form.querySelector('#' + BTN_ID)) return;
-        form.appendChild(makeGoogleButton());
+        const bid = label === 'create' ? BTN_ID + '-create' : BTN_ID;
+        if (form.querySelector('#' + bid)) return;
+        form.appendChild(makeGoogleButton(label));
     }
 
     function findAccessForm() {
@@ -181,19 +231,32 @@
         return null;
     }
 
-    let gBtn = null;
-
     function tick() {
         const af = findAccessForm();
         if (af) wireForm(af, 'access');
         const cf = findCreateForm();
         if (cf) wireForm(cf, 'create');
-        gBtn = document.getElementById(BTN_ID);
     }
 
     new MutationObserver(function () { setTimeout(tick, 50); })
         .observe(document.body, { childList: true, subtree: true });
     tick();
 
-    console.log('[Stevscon] acc_google.js listo (v1) — Continuar con Google en los modales de acceso y registro.');
+    function checkRedirect() {
+        const A = fauth();
+        if (!A || typeof A.getRedirectResult !== 'function') return;
+        A.getRedirectResult().then(function (res) {
+            if (!res || !res.user) return;
+            return ensureProfile(res.user).then(function (r) {
+                try { if (SC.access && typeof SC.access.close === 'function') SC.access.close(); } catch (err) {}
+                if (r.created) console.log('[Stevscon Google] perfil creado vía redirect: ' + r.profile.userId);
+            });
+        }).catch(function (err) {
+            const code = (err && err.code) || '';
+            if (code) console.error('[Stevscon Google] redirect: ' + code);
+        });
+    }
+    checkRedirect();
+
+    console.log('[Stevscon] acc_google.js listo (v2) — Continuar con Google en los modales de acceso y registro.');
 })(window, document);

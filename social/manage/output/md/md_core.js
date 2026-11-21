@@ -1,6 +1,6 @@
 /**
  * ====
- * STEVSCON.COM — social/manage/output/md/md_core.js (v3)
+ * STEVSCON.COM — social/manage/output/md/md_core.js (v4)
  * NÚCLEO de Mensajes Directos (MD) — estilo Discord, ventana de 10 h.
  *  - Nodo PRIVADO en la RAÍZ de la BD: dms/{convId}/meta · /msgs · /read
  *    + bandeja personal dms/inbox/{uid}/{convId} (alimenta el badge 99+).
@@ -255,8 +255,13 @@
                         upd['meta/lastAt'] = firebase.database.ServerValue.TIMESTAMP;
                         upd['meta/lastFrom'] = a.uid;
                         upd['meta/lastText'] = text.slice(0, 120);
-                        if (D.peerIsFriend(meta)) upd['meta/friends'] = true;
-                        convRef(convId).update(upd).then(function () {
+                        const withFriends = D.peerIsFriend(meta);
+                        if (withFriends) upd['meta/friends'] = true;
+                        const sendMsg = function () { return convRef(convId).update(upd); };
+                        const afterFriends = (withFriends && meta.friends !== true)
+                            ? convRef(convId).child('meta').update({ friends: true }).then(sendMsg, sendMsg)
+                            : sendMsg();
+                        afterFriends.then(function () {
                             _lastSend.uid = a.uid; _lastSend.text = text; _lastSend.at = Date.now();
                             db().ref('dms/inbox/' + a.uid + '/' + convId).update({
                                 peerUid: peerUid,
@@ -366,7 +371,7 @@
             .transaction(function () { return 0; });
     };
 
-    console.log('[Stevscon] md_core.js listo (v3) — MDs con ventana de 10 h + preferencias de MD.');
+    console.log('[Stevscon] md_core.js listo (v4) — MDs con ventana de 10 h + preferencias de MD.');
 
     (function () {
         const oldMsLeft = D.msLeft, oldIsExpired = D.isExpired;
