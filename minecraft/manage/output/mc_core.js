@@ -1,6 +1,6 @@
 /**
  * ====
- * STEVSCON.MCROSS — minecraft/manage/output/mc_core.js (v1)
+ * STEVSCON.MCROSS — minecraft/manage/output/mc_core.js (v2)
  * CORE: LECTURA y RENDER (nada de escritura, salvo el contador de vistas).
  *
  * - Portada estilo Fandom: banner, N PÁGINAS, destacados, categorías,
@@ -17,6 +17,7 @@
  * - renderCategory pinta la TIENDA cuando existe MC.store; si no,
  *   cae al render normal de categoría.
  * - renderPage delega en renderArticle (mc_page.js llama renderPage).
+ * v2 — RESTYLE BLOQUE: misma función, identidad visual Minecraft (píxeles, bisel, sombras duras, sin blur).
  * ====
  */
 (function (window, document) {
@@ -489,11 +490,11 @@
             meta.appendChild(el('span', null, '👁 ' + fmtNum(a.views)));
             art.appendChild(meta);
 
-            const ST_COLORS = { online: '#22c55e', inactive: '#f59e0b', busy: '#ef4444', offline: '#6b7280' };
+            const ST_COLORS = { online: 'var(--mc-accent,#7fdc3a)', inactive: 'var(--gold,#f4c542)', busy: 'var(--redstone,#ff5545)', offline: '#6b7280' };
             if (a.authorUid && typeof firebase !== 'undefined' && firebase.database) {
                 try {
                     const stDot = el('span');
-                    stDot.style.cssText = 'position:absolute;right:-3px;bottom:-3px;width:12px;height:12px;border-radius:50%;border:2.5px solid #111a13;background:#6b7280;box-sizing:border-box;';
+                    stDot.style.cssText = 'position:absolute;right:-3px;bottom:-3px;width:12px;height:12px;border-radius:0;border:2px solid #000;box-shadow:2px 2px 0 rgba(0,0,0,.4);background:#6b7280;box-sizing:border-box;';
                     avBox.appendChild(stDot);
                     firebase.database().ref('users/' + a.authorUid + '/status/state').on('value', function (s) {
                         const v = String(s.val() || '');
@@ -601,5 +602,5 @@
         return MC.core.renderArticle(main, key);
     };
 
-    console.log('[Stevscon] mc_core.js listo (v1) — lectura/render de StevsMCross.');
+    console.log('[Stevscon] mc_core.js listo (v2) — lectura/render de StevsMCross.');
 })(window, document);

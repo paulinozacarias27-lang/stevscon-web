@@ -1,6 +1,6 @@
 /**
  * ====
- * STEVSCON.MCROSS — minecraft/manage/output/mc_store_manage.js (v1)
+ * STEVSCON.MCROSS — minecraft/manage/output/mc_store_manage.js (v2)
  * TIENDA (STAFF): artículos, códigos, pedidos y ajustes.
  *  - mount() se pinta dentro del panel de admin y de la pestaña Tienda.
  *  - Escucha en vivo mc/store/items, codes, orders, stock y settings;
@@ -10,6 +10,7 @@
  *  - Pedidos: 'Marcar pagado' asigna el primer código disponible del
  *    item con update() multipath (codes + orders + myOrders).
  *  - Nunca se publica la IP del servidor.
+ * v2 — RESTYLE BLOQUE: misma función, identidad visual Minecraft (píxeles, bisel, sombras duras, sin blur).
  * ====
  */
 (function (window, document) {
@@ -73,55 +74,61 @@
 
     const CSS = `
     .mcsa-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px}
-    .mcsa-tab{border:1px solid var(--border-color,#2e2440);background:var(--bg-main,#0d0b14);color:var(--text-muted,#94a3b8);
-      border-radius:999px;padding:8px 15px;font:700 12.5px Inter,sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
-    .mcsa-tab.is-on{background:linear-gradient(135deg,#4ade80,#16a34a);color:#06210f;border-color:transparent}
-    .mcsa-h3{margin:0 0 10px;font:800 15px Inter,sans-serif;color:var(--text-main,#f8fafc);display:flex;align-items:center;gap:8px}
+    .mcsa-tab{border:2px solid #000;background:var(--bg-hover,#232a1b);color:var(--text-muted,#98a28c);
+      border-radius:0;padding:8px 15px;font:700 12.5px var(--ui-font),sans-serif;text-transform:uppercase;letter-spacing:.06em;cursor:pointer;display:inline-flex;align-items:center;gap:6px;
+      box-shadow:inset 2px 2px 0 rgba(255,255,255,.12),inset -2px -2px 0 rgba(0,0,0,.4)}
+    .mcsa-tab:hover{color:var(--text-main,#eef4e6)}
+    .mcsa-tab.is-on{background:rgba(127,220,58,.12);color:var(--mc-accent,#7fdc3a);border-color:var(--mc-accent,#7fdc3a)}
+    .mcsa-h3{margin:0 0 10px;font:400 12px var(--px-font),monospace;line-height:1.6;color:var(--text-main,#eef4e6);display:flex;align-items:center;gap:8px;text-shadow:2px 2px 0 rgba(0,0,0,.6)}
     .mcsa-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:0 0 12px}
     .mcsa-head .mcsa-h3{margin:0}
     .mcsa-list{margin:12px 0 0}
-    .mcsa-row{display:flex;align-items:center;gap:10px;padding:11px 4px;border-bottom:1px solid var(--border-color,#2e2440);flex-wrap:wrap}
+    .mcsa-row{display:flex;align-items:center;gap:10px;padding:11px 4px;border-bottom:2px solid var(--border-color,#2f3626);flex-wrap:wrap}
     .mcsa-gro{flex:1;min-width:170px}
-    .mcsa-gro strong{display:block;font:800 13.5px Inter,sans-serif;color:var(--text-main,#f8fafc)}
-    .mcsa-gro small{color:var(--text-muted,#94a3b8);font:600 11.5px Inter,sans-serif}
-    .mcsa-code{font:800 13px ui-monospace,Menlo,monospace;letter-spacing:.05em;color:#4ade80;word-break:break-all}
-    .mcsa-btn{border:1px solid var(--border-color,#2e2440);background:var(--bg-main,#0d0b14);color:var(--text-main,#f8fafc);
-      border-radius:10px;padding:7px 12px;font:700 12px Inter,sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
-    .mcsa-btn:hover{border-color:#4ade80;color:#4ade80}
-    .mcsa-btn.pri{background:linear-gradient(135deg,#4ade80,#16a34a);border-color:transparent;color:#06210f}
-    .mcsa-btn.pri:hover{filter:brightness(1.06);color:#06210f}
-    .mcsa-btn.danger{border-color:rgba(239,68,68,.5);color:#f87171}
-    .mcsa-btn.danger:hover{background:rgba(239,68,68,.12);color:#f87171}
-    .mcsa-btn.danger.arm{background:#ef4444;color:#fff;border-color:#ef4444}
+    .mcsa-gro strong{display:block;font:700 13.5px var(--ui-font),sans-serif;color:var(--text-main,#eef4e6)}
+    .mcsa-gro small{color:var(--text-muted,#98a28c);font:600 11.5px var(--ui-font),sans-serif}
+    .mcsa-code{font:700 13px ui-monospace,Menlo,monospace;letter-spacing:.05em;color:var(--mc-accent,#7fdc3a);word-break:break-all}
+    .mcsa-btn{border:3px solid #000;background:var(--bg-hover,#232a1b);color:var(--text-main,#eef4e6);
+      border-radius:0;padding:7px 12px;font:700 12px var(--ui-font),sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:6px;
+      box-shadow:inset 2px 2px 0 rgba(255,255,255,.3),inset -2px -2px 0 rgba(0,0,0,.4)}
+    .mcsa-btn:hover{border-color:var(--mc-accent,#7fdc3a);color:var(--mc-accent,#7fdc3a)}
+    .mcsa-btn:active{transform:translate(2px,2px);box-shadow:inset -2px -2px 0 rgba(255,255,255,.3),inset 2px 2px 0 rgba(0,0,0,.4)}
+    .mcsa-btn.pri{background:var(--mc-dark,#4a8f1d);border-color:#000;color:#eaf7dd}
+    .mcsa-btn.pri:hover{background:var(--mc-accent,#7fdc3a);color:#16300a}
+    .mcsa-btn.danger{background:var(--redstone,#ff5545);border-color:#000;color:#fff}
+    .mcsa-btn.danger:hover{background:#c23225;color:#fff}
+    .mcsa-btn.danger.arm{background:#c23225;color:#fff;border-color:#000}
     .mcsa-btn:disabled{opacity:.55;cursor:not-allowed}
-    .mcsa-st{font:800 9.5px Inter,sans-serif;letter-spacing:.1em;padding:3px 9px;border-radius:999px;border:1px solid transparent}
-    .mcsa-st-pending{background:rgba(245,158,11,.14);color:#f59e0b;border-color:rgba(245,158,11,.5)}
-    .mcsa-st-paid{background:rgba(74,222,128,.16);color:#4ade80;border-color:rgba(74,222,128,.5)}
-    .mcsa-st-redeemed{background:rgba(74,222,128,.16);color:#4ade80;border-color:rgba(74,222,128,.5)}
-    .mcsa-st-cancelled{background:rgba(239,68,68,.14);color:#f87171;border-color:rgba(239,68,68,.5)}
-    .mcsa-hint{color:var(--text-muted,#94a3b8);font:600 11.5px Inter,sans-serif;margin:6px 0 10px}
-    .mcsa-denied{color:var(--text-muted,#94a3b8);font:700 13px Inter,sans-serif;padding:18px 0}
-    .mcsa-input{width:100%;background:var(--bg-main,#0d0b14);border:1px solid var(--border-color,#2e2440);border-radius:10px;
-      color:var(--text-main,#f8fafc);padding:10px 12px;font:600 13px Inter,sans-serif;outline:0;box-sizing:border-box;margin:0 0 10px}
-    .mcsa-input:focus{border-color:#4ade80}
+    .mcsa-st{font:700 9.5px var(--ui-font),sans-serif;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:0;border:2px solid #000;
+      box-shadow:inset 2px 2px 0 rgba(255,255,255,.14),inset -2px -2px 0 rgba(0,0,0,.4)}
+    .mcsa-st-pending{background:rgba(244,197,66,.14);color:var(--gold,#f4c542);border-color:#000}
+    .mcsa-st-paid{background:rgba(127,220,58,.16);color:var(--mc-accent,#7fdc3a);border-color:#000}
+    .mcsa-st-redeemed{background:rgba(127,220,58,.16);color:var(--mc-accent,#7fdc3a);border-color:#000}
+    .mcsa-st-cancelled{background:rgba(255,85,69,.08);color:var(--redstone,#ff5545);border-color:#000}
+    .mcsa-hint{color:var(--text-muted,#98a28c);font:600 11.5px var(--ui-font),sans-serif;margin:6px 0 10px;line-height:1.6}
+    .mcsa-denied{color:var(--text-muted,#98a28c);font:700 13px var(--ui-font),sans-serif;padding:18px 0}
+    .mcsa-input{width:100%;background:#0b0d09;border:3px solid #000;border-radius:0;box-shadow:0 0 0 2px var(--border-color,#2f3626);
+      color:var(--text-main,#eef4e6);padding:10px 12px;font:600 13px var(--ui-font),sans-serif;outline:0;box-sizing:border-box;margin:0 0 10px}
+    .mcsa-input:focus{border-color:#000;box-shadow:0 0 0 2px var(--gold,#f4c542)}
     .mcsa-mono{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.6;resize:vertical}
     .mcsa-form{display:grid;gap:12px}
-    .mcsa-form label{display:block;font:800 10px Inter,sans-serif;letter-spacing:.12em;color:var(--text-muted,#94a3b8);margin:0 0 5px}
+    .mcsa-form label{display:block;font:700 10px var(--ui-font),sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted,#98a28c);margin:0 0 5px}
     .mcsa-form input[type=text],.mcsa-form input[type=number],.mcsa-form textarea{
-      width:100%;background:var(--bg-main,#0d0b14);border:1px solid var(--border-color,#2e2440);border-radius:10px;
-      color:var(--text-main,#f8fafc);padding:10px 12px;font:600 13px Inter,sans-serif;outline:0;box-sizing:border-box}
-    .mcsa-form input:focus,.mcsa-form textarea:focus{border-color:#4ade80}
-    .mcsa-form textarea{min-height:110px;resize:vertical}
+      width:100%;background:#0b0d09;border:3px solid #000;border-radius:0;box-shadow:0 0 0 2px var(--border-color,#2f3626);
+      color:var(--text-main,#eef4e6);padding:10px 12px;font:600 13px var(--ui-font),sans-serif;outline:0;box-sizing:border-box}
+    .mcsa-form input:focus,.mcsa-form textarea:focus{border-color:#000;box-shadow:0 0 0 2px var(--gold,#f4c542)}
+    .mcsa-form textarea{min-height:110px;resize:vertical;line-height:1.6}
     .mcsa-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    .mcsa-prev{max-height:130px;border-radius:12px;border:1px solid var(--border-color,#2e2440);display:block;margin:0 0 8px}
-    .mcsa-ovl{position:fixed;inset:0;z-index:2100;background:rgba(4,10,6,.72);backdrop-filter:blur(4px);display:flex;
-      align-items:center;justify-content:center;padding:16px;font-family:Inter,sans-serif}
-    .mcsa-modal{width:min(620px,96vw);max-height:92vh;overflow:auto;background:var(--bg-card,#16121f);
-      border:1px solid var(--border-color,#2e2440);border-radius:18px;padding:20px 22px;color:var(--text-main,#f8fafc)}
-    .mcsa-modal h3{margin:0 0 12px;font:800 18px Inter,sans-serif}
-    .mcsa-x{float:right;background:var(--bg-main,#0d0b14);border:1px solid var(--border-color,#2e2440);color:var(--text-muted,#94a3b8);
-      width:34px;height:34px;border-radius:50%;cursor:pointer;font-size:14px}
-    .mcsa-x:hover{color:#f87171;border-color:rgba(239,68,68,.5)}
+    .mcsa-prev{max-height:130px;border-radius:0;border:3px solid #000;box-shadow:0 0 0 2px var(--border-color,#2f3626);display:block;margin:0 0 8px}
+    .mcsa-ovl{position:fixed;inset:0;z-index:2100;background:rgba(10,12,8,.85);display:flex;
+      align-items:center;justify-content:center;padding:16px;font-family:var(--ui-font),sans-serif}
+    .mcsa-modal{width:min(620px,96vw);max-height:92vh;overflow:auto;background:var(--bg-card,#181c14);
+      border:3px solid #000;border-radius:0;box-shadow:0 0 0 2px var(--border-color,#2f3626),5px 5px 0 rgba(0,0,0,.4);padding:20px 22px;color:var(--text-main,#eef4e6)}
+    .mcsa-modal h3{margin:0 0 12px;font:400 13px var(--px-font),monospace;line-height:1.6;letter-spacing:.02em;text-shadow:2px 2px 0 rgba(0,0,0,.6)}
+    .mcsa-x{float:right;background:var(--bg-hover,#232a1b);border:3px solid #000;color:var(--text-muted,#98a28c);
+      width:34px;height:34px;border-radius:0;cursor:pointer;font-size:14px;
+      box-shadow:inset 2px 2px 0 rgba(255,255,255,.3),inset -2px -2px 0 rgba(0,0,0,.4)}
+    .mcsa-x:hover{color:var(--redstone,#ff5545);border-color:#000}
     @media(max-width:640px){.mcsa-2{grid-template-columns:1fr}}
     `;
     function injectStyles() {
@@ -812,5 +819,5 @@
         };
     }
 
-    console.log('[Stevscon] mc_store_manage.js listo (v1) — artículos, códigos, pedidos y ajustes.');
+    console.log('[Stevscon] mc_store_manage.js listo (v2) — artículos, códigos, pedidos y ajustes.');
 })(window, document);

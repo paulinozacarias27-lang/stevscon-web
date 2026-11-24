@@ -1,6 +1,6 @@
 /**
  * ====
- * STEVSCON.MCROSS — minecraft/manage/mc_profiles.js (v1)
+ * STEVSCON.MCROSS — minecraft/manage/mc_profiles.js (v2)
  * PANEL DE PERFIL de StevsMCross — AUTÓNOMO (no depende de SCSOC).
  *  - Clic en cualquier [data-scsoc-profile] (el autor de una página,
  *    o lo que pongamos a futuro) -> modal con el perfil COMPLETO:
@@ -14,6 +14,7 @@
  *  - textContent SIEMPRE para datos; innerHTML solo SVG/ICONOS
  *    estáticos (nunca datos de usuario). Cero XSS.
  *  - API: StevsconMC.profile.open(uid) / .close().
+ * v2 — RESTYLE BLOQUE: misma función, identidad visual Minecraft (píxeles, bisel, sombras duras, sin blur).
  * ====
  */
 (function (window, document) {
@@ -23,9 +24,9 @@
     if (MC.profile && MC.profile._loaded) return;
 
     const STATUS_TXT = { online: 'En línea', inactive: 'Inactivo', busy: 'Ocupado', offline: 'Desconectado' };
-    const STATUS_CLR = { online: '#22c55e', inactive: '#f59e0b', busy: '#ef4444', offline: '#6b7280' };
-    const DEFAULT_BANNER = 'linear-gradient(120deg,#0f1a13,#14532d)';
-    const DEFAULT_AVATAR = 'linear-gradient(135deg,#4ade80,#16a34a)';
+    const STATUS_CLR = { online: 'var(--mc-accent,#7fdc3a)', inactive: 'var(--gold,#f4c542)', busy: 'var(--redstone,#ff5545)', offline: '#6b7280' };
+    const DEFAULT_BANNER = 'repeating-linear-gradient(135deg,#1b2417 0 10px,#232a1b 10px 20px)';
+    const DEFAULT_AVATAR = 'repeating-linear-gradient(135deg,var(--mc-accent,#7fdc3a) 0 6px,var(--mc-dark,#4a8f1d) 6px 12px)';
 
     const VERIFIED_SVG =
         '<svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true">' +
@@ -90,13 +91,13 @@
     function avatarEl(d, px) {
         const url = avatarUrlFor(d);
         if (url && /^(data:image|https?:\/\/)/i.test(url)) {
-            const im = el('img', 'width:' + px + 'px;height:' + px + 'px;display:block;object-fit:cover;flex:none;');
+            const im = el('img', 'width:' + px + 'px;height:' + px + 'px;display:block;object-fit:cover;flex:none;border-radius:0;');
             im.src = url; im.alt = '';
             return im;
         }
-        const box = el('div', 'width:' + px + 'px;height:' + px + 'px;display:flex;align-items:center;justify-content:center;flex:none;color:#06210f;');
+        const box = el('div', 'width:' + px + 'px;height:' + px + 'px;display:flex;align-items:center;justify-content:center;flex:none;color:#16300a;border-radius:0;');
         box.style.background = presetCss('avatar', d.avatarPreset) || DEFAULT_AVATAR;
-        box.style.font = '800 ' + Math.round(px * 0.42) + 'px Inter,sans-serif';
+        box.style.font = '700 ' + Math.round(px * 0.42) + 'px var(--ui-font),sans-serif';
         box.textContent = (nameFor(d).charAt(0) || 'S').toUpperCase();
         return box;
     }
@@ -110,7 +111,7 @@
     }
 
     function label(txt) {
-        const p = el('p', 'margin:14px 0 0;font-size:10.5px;font-weight:800;letter-spacing:.14em;color:var(--text-muted,#94a3b8);');
+        const p = el('p', 'margin:14px 0 0;font:700 10px var(--ui-font),sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted,#98a28c);');
         p.textContent = txt;
         return p;
     }
@@ -128,7 +129,7 @@
     function paintLoading() {
         if (!cardHost) return;
         while (cardHost.firstChild) cardHost.removeChild(cardHost.firstChild);
-        const p = el('p', 'color:var(--text-muted,#94a3b8);font:600 13px Inter,sans-serif;text-align:center;padding:18px 0;');
+        const p = el('p', 'color:var(--text-muted,#98a28c);font:600 13px var(--ui-font),sans-serif;text-align:center;padding:18px 0;');
         p.textContent = 'Cargando perfil...';
         cardHost.appendChild(p);
     }
@@ -138,7 +139,7 @@
         while (cardHost.firstChild) cardHost.removeChild(cardHost.firstChild);
 
         if (!raw || typeof raw !== 'object') {
-            const p = el('p', 'color:var(--text-muted,#94a3b8);font:600 13px Inter,sans-serif;text-align:center;padding:18px 0;');
+            const p = el('p', 'color:var(--text-muted,#98a28c);font:600 13px var(--ui-font),sans-serif;text-align:center;padding:18px 0;');
             p.textContent = 'Perfil no encontrado.';
             cardHost.appendChild(p);
             return;
@@ -153,13 +154,14 @@
 
         const row = el('div', 'display:flex;align-items:flex-end;margin-top:-34px;margin-bottom:10px;position:relative;');
         const av = avatarEl(d, 72);
-        av.style.border = '4px solid var(--bg-card,#111a13)';
-        av.style.borderRadius = '50%';
+        av.style.border = '3px solid #000';
+        av.style.borderRadius = '0';
+        av.style.boxShadow = '0 0 0 2px var(--border-color,#2f3626),4px 4px 0 rgba(0,0,0,.4)';
         row.appendChild(av);
         inner.appendChild(row);
 
         const nameRow = el('div', 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;');
-        const nm = el('h3', 'margin:0;font-size:19px;font-weight:800;color:var(--text-main,#f8fafc);letter-spacing:-.02em;');
+        const nm = el('h3', 'margin:0;font:400 13px/1.7 var(--px-font),monospace;color:var(--text-main,#eef4e6);text-shadow:2px 2px 0 rgba(0,0,0,.55);word-break:break-word;');
         nm.textContent = nameFor(d);
         nameRow.appendChild(nm);
         if (verifiedFor(d)) {
@@ -169,13 +171,13 @@
             nameRow.appendChild(v);
         }
         if (d.rank && d.rank !== 'USER') {
-            const bg = el('span', 'padding:3px 10px;border-radius:999px;background:rgba(74,222,128,.16);border:1px solid rgba(74,222,128,.5);color:#bbf7d0;font-size:10.5px;font-weight:800;letter-spacing:.14em;');
+            const bg = el('span', 'padding:3px 9px;border-radius:0;background:rgba(127,220,58,.12);border:2px solid #000;box-shadow:inset 1px 1px 0 rgba(255,255,255,.15),inset -1px -1px 0 rgba(0,0,0,.4);color:var(--mc-accent,#7fdc3a);font:700 10px var(--ui-font),sans-serif;letter-spacing:.12em;text-transform:uppercase;');
             bg.textContent = String(d.rank);
             nameRow.appendChild(bg);
         }
         inner.appendChild(nameRow);
 
-        const hd = el('p', 'margin:2px 0 0;font-size:13px;color:var(--mc-accent,#4ade80);font-weight:600;');
+        const hd = el('p', 'margin:2px 0 0;font:600 13px var(--ui-font),sans-serif;color:var(--mc-accent,#7fdc3a);');
         hd.textContent = handlerFor(d) ? '@' + handlerFor(d) : 'Sin handler aún';
         inner.appendChild(hd);
 
@@ -184,26 +186,26 @@
         }
 
         if (d.userId) {
-            const idRow = el('div', 'display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12.5px;color:var(--text-muted,#94a3b8);');
+            const idRow = el('div', 'display:flex;align-items:center;gap:8px;margin-top:10px;font:600 12.5px var(--ui-font),sans-serif;color:var(--text-muted,#98a28c);');
             const l1 = el('span', 'font-weight:700;'); l1.textContent = 'ID';
-            const v1 = el('span', 'color:var(--text-main,#f8fafc);font-variant-numeric:tabular-nums;');
+            const v1 = el('span', 'color:var(--text-main,#eef4e6);font-variant-numeric:tabular-nums;');
             v1.textContent = String(d.userId);
             idRow.appendChild(l1); idRow.appendChild(v1);
             inner.appendChild(idRow);
         }
 
         inner.appendChild(label('DESCRIPCIÓN'));
-        const de = el('p', 'margin:4px 0 0;font-size:13.5px;line-height:1.55;white-space:pre-wrap;word-break:break-word;color:' + (d.description ? 'var(--text-main,#f8fafc)' : 'var(--text-muted,#94a3b8)') + ';');
+        const de = el('p', 'margin:4px 0 0;font:600 13.5px/1.7 var(--ui-font),sans-serif;white-space:pre-wrap;word-break:break-word;color:' + (d.description ? 'var(--text-main,#eef4e6)' : 'var(--text-muted,#98a28c)') + ';');
         de.textContent = d.description || 'Sin descripción aún.';
         inner.appendChild(de);
 
         inner.appendChild(label('MIEMBRO DESDE'));
-        const ms = el('p', 'margin:4px 0 0;font-size:13.5px;color:var(--text-main,#f8fafc);font-variant-numeric:tabular-nums;');
+        const ms = el('p', 'margin:4px 0 0;font:600 13.5px var(--ui-font),sans-serif;color:var(--text-main,#eef4e6);font-variant-numeric:tabular-nums;');
         ms.textContent = memberSinceTxt(d);
         inner.appendChild(ms);
 
         inner.appendChild(label('GÉNERO'));
-        const ge = el('p', 'margin:4px 0 0;font-size:13.5px;color:' + (d.gender ? 'var(--text-main,#f8fafc)' : 'var(--text-muted,#94a3b8)') + ';');
+        const ge = el('p', 'margin:4px 0 0;font:600 13.5px var(--ui-font),sans-serif;color:' + (d.gender ? 'var(--text-main,#eef4e6)' : 'var(--text-muted,#98a28c)') + ';');
         ge.textContent = d.gender || 'Sin especificar';
         inner.appendChild(ge);
 
@@ -228,17 +230,17 @@
     }
 
     function buildShell() {
-        backdrop = el('div', 'position:fixed;left:0;top:0;right:0;bottom:0;z-index:4500;background:rgba(4,10,6,.66);display:flex;align-items:center;justify-content:center;padding:18px;box-sizing:border-box;font-family:Inter,sans-serif;');
-        modal = el('div', 'width:440px;max-width:100%;max-height:86vh;overflow-y:auto;position:relative;background:var(--bg-card,#111a13);border:1px solid rgba(74,222,128,.4);border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.6);box-sizing:border-box;');
+        backdrop = el('div', 'position:fixed;left:0;top:0;right:0;bottom:0;z-index:4500;background:rgba(10,12,8,.85);display:flex;align-items:center;justify-content:center;padding:18px;box-sizing:border-box;font-family:var(--ui-font),sans-serif;');
+        modal = el('div', 'width:440px;max-width:100%;max-height:86vh;overflow-y:auto;position:relative;background:var(--bg-card,#181c14);border:3px solid #000;border-radius:0;box-shadow:0 0 0 2px var(--border-color,#2f3626),7px 7px 0 rgba(0,0,0,.45);box-sizing:border-box;');
 
-        const x = el('button', 'position:absolute;top:10px;right:10px;z-index:5;width:32px;height:32px;border-radius:50%;border:0;background:rgba(17,26,19,.85);color:#bbf7d0;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;');
+        const x = el('button', 'position:absolute;top:10px;right:10px;z-index:5;width:32px;height:32px;border-radius:0;border:3px solid #000;background:var(--bg-hover,#232a1b);box-shadow:inset 2px 2px 0 rgba(255,255,255,.12),inset -2px -2px 0 rgba(0,0,0,.45),3px 3px 0 rgba(0,0,0,.4);color:var(--text-main,#eef4e6);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;');
         x.innerHTML = '<i class="fa-solid fa-xmark"></i>';
         x.addEventListener('click', function (e) { e.stopPropagation(); close(); });
         modal.appendChild(x);
 
         statusRow = el('div', 'display:none;align-items:center;gap:8px;padding:14px 18px 0;');
-        statusDot = el('span', 'width:9px;height:9px;border-radius:50%;flex:none;');
-        statusTxt = el('span', 'font:700 12px Inter,sans-serif;color:var(--mc-accent,#bbf7d0);letter-spacing:.02em;');
+        statusDot = el('span', 'width:10px;height:10px;border-radius:0;border:2px solid #000;box-sizing:border-box;flex:none;');
+        statusTxt = el('span', 'font:700 12px var(--ui-font),sans-serif;color:var(--mc-accent,#7fdc3a);letter-spacing:.02em;');
         statusRow.appendChild(statusDot);
         statusRow.appendChild(statusTxt);
         modal.appendChild(statusRow);
@@ -309,5 +311,5 @@
 
     MC.profile = { _loaded: true, open: open, close: close };
 
-    console.log('[Stevscon] mc_profiles.js listo (v1) — panel de perfil completo dentro de StevsMCross.');
+    console.log('[Stevscon] mc_profiles.js listo (v2) — panel de perfil completo dentro de StevsMCross.');
 })(window, document);

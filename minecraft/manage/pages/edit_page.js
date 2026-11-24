@@ -1,6 +1,6 @@
 /**
  * ====
- * STEVSCON.MCROSS — minecraft/manage/pages/edit_page.js (v1)
+ * STEVSCON.MCROSS — minecraft/manage/pages/edit_page.js (v2)
  * EDITOR DEL INICIO: bloques personalizados para la portada.
  *  - Tipos: TEXTO (formatos completos), AVISO (callout destacado),
  *    IMAGEN (URL o subida optimizada) y BOTONES (hasta 10, con icono
@@ -9,6 +9,7 @@
  *  - Override seguro de MC.core.renderHome — el core NO se toca.
  *  - Datos: mc/home/{blockId} = {type, title, body, img, cap, order,
  *    createdAt, updatedAt, by} — SIN cambios de rules.
+ * v2 — RESTYLE BLOQUE: misma función, identidad visual Minecraft (píxeles, bisel, sombras duras, sin blur).
  * ====
  */
 (function (window, document) {
@@ -80,42 +81,47 @@
     .mch-tools{position:absolute;top:-6px;right:0;display:inline-flex;gap:6px;z-index:5}
     .mch-toolrow{display:flex;justify-content:flex-end;margin:0 0 10px}
     .mch-toolrow .mch-tools{position:static}
-    .mch-tbtn{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--border-color,#1f3527);background:var(--bg-card,#111a13);color:var(--text-muted,#94a3b8);border-radius:9px;cursor:pointer;font-size:12px;transition:color .15s,border-color .15s,background .15s}
-    .mch-tbtn:hover{color:var(--mc-accent,#4ade80);border-color:var(--mc-accent,#4ade80)}
-    .mch-tbtn.danger:hover{color:#f87171;border-color:rgba(239,68,68,.55)}
-    .mch-tbtn.arm{background:#ef4444;border-color:#ef4444;color:#fff}
-    .mch-addbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;border:1px dashed var(--border-color,#1f3527);border-radius:14px;padding:13px 16px;margin:4px 0 12px}
-    .mch-addbtn{display:inline-flex;align-items:center;gap:8px;border:1px dashed var(--mc-accent,#4ade80);background:rgba(74,222,128,.10);color:var(--mc-accent,#4ade80);border-radius:999px;padding:8px 16px;font:800 12px Inter,sans-serif;cursor:pointer;transition:.15s}
-    .mch-addbtn:hover{background:var(--mc-accent,#4ade80);color:#06210f;border-style:solid}
-    .mch-addhint{color:var(--text-muted,#94a3b8);font:600 12px Inter,sans-serif}
+    .mch-tbtn{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:3px solid #000;background:var(--bg-hover,#232a1b);color:var(--text-muted,#98a28c);border-radius:0;cursor:pointer;font-size:12px;transition:color .12s steps(2,end);box-shadow:inset 2px 2px 0 rgba(255,255,255,.3),inset -2px -2px 0 rgba(0,0,0,.4)}
+    .mch-tbtn:hover{color:var(--mc-accent,#7fdc3a);border-color:#000}
+    .mch-tbtn:active{transform:translate(2px,2px);box-shadow:inset -2px -2px 0 rgba(255,255,255,.3),inset 2px 2px 0 rgba(0,0,0,.4)}
+    .mch-tbtn.danger:hover{color:var(--redstone,#ff5545);border-color:#000}
+    .mch-tbtn.arm{background:var(--redstone,#ff5545);border-color:#000;color:#fff}
+    .mch-addbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;border:3px dashed var(--border-color,#2f3626);border-radius:0;padding:13px 16px;margin:4px 0 12px}
+    .mch-addbtn{display:inline-flex;align-items:center;gap:8px;border:3px solid #000;background:var(--bg-hover,#232a1b);color:var(--mc-accent,#7fdc3a);border-radius:0;padding:8px 16px;font:700 12px var(--ui-font),sans-serif;text-transform:uppercase;letter-spacing:.06em;cursor:pointer;transition:background .12s steps(2,end);box-shadow:inset 2px 2px 0 rgba(255,255,255,.3),inset -2px -2px 0 rgba(0,0,0,.4)}
+    .mch-addbtn:hover{background:var(--mc-accent,#7fdc3a);color:#16300a}
+    .mch-addbtn:active{transform:translate(2px,2px);box-shadow:inset -2px -2px 0 rgba(255,255,255,.3),inset 2px 2px 0 rgba(0,0,0,.4)}
+    .mch-addhint{color:var(--text-muted,#98a28c);font:600 12px var(--ui-font),sans-serif;line-height:1.6}
 
-    .mch-callout{position:relative;overflow:hidden;background:linear-gradient(135deg,rgba(74,222,128,.16),rgba(22,163,74,.05));border:1px solid rgba(74,222,128,.38);border-left:4px solid var(--mc-accent,#4ade80);border-radius:14px;padding:15px 18px}
-    .mch-callout .mc-body{font-size:14px}
+    .mch-callout{position:relative;overflow:hidden;background:rgba(127,220,58,.08);border:3px solid #000;border-left:6px solid var(--mc-accent,#7fdc3a);border-radius:0;box-shadow:0 0 0 2px var(--border-color,#2f3626),5px 5px 0 rgba(0,0,0,.4);padding:15px 18px}
+    .mch-callout .mc-body{font-size:14px;line-height:1.7}
     .mch-callout .mc-body>:first-child{margin-top:0}
     .mch-callout .mc-body>:last-child{margin-bottom:0}
-    html[data-theme="light"] .mch-callout{background:linear-gradient(135deg,rgba(22,163,74,.09),rgba(21,128,61,.04));border-color:rgba(22,163,74,.30)}
+    html[data-theme="light"] .mch-callout{background:rgba(62,125,20,.08);border-color:#000;border-left-color:var(--mc-accent,#3e7d14)}
 
     .mch-links{display:flex;flex-wrap:wrap;gap:10px}
-    .mch-linkbtn{display:inline-flex;align-items:center;gap:9px;border:1px solid var(--border-color,#1f3527);background:var(--bg-card,#111a13);color:var(--text-main,#f8fafc);border-radius:999px;padding:10px 18px;font:700 13px Inter,sans-serif;cursor:pointer;text-decoration:none;transition:transform .15s,border-color .15s,box-shadow .15s}
-    .mch-linkbtn i{color:var(--bkc,var(--mc-accent,#4ade80));font-size:15px}
-    .mch-linkbtn.ext:hover{border-color:var(--bkc,var(--mc-accent,#4ade80));transform:translateY(-2px);box-shadow:0 8px 22px rgba(0,0,0,.28)}
-    .mch-linkbtn.int{background:linear-gradient(135deg,var(--mc-accent,#4ade80),var(--mc-dark,#16a34a));border-color:transparent;color:#06210f}
-    .mch-linkbtn.int i{color:#06210f}
-    .mch-linkbtn.int:hover{filter:brightness(1.12);transform:translateY(-2px)}
-    html[data-theme="light"] .mch-linkbtn.ext:hover{box-shadow:0 8px 22px rgba(20,40,28,.16)}
+    .mch-linkbtn{display:inline-flex;align-items:center;gap:9px;border:3px solid #000;background:var(--bg-hover,#232a1b);color:var(--text-main,#eef4e6);border-radius:0;padding:10px 18px;font:700 13px var(--ui-font),sans-serif;cursor:pointer;text-decoration:none;transition:transform .12s steps(2,end);box-shadow:inset 2px 2px 0 rgba(255,255,255,.3),inset -2px -2px 0 rgba(0,0,0,.4)}
+    .mch-linkbtn i{color:var(--bkc,var(--mc-accent,#7fdc3a));font-size:15px}
+    .mch-linkbtn.ext:hover{border-color:var(--bkc,var(--mc-accent,#7fdc3a));transform:translate(-2px,-2px);box-shadow:0 0 0 2px var(--border-color,#2f3626),5px 5px 0 rgba(0,0,0,.4),inset 2px 2px 0 rgba(255,255,255,.3),inset -2px -2px 0 rgba(0,0,0,.4)}
+    .mch-linkbtn.int{background:var(--mc-dark,#4a8f1d);border-color:#000;color:#eaf7dd}
+    .mch-linkbtn.int i{color:#eaf7dd}
+    .mch-linkbtn.int:hover{background:var(--mc-accent,#7fdc3a);color:#16300a;transform:translate(-2px,-2px)}
+    .mch-linkbtn.int:hover i{color:#16300a}
+    .mch-linkbtn:active{transform:translate(2px,2px);box-shadow:inset -2px -2px 0 rgba(255,255,255,.3),inset 2px 2px 0 rgba(0,0,0,.4)}
+    html[data-theme="light"] .mch-linkbtn.ext:hover{box-shadow:0 0 0 2px var(--border-color,#a8b58c),5px 5px 0 rgba(28,36,21,.25),inset 2px 2px 0 rgba(255,255,255,.3),inset -2px -2px 0 rgba(0,0,0,.4)}
 
     .mch-rows{display:flex;flex-direction:column;gap:8px}
     .mch-row{display:flex;gap:8px;align-items:center}
     .mch-row input{flex:1;min-width:0}
-    .mch-rowdel{flex:none;width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--border-color,#1f3527);background:none;color:var(--text-muted,#94a3b8);border-radius:9px;cursor:pointer;font-size:12px;transition:.15s}
-    .mch-rowdel:hover{color:#f87171;border-color:rgba(239,68,68,.55)}
-    .mch-addrow{align-self:flex-start;display:inline-flex;align-items:center;gap:7px;border:1px dashed var(--mc-accent,#4ade80);background:rgba(74,222,128,.10);color:var(--mc-accent,#4ade80);border-radius:999px;padding:7px 14px;font:800 11.5px Inter,sans-serif;cursor:pointer;transition:.15s}
-    .mch-addrow:hover{background:var(--mc-accent,#4ade80);color:#06210f;border-style:solid}
+    .mch-rowdel{flex:none;width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border:3px solid #000;background:var(--bg-hover,#232a1b);color:var(--text-muted,#98a28c);border-radius:0;cursor:pointer;font-size:12px;transition:color .12s steps(2,end);box-shadow:inset 2px 2px 0 rgba(255,255,255,.3),inset -2px -2px 0 rgba(0,0,0,.4)}
+    .mch-rowdel:hover{color:var(--redstone,#ff5545);border-color:#000}
+    .mch-addrow{align-self:flex-start;display:inline-flex;align-items:center;gap:7px;border:3px solid #000;background:var(--bg-hover,#232a1b);color:var(--mc-accent,#7fdc3a);border-radius:0;padding:7px 14px;font:700 11.5px var(--ui-font),sans-serif;text-transform:uppercase;letter-spacing:.06em;cursor:pointer;transition:background .12s steps(2,end);box-shadow:inset 2px 2px 0 rgba(255,255,255,.3),inset -2px -2px 0 rgba(0,0,0,.4)}
+    .mch-addrow:hover{background:var(--mc-accent,#7fdc3a);color:#16300a}
+    .mch-addrow:active{transform:translate(2px,2px);box-shadow:inset -2px -2px 0 rgba(255,255,255,.3),inset 2px 2px 0 rgba(0,0,0,.4)}
 
     .mch-fig{margin:0}
-    .mch-fig img{width:100%;max-height:460px;object-fit:cover;border-radius:14px;border:1px solid var(--border-color,#1f3527);display:block}
-    .mch-cap{margin-top:8px;color:var(--text-muted,#94a3b8);font:600 12px Inter,sans-serif;text-align:center}
-    .mch-imgprev{max-height:150px;border-radius:12px;border:1px solid var(--border-color,#1f3527);display:block;margin-top:8px}
+    .mch-fig img{width:100%;max-height:460px;object-fit:cover;border-radius:0;border:3px solid #000;box-shadow:0 0 0 2px var(--border-color,#2f3626);display:block}
+    .mch-cap{margin-top:8px;color:var(--text-muted,#98a28c);font:600 12px var(--ui-font),sans-serif;text-align:center;line-height:1.6}
+    .mch-imgprev{max-height:150px;border-radius:0;border:3px solid #000;box-shadow:0 0 0 2px var(--border-color,#2f3626);display:block;margin-top:8px}
     `;
     function injectStyles() {
         if (document.getElementById('mch-home-style')) return;
@@ -639,5 +645,5 @@
         setTimeout(boot, 0);
     }
 
-    console.log('[Stevscon] edit_page.js listo (v1) — bloques del inicio de StevsMCross (solo staff edita).');
+    console.log('[Stevscon] edit_page.js listo (v2) — bloques del inicio de StevsMCross (solo staff edita).');
 })(window, document);

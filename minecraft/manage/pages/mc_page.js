@@ -1,19 +1,20 @@
 /**
  * ====
- * STEVSCON.MCROSS — minecraft/manage/pages/mc_page.js (v1)
+ * STEVSCON.MCROSS — minecraft/manage/pages/mc_page.js (v2)
  * CONTROLADOR de la página. Define el namespace StevsconMC (MC),
  * hace el boot, rutea deep links y maneja Volver/Escape.
  *   #p/{slug|id}          -> página      #c/{slug} -> categoría
  *   #c/{catSlug}/{subSlug}-> sub-categoría
  *   #s/{texto}            -> búsqueda    #admin -> consola de staff
  *   (sin hash)            -> portada
+ * v2 — RESTYLE BLOQUE: misma función, identidad visual Minecraft (píxeles, bisel, sombras duras, sin blur).
  * ====
  */
 (function (window, document) {
     'use strict';
 
     const MC = window.StevsconMC = window.StevsconMC || {};
-    MC.version = 1;
+    MC.version = 2;
     MC.core = MC.core || null;
     MC.system = MC.system || null;
 
@@ -74,7 +75,7 @@
         } catch (e) {
             console.error('[StevsMCross] render:', e);
             const p = document.createElement('p');
-            p.style.cssText = 'color:var(--text-muted);font:600 14px Inter,sans-serif;padding:30px 0;text-align:center';
+            p.style.cssText = 'color:var(--text-muted);font:600 14px var(--ui-font),sans-serif;padding:30px 0;text-align:center';
             p.textContent = 'Algo falló al dibujar esta vista. Revisa la consola.';
             main.appendChild(p);
         }
@@ -130,12 +131,12 @@
         window.addEventListener('hashchange', route);
 
         route();
-        console.log('[Stevscon] mc_page.js: StevsMCross BOOTEADA (v1).');
+        console.log('[Stevscon] mc_page.js: StevsMCross BOOTEADA (v2).');
     };
 
     MC.route = route;
     MC.render = render;
     MC.setTitle = setTitle;
 
-    console.log('[Stevscon] mc_page.js listo (v1) — controlador de StevsMCross.');
+    console.log('[Stevscon] mc_page.js listo (v2) — controlador de StevsMCross.');
 })(window, document);

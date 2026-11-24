@@ -1,6 +1,6 @@
 /**
  * ====
- * STEVSCON.MCROSS — minecraft/manage/output/mc_likes.js (v1)
+ * STEVSCON.MCROSS — minecraft/manage/output/mc_likes.js (v2)
  * LIKES: corazones para la página y para CADA sub-página.
  *  - Un botón ♥ junto al autor/fecha/vistas de la página.
  *  - Un botón ♥ pequeño en la cabecera de cada sub-página
@@ -16,6 +16,7 @@
  *    hay que iniciar sesión en Stevscon.com.
  *  - Animaciones: pop del corazón + lluvia de corazones al dar
  *    like. Tema claro y oscuro con variables del sitio.
+ * v2 — RESTYLE BLOQUE: misma función, identidad visual Minecraft (píxeles, bisel, sombras duras, sin blur).
  * ====
  */
 (function (window, document) {
@@ -36,17 +37,18 @@
     function fmtNum(n) { return Number(n || 0).toLocaleString('es'); }
 
     const CSS = `
-    .mc-like{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border-color,#1f3527);background:var(--bg-hover,#18251b);color:var(--text-muted,#94a3b8);border-radius:999px;padding:4px 12px;font:700 12px Inter,sans-serif;cursor:pointer;transition:color .2s,border-color .2s,background .2s}
-    .mc-like i{font-size:11.5px;transition:color .2s}
-    .mc-like:hover{color:#f472b6;border-color:rgba(244,114,182,.55)}
-    .mc-like:hover i{color:#f472b6}
-    .mc-like.is-on{color:#f472b6;border-color:rgba(244,114,182,.55);background:rgba(244,114,182,.10)}
-    .mc-like.is-on i{color:#f43f5e}
-    .mc-like.pop i{animation:mcl-pop .45s ease}
+    .mc-like{display:inline-flex;align-items:center;gap:7px;border:3px solid #000;background:var(--bg-hover,#232a1b);box-shadow:inset 2px 2px 0 rgba(255,255,255,.12),inset -2px -2px 0 rgba(0,0,0,.45),3px 3px 0 rgba(0,0,0,.4);color:var(--text-muted,#98a28c);border-radius:0;padding:4px 12px;font:700 12px var(--ui-font,'Pixelify Sans',sans-serif);letter-spacing:.04em;cursor:pointer;transition:color .12s,background .12s,box-shadow .12s}
+    .mc-like i{font-size:11.5px;color:#6b7280;transition:color .2s}
+    .mc-like:hover{color:var(--text-main,#eef4e6);background:var(--bg-card,#181c14);box-shadow:inset 2px 2px 0 rgba(255,255,255,.12),inset -2px -2px 0 rgba(0,0,0,.45),3px 3px 0 var(--redstone,#ff5545)}
+    .mc-like:hover i{color:var(--redstone,#ff5545)}
+    .mc-like.is-on{color:var(--redstone,#ff5545);background:rgba(255,85,69,.08);box-shadow:inset 2px 2px 0 rgba(255,255,255,.12),inset -2px -2px 0 rgba(0,0,0,.45),3px 3px 0 rgba(0,0,0,.4)}
+    .mc-like.is-on i{color:var(--redstone,#ff5545)}
+    .mc-like:active{transform:translate(2px,2px);box-shadow:inset -2px -2px 0 rgba(255,255,255,.1),inset 2px 2px 0 rgba(0,0,0,.45)}
+    .mc-like.pop i{animation:mcl-pop .45s steps(4)}
     @keyframes mcl-pop{0%{transform:scale(1)}35%{transform:scale(1.5)}70%{transform:scale(.9)}100%{transform:scale(1)}}
     .mc-like-sm{padding:3px 10px;font-size:10.5px;margin-left:8px}
     .mc-like-sm i{font-size:10px}
-    .mcl-fly{position:fixed;z-index:6000;pointer-events:none;color:#f43f5e;font-size:13px;animation:mcl-fly .8s ease forwards}
+    .mcl-fly{position:fixed;z-index:6000;pointer-events:none;color:var(--redstone,#ff5545);font-size:13px;text-shadow:2px 2px 0 rgba(0,0,0,.45);animation:mcl-fly .8s steps(6) forwards}
     @keyframes mcl-fly{to{transform:translateY(-36px);opacity:0}}
     `;
     if (!document.getElementById('mc-likes-style')) {
@@ -218,7 +220,7 @@
     document.addEventListener('sc:mc-auth', paintAll);
 
     function boot() {
-        if (wrapCore()) console.log('[Stevscon] mc_likes.js listo (v1) — likes en páginas y sub-páginas.');
+        if (wrapCore()) console.log('[Stevscon] mc_likes.js listo (v2) — likes en páginas y sub-páginas.');
     }
     if (MC.core && MC.core.renderArticle) boot();
     else if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
