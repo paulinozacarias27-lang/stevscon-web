@@ -1,0 +1,202 @@
+/**
+ * ====
+ * STEVSCON.MCROSS — minecraft/manage/output/mc_subs_system.js (v1)
+ * SUBS (SYSTEM): ESCRITURA de sub-páginas. Nada de UI.
+ *  - Tres tipos: normal { body, image, imgPos }, lista { colsStr,
+ *    rows: [{t,img,d,x,c}] } y galeria { rows: [{img,t,d}] }.
+ *  - Imágenes hasta 9MB por string (bajo el límite de 10MB por
+ *    string de Firebase); guardado de filas POR TROZOS para que una
+ *    galería pesada no choque contra el límite de 16MB por escritura.
+ *  - ÚNICO error posible: que el multimedia sea un VIDEO. Los GIFs
+ *    se dejan siempre (el optimizador de mc_system los trata como
+ *    originales mientras entren bajo el techo).
+ *  - Datos: mc/subs/{pageId}/{subId}.
+ * ====
+ */
+(function (window, document) {
+    'use strict';
+
+    const MC = window.StevsconMC = window.StevsconMC || {};
+    const db = function () { return firebase.database(); };
+
+    const RE_HTTPS = new RegExp('^https://', 'i');
+    const RE_DATAIMG = new RegExp('^data:image/[a-zA-Z0-9.+-]+;base64,', 'i');
+    const VIDEO_MSG = 'Los videos no están permitidos: solo imágenes (los GIFs sí valen, hasta 20MB).';
+
+    const LIMITS = {
+        title: 120, body: 12000,
+        rows: 15, rowT: 100, rowD: 160, rowC: 40, rowX: 2000,
+        colN: 5, colT: 32,
+        imgStr: 9000000, imgFile: 20971500, galT: 100, galD: 300
+    };
+
+    function isStaff() {
+        return !!(MC.system && MC.system.session && MC.system.session.isStaff);
+    }
+    function validImg(u) {
+        u = String(u || '').trim();
+        if (RE_HTTPS.test(u)) return u;
+        if (RE_DATAIMG.test(u)) return u;
+        return '';
+    }
+    function cleanTxt(s, max) {
+        return String(s == null ? '' : s).trim().slice(0, max);
+    }
+    function cleanRow(r) {
+        r = r || {};
+        const out = {};
+        const t = cleanTxt(r.t, LIMITS.rowT);
+        const img = validImg(r.img || r.image).slice(0, LIMITS.imgStr);
+        const d = cleanTxt(r.d, LIMITS.rowD);
+        const x = cleanTxt(r.x, LIMITS.rowX);
+        const c = cleanTxt(r.c, LIMITS.rowC);
+        if (t) out.t = t;
+        if (img) out.img = img;
+        if (d) out.d = d;
+        if (x) out.x = x;
+        if (c) out.c = c;
+        return out;
+    }
+    function cleanGal(r) {
+        r = r || {};
+        const out = {};
+        const img = validImg(r.img || r.src || r.image).slice(0, LIMITS.imgStr);
+        const t = cleanTxt(r.t, LIMITS.galT);
+        const d = cleanTxt(r.d, LIMITS.galD);
+        if (img) out.img = img;
+        if (t) out.t = t;
+        if (d) out.d = d;
+        return out;
+    }
+    function mapRows(rows, fn) {
+        const out = [];
+        const arr = Array.isArray(rows) ? rows : [];
+        for (let i = 0; i < arr.length; i++) out.push(fn(arr[i]));
+        return out;
+    }
+
+    MC.subsSystem = {
+        LIMITS: LIMITS,
+        validImg: validImg,
+
+        validate: function (d) {
+            const L = LIMITS;
+            if (!d) return 'No hay nada que guardar.';
+            const title = cleanTxt(d.title, L.title + 1);
+            if (!title) return 'El sub-artículo necesita un título.';
+            if (title.length > L.title) return 'El título no puede pasar de ' + L.title + ' caracteres.';
+            if (d.type !== 'normal' && d.type !== 'lista' && d.type !== 'galeria') return 'Tipo de sub-artículo desconocido.';
+
+            if (d.type === 'normal') {
+                if (!d.body || !String(d.body).trim()) return 'El texto del sub-artículo no puede estar vacío.';
+                if (String(d.body).length > L.body) return 'El texto es demasiado largo (máx ' + L.body + ' caracteres).';
+                if (d.image && /^data:video\//i.test(String(d.image))) return VIDEO_MSG;
+                if (d.image && String(d.image).length > L.imgStr) return 'La imagen pasa de 9MB incluso optimizada. Prueba con otra.';
+                if (d.image && !validImg(d.image)) return 'La imagen debe ser una URL https o una imagen válida.';
+                if (d.imgPos !== 'lado' && d.imgPos !== 'abajo') return 'Posición de imagen desconocida.';
+                return null;
+            }
+
+            const rows = Array.isArray(d.rows) ? d.rows : [];
+            if (!rows.length) return d.type === 'lista' ? 'Añade al menos una fila a la lista.' : 'Añade al menos una imagen a la galería.';
+            if (rows.length > L.rows) return 'Máximo ' + L.rows + ' filas.';
+
+            for (let i = 0; i < rows.length; i++) {
+                const r = rows[i] || {};
+                if (d.type === 'lista') {
+                    const has = cleanTxt(r.t, 1) || validImg(r.img) || cleanTxt(r.d, 1) || cleanTxt(r.x, 1) || cleanTxt(r.c, 1);
+                    if (!has) return 'La fila ' + (i + 1) + ' está vacía: rellénala o bórrala.';
+                    if (/^data:video\//i.test(String(r.img || ''))) return VIDEO_MSG;
+                    if (cleanTxt(r.t, L.rowT + 1).length > L.rowT) return 'El título de la fila ' + (i + 1) + ' es demasiado largo.';
+                    if (String(r.d || '').length > L.rowD) return 'El texto de la fila ' + (i + 1) + ' es demasiado largo.';
+                    if (String(r.x || '').length > L.rowX) return 'Las notas de la fila ' + (i + 1) + ' son demasiado largas.';
+                    if (String(r.img || '').length > L.imgStr) return 'La imagen de la fila ' + (i + 1) + ' pasa de 9MB incluso optimizada.';
+                } else {
+                    if (/^data:video\//i.test(String(r.img || r.src || r.image || ''))) return VIDEO_MSG;
+                    if (!validImg(r.img || r.src || r.image)) return 'La imagen ' + (i + 1) + ' de la galería falta o no es válida.';
+                    if (String(r.img || '').length > L.imgStr) return 'La imagen ' + (i + 1) + ' pasa de 9MB incluso optimizada.';
+                    if (String(r.d || '').length > L.galD) return 'La descripción de la imagen ' + (i + 1) + ' es demasiado larga.';
+                }
+            }
+            return null;
+        },
+
+        save: function (artId, data, subId) {
+            if (!isStaff()) return Promise.reject(new Error('Solo el Owner y los Administradores pueden editar las sub-páginas.'));
+            if (!artId) return Promise.reject(new Error('Falta el artículo padre.'));
+            const err = this.validate(data);
+            if (err) return Promise.reject(new Error(err));
+
+            const now = firebase.database.ServerValue.TIMESTAMP;
+            const ref = subId ? db().ref('mc/subs/' + artId + '/' + subId) : db().ref('mc/subs/' + artId).push();
+
+            return ref.once('value').then(function (s) {
+                const prev = s.val() || {};
+                const rec = {
+                    type: data.type,
+                    title: String(data.title).trim(),
+                    authorUid: prev.authorUid || (MC.system.session.uid || ''),
+                    authorName: prev.authorName || (MC.system.session.name || 'Staff'),
+                    createdAt: prev.createdAt || now,
+                    updatedAt: now
+                };
+                if (data.type === 'normal') {
+                    rec.body = String(data.body);
+                    const im = validImg(data.image);
+                    if (im) rec.image = im;
+                    rec.imgPos = data.imgPos === 'lado' ? 'lado' : 'abajo';
+                } else if (data.type === 'lista') {
+                    const cols = Array.isArray(data.cols) ? data.cols : [];
+                    const parts = [];
+                    for (let i = 0; i < LIMITS.colN; i++) parts.push(cleanTxt(cols[i], LIMITS.colT));
+                    const cs = parts.join('\n');
+                    if (cs.replace(/\n/g, '')) rec.colsStr = cs;
+                    rec.rows = mapRows(data.rows, cleanRow);
+                } else {
+                    rec.rows = mapRows(data.rows, cleanGal);
+                }
+
+                const rowsOut = rec.rows || null;
+                if (rowsOut) rec.rows = null;
+
+                return ref.set(rec).then(function () {
+                    let chain = Promise.resolve();
+                    if (rowsOut) {
+                        rowsOut.forEach(function (row, i) {
+                            chain = chain.then(function () {
+                                return ref.child('rows').child(String(i)).set(row);
+                            });
+                        });
+                    }
+                    return chain.then(function () {
+                        try {
+                            if (MC.system && MC.system.logHistory) {
+                                MC.system.logHistory(artId, { action: subId ? 'sub-edited' : 'sub-created', title: rec.title });
+                            }
+                        } catch (e) {}
+                        return ref.key;
+                    });
+                });
+            });
+        },
+
+        remove: function (artId, subId) {
+            if (!isStaff()) return Promise.reject(new Error('Solo el Owner y los Administradores pueden borrar.'));
+            if (!artId || !subId) return Promise.reject(new Error('Falta qué sub-página borrar.'));
+            const ref = db().ref('mc/subs/' + artId + '/' + subId);
+            return ref.once('value').then(function (s) {
+                const a = s.val();
+                if (!a) return;
+                return ref.remove().then(function () {
+                    try {
+                        if (MC.system && MC.system.logHistory) {
+                            MC.system.logHistory(artId, { action: 'sub-deleted', title: a.title || '' });
+                        }
+                    } catch (e) {}
+                });
+            });
+        }
+    };
+
+    console.log('[Stevscon] mc_subs_system.js listo (v1) — imágenes de subs sin errores de tamaño (solo se rechazan videos).');
+})(window, document);

@@ -290,6 +290,162 @@ eso si, porfavor dime siempre que cosas cambiaste o si cambiaste algo minimo en 
       "counters": {
         ".write": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin')"
       }
+    },
+    "mc": {
+      "pages": {
+        ".read": true,
+        "$pageId": {
+          ".write": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin')",
+          ".validate": "!newData.exists() || (newData.child('title').isString() && newData.child('title').val().length >= 1 && newData.child('title').val().length <= 120 && newData.child('body').isString() && newData.child('body').val().length <= 20000 && newData.child('slug').isString() && newData.child('category').isString() && newData.child('status').isString())",
+          "cover": {
+            ".validate": "newData.isString() && newData.val().length <= 9000000 && (newData.val() == '' || newData.val().beginsWith('data:image/') || newData.val().beginsWith('https://'))"
+          },
+          "subcat": {
+            ".validate": "!newData.exists() || newData.isString()"
+          },
+          "views": {
+            ".write": "auth != null",
+            ".validate": "newData.isNumber() && newData.val() >= 0"
+          }
+        }
+      },
+      "subs": {
+        ".read": true,
+        "$pageId": {
+          "$subId": {
+            ".write": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin')",
+            ".validate": "!newData.exists() || (newData.child('type').isString() && (newData.child('type').val() == 'normal' || newData.child('type').val() == 'lista' || newData.child('type').val() == 'galeria') && newData.child('title').isString() && newData.child('title').val().length <= 120)",
+            "rows": {
+              "$rowIdx": {
+                ".validate": "!newData.exists() || newData.hasChildren()"
+              }
+            }
+          }
+        }
+      },
+      "likes": {
+        ".read": true,
+        "$pageId": {
+          "users": {
+            "$uid": {
+              ".write": "auth != null && auth.uid === $uid",
+              ".validate": "!newData.exists() || newData.isNumber()"
+            }
+          },
+          "subs": {
+            "$subId": {
+              "users": {
+                "$uid": {
+                  ".write": "auth != null && auth.uid === $uid",
+                  ".validate": "!newData.exists() || newData.isNumber()"
+                }
+              }
+            }
+          }
+        }
+      },
+      "subcats": {
+        ".read": true,
+        "$subId": {
+          ".write": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin')",
+          ".validate": "!newData.exists() || (newData.child('catId').isString() && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length <= 40 && newData.child('slug').isString() && newData.child('slug').val().length <= 40 && newData.child('icon').isString() && newData.child('icon').val().length <= 4)"
+        }
+      },
+      "home": {
+        ".read": true,
+        "$blockId": {
+          ".write": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin')",
+          ".validate": "!newData.exists() || (newData.child('type').isString() && (newData.child('type').val() == 'texto' || newData.child('type').val() == 'aviso' || newData.child('type').val() == 'imagen' || newData.child('type').val() == 'enlaces') && newData.child('title').isString() && newData.child('title').val().length <= 120 && newData.child('body').isString() && newData.child('body').val().length <= 20000)",
+          "img": {
+            ".validate": "newData.isString() && newData.val().length <= 9000000 && (newData.val() == '' || newData.val().beginsWith('data:image/') || newData.val().beginsWith('https://'))"
+          },
+          "cap": {
+            ".validate": "newData.isString() && newData.val().length <= 240"
+          },
+          "order": {
+            ".validate": "newData.isNumber()"
+          },
+          "by": {
+            ".validate": "newData.isString() && newData.val().length <= 120"
+          }
+        }
+      },
+      "categories": {
+        ".read": true,
+        ".write": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin')",
+        "$catId": {
+          ".validate": "!newData.exists() || (newData.child('name').isString() && newData.child('name').val().length >= 1 && newData.child('slug').isString())"
+        }
+      },
+      "history": {
+        ".read": true,
+        "$pageId": {
+          ".write": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin')",
+          "$logId": {
+            ".validate": "!newData.exists() || (newData.child('action').isString() && newData.child('at').isNumber())"
+          }
+        }
+      },
+      "counters": {
+        ".read": true,
+        ".write": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin')"
+      },
+      "store": {
+        "items": {
+          ".read": true,
+          "$itemId": {
+            ".write": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin')",
+            ".validate": "!newData.exists() || (newData.child('name').isString() && newData.child('name').val().length >= 1 && newData.child('name').val().length <= 80 && newData.child('desc').isString() && newData.child('desc').val().length <= 500 && newData.child('price').isNumber() && newData.child('price').val() >= 0 && newData.child('price').val() <= 1000000 && newData.child('currency').isString() && newData.child('currency').val().length <= 8 && newData.child('active').isBoolean() && newData.child('order').isNumber())",
+            "img": {
+              ".validate": "newData.isString() && newData.val().length <= 9000000 && (newData.val() == '' || newData.val().beginsWith('data:image/') || newData.val().beginsWith('https://'))"
+            }
+          }
+        },
+        "codes": {
+          ".read": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin')",
+          "$codeId": {
+            ".write": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin')",
+            ".validate": "!newData.exists() || (newData.child('code').isString() && newData.child('code').val().length >= 1 && newData.child('code').val().length <= 64 && newData.child('itemId').isString() && newData.child('status').isString() && (newData.child('status').val() == 'available' || newData.child('status').val() == 'sold' || newData.child('status').val() == 'redeemed'))"
+          }
+        },
+        "orders": {
+          ".read": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin')",
+          ".indexOn": ["createdAt"],
+          "$orderId": {
+            ".write": "auth != null && !root.child('security/accounts/bans/' + auth.uid).exists() && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin' || (!data.exists() && newData.child('buyerUid').val() == auth.uid && newData.child('status').val() == 'pending'))",
+            ".validate": "!newData.exists() || (newData.child('itemId').isString() && newData.child('buyerUid').isString() && newData.child('status').isString() && (newData.child('status').val() == 'pending' || newData.child('status').val() == 'paid' || newData.child('status').val() == 'cancelled' || newData.child('status').val() == 'redeemed') && newData.child('createdAt').isNumber())",
+            "code": {
+              ".validate": "newData.isString() && newData.val().length <= 64"
+            },
+            "codeId": {
+              ".validate": "newData.isString() && newData.val().length <= 128"
+            }
+          }
+        },
+        "myOrders": {
+          "$uid": {
+            ".read": "auth != null && ($uid === auth.uid || auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin')",
+            "$orderId": {
+              ".write": "auth != null && !root.child('security/accounts/bans/' + auth.uid).exists() && ($uid === auth.uid || auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin')"
+            }
+          }
+        },
+        "settings": {
+          ".read": true,
+          ".write": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin')",
+          "info": {
+            ".validate": "newData.isString() && newData.val().length <= 5000"
+          }
+        },
+        "stock": {
+          ".read": true,
+          "$itemId": {
+            ".read": true,
+            ".write": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin')",
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000"
+          }
+        }
+      }
     }
   }
 }
