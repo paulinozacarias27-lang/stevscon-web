@@ -1,6 +1,6 @@
 /**
  * ====
- * STEVSCON.MCROSS — minecraft/manage/output/mc_store.js (v2)
+ * STEVSCON.MCROSS — minecraft/manage/output/mc_store.js (v3)
  * TIENDA (PÚBLICO): catálogo, detalle, checkout y "Mis compras".
  *  - Escucha en vivo mc/store/items, mc/store/settings,
  *    mc/store/stock y mc/store/myOrders/{uid}; detach al re-pintar.
@@ -10,6 +10,7 @@
  *  - Los códigos los asigna el staff al marcar el pedido como pagado:
  *    aquí solo se muestran y se copian. Nunca se publica la IP.
  * v2 — RESTYLE BLOQUE: misma función, identidad visual Minecraft (píxeles, bisel, sombras duras, sin blur).
+ * v3 — CANJE: instrucciones /xp-redeem y copiado de código para pedidos pagados.
  * ====
  */
 (function (window, document) {
@@ -23,6 +24,7 @@
     const STATUS = {
         pending: ['PENDIENTE', 'mcs-st-pending'],
         paid: ['PAGADA', 'mcs-st-paid'],
+        delivered: ['Listo para canjear', 'mcs-st-paid'],
         redeemed: ['CANJEADA', 'mcs-st-redeemed'],
         cancelled: ['CANCELADA', 'mcs-st-cancelled']
     };
@@ -473,7 +475,20 @@
             cp.addEventListener('click', function () { copyText(String(o.code)); });
             row.appendChild(cp);
             box.appendChild(row);
-            box.appendChild(el('p', 'mcs-code-note', 'Canjea este código en el server con el comando del plugin.'));
+            if (o.status === 'paid' || o.status === 'delivered') {
+                const how = el('div', 'mcs-code-row');
+                how.appendChild(el('code', 'mcs-code-val', '/xp-redeem ' + o.code));
+                const cp2 = el('button', 'mcs-copy');
+                cp2.type = 'button';
+                cp2.appendChild(fa('fa-copy'));
+                cp2.appendChild(document.createTextNode(' Copiar'));
+                cp2.addEventListener('click', function () { copyText(String(o.code)); });
+                how.appendChild(cp2);
+                box.appendChild(how);
+                box.appendChild(el('p', 'mcs-code-note', 'Canjea tu código dentro del server con /xp-redeem CODIGO — se entrega en tu banco de botellas (o Rubbies en tu inventario).'));
+            } else {
+                box.appendChild(el('p', 'mcs-code-note', 'Canjea este código en el server con el comando del plugin.'));
+            }
             wrap.appendChild(box);
         }
         return wrap;
@@ -512,5 +527,5 @@
         });
     }
 
-    console.log('[Stevscon] mc_store.js listo (v2) — tienda con códigos canjeables.');
+    console.log('[Stevscon] mc_store.js listo (v3) — tienda con códigos canjeables.');
 })(window, document);

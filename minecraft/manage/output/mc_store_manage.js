@@ -1,6 +1,6 @@
 /**
  * ====
- * STEVSCON.MCROSS — minecraft/manage/output/mc_store_manage.js (v2)
+ * STEVSCON.MCROSS — minecraft/manage/output/mc_store_manage.js (v3)
  * TIENDA (STAFF): artículos, códigos, pedidos y ajustes.
  *  - mount() se pinta dentro del panel de admin y de la pestaña Tienda.
  *  - Escucha en vivo mc/store/items, codes, orders, stock y settings;
@@ -11,6 +11,7 @@
  *    item con update() multipath (codes + orders + myOrders).
  *  - Nunca se publica la IP del servidor.
  * v2 — RESTYLE BLOQUE: misma función, identidad visual Minecraft (píxeles, bisel, sombras duras, sin blur).
+ * v3 — PUENTE PLUGIN: tipo/cantidad por artículo, carga del código al server (curl/codes.yml) y estado entregado.
  * ====
  */
 (function (window, document) {
@@ -30,6 +31,7 @@
     const STATUS = {
         pending: ['PENDIENTE', 'mcsa-st-pending'],
         paid: ['PAGADA', 'mcsa-st-paid'],
+        delivered: ['Listo para canjear', 'mcsa-st-paid'],
         redeemed: ['CANJEADA', 'mcsa-st-redeemed'],
         cancelled: ['CANCELADA', 'mcsa-st-cancelled']
     };
@@ -113,10 +115,10 @@
     .mcsa-mono{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.6;resize:vertical}
     .mcsa-form{display:grid;gap:12px}
     .mcsa-form label{display:block;font:700 10px var(--ui-font),sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted,#98a28c);margin:0 0 5px}
-    .mcsa-form input[type=text],.mcsa-form input[type=number],.mcsa-form textarea{
+    .mcsa-form input[type=text],.mcsa-form input[type=number],.mcsa-form input[type=password],.mcsa-form select,.mcsa-form textarea{
       width:100%;background:#0b0d09;border:3px solid #000;border-radius:0;box-shadow:0 0 0 2px var(--border-color,#2f3626);
       color:var(--text-main,#eef4e6);padding:10px 12px;font:600 13px var(--ui-font),sans-serif;outline:0;box-sizing:border-box}
-    .mcsa-form input:focus,.mcsa-form textarea:focus{border-color:#000;box-shadow:0 0 0 2px var(--gold,#f4c542)}
+    .mcsa-form input:focus,.mcsa-form select:focus,.mcsa-form textarea:focus{border-color:#000;box-shadow:0 0 0 2px var(--gold,#f4c542)}
     .mcsa-form textarea{min-height:110px;resize:vertical;line-height:1.6}
     .mcsa-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     .mcsa-prev{max-height:130px;border-radius:0;border:3px solid #000;box-shadow:0 0 0 2px var(--border-color,#2f3626);display:block;margin:0 0 8px}
@@ -303,7 +305,7 @@
             gro.appendChild(t);
             const st = state.stock[it.id];
             const stockTxt = (st === undefined || st === null) ? 'sin stock calculado' : (Number(st) + ' disponibles');
-            gro.appendChild(el('small', null, money(it.price, it.currency) + ' · ' + stockTxt + ' · orden ' + (Number(it.order) || 0)));
+            gro.appendChild(el('small', null, money(it.price, it.currency) + ' · ' + stockTxt + ' · orden ' + (Number(it.order) || 0) + ' · ' + (String(it.tipo || '').toUpperCase() === 'RUBBIES' ? 'RUBBIES' : 'BOTELLAS') + ' x' + (Number(it.cantidad) || 1)));
             row.appendChild(gro);
 
             const ed = el('button', 'mcsa-btn');
@@ -362,6 +364,22 @@
             const order = document.createElement('input');
             order.type = 'number';
             order.value = it.order != null ? String(it.order) : '0';
+
+            const tipo = document.createElement('select');
+            [['BOTELLAS', 'BOTELLAS'], ['RUBBIES', 'RUBBIES']].forEach(function (o) {
+                const op = document.createElement('option');
+                op.value = o[0];
+                op.textContent = o[1];
+                tipo.appendChild(op);
+            });
+            tipo.value = String(it.tipo || '').toUpperCase() === 'RUBBIES' ? 'RUBBIES' : 'BOTELLAS';
+
+            const cantidad = document.createElement('input');
+            cantidad.type = 'number';
+            cantidad.min = '1';
+            cantidad.max = '1000000';
+            cantidad.step = '1';
+            cantidad.value = it.cantidad != null ? String(it.cantidad) : '1';
 
             const desc = document.createElement('textarea');
             desc.maxLength = 500;
@@ -434,6 +452,10 @@
             actW.appendChild(actRow);
             r2.appendChild(actW);
             form.appendChild(r2);
+            const r3 = el('div', 'mcsa-2');
+            r3.appendChild(field('ENTREGA EN EL JUEGO', tipo));
+            r3.appendChild(field('CANTIDAD (PLUGIN)', cantidad));
+            form.appendChild(r3);
 
             const save = el('button', 'mcsa-btn pri');
             save.type = 'button';
@@ -443,7 +465,8 @@
                 saveItem(id, {
                     name: name.value, desc: desc.value, img: imgVal,
                     price: price.value, currency: currency.value,
-                    active: active.checked, order: order.value
+                    active: active.checked, order: order.value,
+                    tipo: tipo.value, cantidad: cantidad.value
                 }, save);
             });
             form.appendChild(save);
@@ -465,6 +488,9 @@
         if (currency.length > 8) return toast('La moneda no puede pasar de 8 caracteres.', 'error');
         const img = String(data.img || '');
         if (img.length > 9000000) return toast('La imagen pasa de 9MB incluso optimizada. Prueba con otra.', 'error');
+        const tipo = String(data.tipo || '').trim().toUpperCase() === 'RUBBIES' ? 'RUBBIES' : 'BOTELLAS';
+        const cantidad = Math.floor(Number(data.cantidad));
+        if (!isFinite(cantidad) || cantidad < 1 || cantidad > 1000000) return toast('La cantidad debe estar entre 1 y 1000000.', 'error');
 
         const now = Date.now();
         const prev = id ? (state.items[id] || {}) : {};
@@ -476,6 +502,8 @@
             currency: currency,
             active: !!data.active,
             order: Number(data.order) || 0,
+            tipo: tipo,
+            cantidad: cantidad,
             createdAt: Number(prev.createdAt) || now,
             updatedAt: now,
             by: uid()
@@ -619,8 +647,12 @@
     function addCodes(itemId, text, btn, ta) {
         if (!staffView()) { toast('Zona solo para staff.', 'error'); return; }
         if (!itemId) { toast('Elige un artículo.', 'error'); return; }
-        const lines = String(text || '').split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean);
+        const lines = String(text || '').split(/\r?\n/).map(function (l) { return l.trim().toUpperCase(); }).filter(Boolean);
         if (!lines.length) { toast('Pega al menos un código.', 'error'); return; }
+        const RE_CODE = /^[A-Z0-9-]{4,32}$/;
+        const rejected = lines.filter(function (l) { return !RE_CODE.test(l); });
+        const valid = lines.filter(function (l) { return RE_CODE.test(l); });
+        if (!valid.length) { toast(rejected.length + ' código(s) rechazados: formato válido A-Z 0-9 - (4-32)', 'error'); return; }
 
         const existing = {};
         Object.keys(state.codes).forEach(function (k) {
@@ -628,12 +660,16 @@
             if (c && c.itemId === itemId && c.code) existing[String(c.code)] = true;
         });
         const seen = {};
-        const fresh = lines.filter(function (l) {
+        const fresh = valid.filter(function (l) {
             if (existing[l] || seen[l]) return false;
             seen[l] = true;
             return true;
         });
-        if (!fresh.length) { toast('Esos códigos ya estaban en el inventario.', 'error'); return; }
+        if (!fresh.length) {
+            if (rejected.length) toast(rejected.length + ' código(s) rechazados: formato válido A-Z 0-9 - (4-32)', 'error');
+            else toast('Esos códigos ya estaban en el inventario.', 'error');
+            return;
+        }
 
         const now = Date.now();
         const up = {};
@@ -646,6 +682,7 @@
         btn.disabled = true;
         db().ref().update(up).then(function () {
             toast(fresh.length + (fresh.length === 1 ? ' código añadido' : ' códigos añadidos'), 'ok');
+            if (rejected.length) toast(rejected.length + ' código(s) rechazados: formato válido A-Z 0-9 (4-32)', 'error');
             ta.value = '';
             btn.disabled = false;
             recalcStock(itemId);
@@ -700,6 +737,20 @@
             armed(cancel, function () { setOrderStatus(orderId, 'cancelled', cancel); });
             row.appendChild(cancel);
         } else if (o.status === 'paid') {
+            const bridge = el('button', 'mcsa-btn pri');
+            bridge.type = 'button';
+            bridge.appendChild(fa('fa-server'));
+            bridge.appendChild(document.createTextNode(' Cargar al server'));
+            bridge.addEventListener('click', function () { openBridgeModal(orderId); });
+            row.appendChild(bridge);
+
+            const red = el('button', 'mcsa-btn');
+            red.type = 'button';
+            red.appendChild(fa('fa-check'));
+            red.appendChild(document.createTextNode(' Marcar canjeado'));
+            red.addEventListener('click', function () { setOrderStatus(orderId, 'redeemed', red); });
+            row.appendChild(red);
+        } else if (o.status === 'delivered') {
             const red = el('button', 'mcsa-btn');
             red.type = 'button';
             red.appendChild(fa('fa-check'));
@@ -708,6 +759,95 @@
             row.appendChild(red);
         }
         return row;
+    }
+
+    function pluginTarget(itemId) {
+        const it = state.items[itemId] || {};
+        const tipo = String(it.tipo || '').trim().toUpperCase() === 'RUBBIES' ? 'RUBBIES' : 'BOTELLAS';
+        const n = Math.floor(Number(it.cantidad));
+        return { tipo: tipo, cantidad: (isFinite(n) && n >= 1 && n <= 1000000) ? n : 1 };
+    }
+
+    function openBridgeModal(orderId) {
+        if (!staffView()) { toast('Zona solo para staff.', 'error'); return; }
+        const o = state.orders[orderId];
+        if (!o) return;
+        const tgt = pluginTarget(o.itemId);
+        const code = String(o.code || '');
+        openModal(function (panel) {
+            const x = el('button', 'mcsa-x');
+            x.type = 'button';
+            x.appendChild(fa('fa-xmark'));
+            x.addEventListener('click', closeModal);
+            panel.appendChild(x);
+            panel.appendChild(el('h3', null, 'Cargar código al server'));
+
+            const form = el('div', 'mcsa-form');
+            form.appendChild(el('p', 'mcsa-hint', 'CÓDIGO: ' + (code || '—') + ' · ENTREGA: ' + tgt.tipo + ' x' + tgt.cantidad + ' · COMPRADOR: ' + (o.buyerName || 'Miembro')));
+
+            const token = document.createElement('input');
+            token.type = 'password';
+            token.autocomplete = 'off';
+            token.placeholder = 'Bearer token del plugin';
+            try { token.value = window.localStorage.getItem('stevsxp_api_token') || ''; } catch (e) {}
+            form.appendChild(field('TOKEN DEL PLUGIN (solo en este navegador)', token));
+
+            const cmd = el('pre', 'mcsa-input mcsa-mono');
+            const yml = el('pre', 'mcsa-input mcsa-mono');
+            const paint = function () {
+                const tk = String(token.value || '').trim() || '<TU_TOKEN>';
+                cmd.textContent = 'curl -s -X POST -H "Authorization: Bearer ' + tk + '" --data "codigo=' + code +
+                    '&tipo=' + tgt.tipo + '&cantidad=' + tgt.cantidad + '" http://localhost:8080/codigo';
+                yml.textContent = 'codigos:\n  "' + code + '":\n    tipo: ' + tgt.tipo + '\n    cantidad: ' + tgt.cantidad;
+            };
+            token.addEventListener('input', function () {
+                try { window.localStorage.setItem('stevsxp_api_token', String(token.value || '')); } catch (e) {}
+                paint();
+            });
+            paint();
+
+            form.appendChild(cmd);
+            form.appendChild(el('p', 'mcsa-hint', 'Ejecuta el comando EN LA MÁQUINA DEL SERVER DE MINECRAFT (el plugin responde OK, YA_EXISTE o MAL_PEDIDO). Si prefieres, pega esto en plugins/StevsXP/codes.yml y reinicia:'));
+            form.appendChild(yml);
+
+            const done = el('button', 'mcsa-btn pri');
+            done.type = 'button';
+            done.appendChild(fa('fa-check'));
+            done.appendChild(document.createTextNode(' Cargado en el server ✓'));
+            done.addEventListener('click', function () { markDelivered(orderId, done); });
+            form.appendChild(done);
+
+            const cancel = el('button', 'mcsa-btn');
+            cancel.type = 'button';
+            cancel.textContent = 'Cancelar';
+            cancel.addEventListener('click', closeModal);
+            form.appendChild(cancel);
+            panel.appendChild(form);
+        });
+    }
+
+    function markDelivered(orderId, btn) {
+        if (!staffView()) { toast('Zona solo para staff.', 'error'); return; }
+        const o = state.orders[orderId];
+        if (!o) return;
+        const now = Date.now();
+        const up = {};
+        up['mc/store/orders/' + orderId + '/status'] = 'delivered';
+        up['mc/store/orders/' + orderId + '/deliveredAt'] = now;
+        up['mc/store/orders/' + orderId + '/deliveredBy'] = uid();
+        up['mc/store/myOrders/' + o.buyerUid + '/' + orderId + '/status'] = 'delivered';
+        up['mc/store/myOrders/' + o.buyerUid + '/' + orderId + '/deliveredAt'] = now;
+        up['mc/store/myOrders/' + o.buyerUid + '/' + orderId + '/deliveredBy'] = uid();
+        if (o.codeId) up['mc/store/codes/' + o.codeId + '/status'] = 'delivered';
+
+        btn.disabled = true;
+        db().ref().update(up).then(function () {
+            closeModal();
+            toast('Código cargado. El jugador ya puede canjearlo', 'ok');
+        }).catch(function (e) {
+            toast((e && e.message) || 'No se pudo marcar el pedido como entregado.', 'error');
+            btn.disabled = false;
+        });
     }
 
     function markPaid(orderId, btn) {
@@ -762,7 +902,7 @@
         if (!staffView()) { toast('Zona solo para staff.', 'error'); return; }
         const o = state.orders[orderId];
         if (!o) return;
-        if (status === 'redeemed' && o.status !== 'paid') return;
+        if (status === 'redeemed' && o.status !== 'paid' && o.status !== 'delivered') return;
         if (status === 'cancelled' && o.status !== 'pending') return;
 
         const now = Date.now();
@@ -819,5 +959,5 @@
         };
     }
 
-    console.log('[Stevscon] mc_store_manage.js listo (v2) — artículos, códigos, pedidos y ajustes.');
+    console.log('[Stevscon] mc_store_manage.js listo (v3) — artículos, códigos, pedidos y ajustes.');
 })(window, document);
