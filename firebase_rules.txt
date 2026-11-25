@@ -444,6 +444,28 @@ eso si, porfavor dime siempre que cosas cambiaste o si cambiaste algo minimo en 
             ".write": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin')",
             ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000"
           }
+        },
+        "payments": {
+          "panels": {
+            ".read": true,
+            "$panelId": {
+              ".write": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin')",
+              ".validate": "!newData.exists() || (newData.child('title').isString() && newData.child('title').val().length >= 1 && newData.child('title').val().length <= 80 && newData.child('body').isString() && newData.child('body').val().length >= 1 && newData.child('body').val().length <= 5000 && newData.child('icon').isString() && newData.child('icon').val().length <= 4 && newData.child('active').isBoolean() && newData.child('order').isNumber())",
+              "img": {
+                ".validate": "newData.isString() && newData.val().length <= 9000000 && (newData.val() == '' || newData.val().beginsWith('data:image/') || newData.val().beginsWith('https://'))"
+              }
+            }
+          },
+          "settings": {
+            ".read": true,
+            ".write": "auth != null && (auth.token.email == 'steven23hd@gmail.com' || root.child('social/staff').child(auth.uid).child('role').val() == 'admin' || root.child('social/staff').child(auth.uid).val() == 'admin')",
+            "hero": {
+              ".validate": "newData.isString() && newData.val().length <= 120"
+            },
+            "intro": {
+              ".validate": "newData.isString() && newData.val().length <= 2000"
+            }
+          }
         }
       }
     }

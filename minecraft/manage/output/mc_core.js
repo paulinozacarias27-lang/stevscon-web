@@ -224,6 +224,15 @@
             home.addEventListener('click', function () { location.hash = ''; MC.route(); });
             nav.appendChild(home);
 
+            const pagos = el('button', 'mc-chip' + (activeSlug === 'pagos' ? ' is-active' : ''));
+            pagos.type = 'button';
+            const pi = document.createElement('i');
+            pi.className = 'fa-solid fa-hand-holding-dollar';
+            pagos.appendChild(pi);
+            pagos.appendChild(document.createTextNode('Pagos'));
+            pagos.addEventListener('click', function () { location.hash = '#pagos'; MC.route(); });
+            nav.appendChild(pagos);
+
             const cats = this.sortedCats();
             cats.forEach(function (c) {
                 const b = el('button', 'mc-chip' + (activeSlug === c.slug ? ' is-active' : ''));

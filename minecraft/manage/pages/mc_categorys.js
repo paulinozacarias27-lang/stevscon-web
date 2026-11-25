@@ -1,7 +1,8 @@
 /**
  * ====
- * STEVSCON.MCROSS — minecraft/manage/pages/mc_categorys.js (v1)
+ * STEVSCON.MCROSS — minecraft/manage/pages/mc_categorys.js (v2)
  * CATEGORÍAS: barra de navegación superior estilo Fandom.
+ *  - Pestaña fija PAGOS (#pagos) justo después de Inicio, junto a Tienda.
  *  - Categorías principales como pestañas (mayúsculas + subrayado activo).
  *  - Cada categoría abre un panel desplegable con 2 columnas:
  *      · SECCIONES -> sus sub-categorías (mc_sub_categorys.js)
@@ -81,6 +82,13 @@
             home.appendChild(el('span', null, 'Inicio'));
             home.addEventListener('click', function () { self.close(); go(''); });
             bar.appendChild(home);
+
+            const pagos = el('button', 'mcc-item' + (actCat === 'pagos' ? ' is-active' : ''));
+            pagos.type = 'button';
+            pagos.appendChild(icon('fa-hand-holding-dollar'));
+            pagos.appendChild(el('span', null, 'Pagos'));
+            pagos.addEventListener('click', function () { self.close(); go('#pagos'); });
+            bar.appendChild(pagos);
 
             MC.core.sortedCats().forEach(function (c) {
                 const subsOf = subsMod ? subsMod.byParent(c.id) : [];
@@ -223,5 +231,5 @@
         MC.catsNav.start();
     }
 
-    console.log('[Stevscon] mc_categorys.js listo (v1) — navegación de categorías estilo Fandom.');
+    console.log('[Stevscon] mc_categorys.js listo (v2) — navegación de categorías + pestaña Pagos.');
 })(window, document);

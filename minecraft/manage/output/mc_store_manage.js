@@ -26,6 +26,7 @@
         ['items', 'Artículos', 'fa-box'],
         ['codes', 'Códigos', 'fa-key'],
         ['orders', 'Pedidos', 'fa-receipt'],
+        ['payments', 'Pagos', 'fa-credit-card'],
         ['settings', 'Ajustes', 'fa-sliders']
     ];
     const STATUS = {
@@ -250,6 +251,13 @@
                 if (key === 'items') paintItems(body);
                 else if (key === 'codes') paintCodes(body);
                 else if (key === 'orders') paintOrders(body);
+                else if (key === 'payments') {
+                    if (MC.paymentsManage && typeof MC.paymentsManage.mount === 'function') {
+                        MC.paymentsManage.mount(body);
+                    } else {
+                        body.appendChild(el('p', 'mcsa-denied', 'Pagos: módulo no cargado.'));
+                    }
+                }
                 else paintSettings(body);
             };
             TABS.forEach(function (t) {

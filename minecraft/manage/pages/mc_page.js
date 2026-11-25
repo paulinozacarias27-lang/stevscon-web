@@ -36,6 +36,7 @@
         }
         else if (h.indexOf('s/') === 0) { view = 'search'; arg = decodeURIComponent(h.slice(2)); }
         else if (h === 'admin') { view = 'admin'; }
+        else if (h === 'pagos') { view = 'pagos'; }
 
         MC.state.view = view;
         MC.state.arg = arg;
@@ -56,6 +57,15 @@
                 setTitle('Categoría');
             }
             else if (MC.state.view === 'search') { MC.core.renderSearch(main, MC.state.arg); setTitle('Búsqueda'); }
+            else if (MC.state.view === 'pagos') {
+                if (MC.payments && typeof MC.payments.render === 'function') {
+                    MC.payments.render(main);
+                    setTitle('Pagos');
+                } else {
+                    MC.core.renderHome(main);
+                    setTitle('');
+                }
+            }
             else if (MC.state.view === 'admin') {
                 const staff = !!(MC.core && typeof MC.core.staffView === 'function' && MC.core.staffView());
                 if (staff && MC.manage && typeof MC.manage.renderAdmin === 'function') {
@@ -80,7 +90,7 @@
             main.appendChild(p);
         }
 
-        MC.core.paintCatNav(MC.state.view === 'category' ? MC.state.arg : '');
+        MC.core.paintCatNav(MC.state.view === 'category' ? MC.state.arg : (MC.state.view === 'pagos' ? 'pagos' : ''));
 
         if (!MC.state.ready) {
             MC.state.ready = true;
